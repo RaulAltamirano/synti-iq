@@ -3,7 +3,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-
+import { AuthModule } from 'src/auth/auth.module';
+import { UserModule } from 'src/user/user.module';
+import { DatabaseModule } from 'src/database/database.module';
+import { RedisModule } from 'src/shared/jwt-helper/redis/redis.service';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -24,6 +27,10 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       }),
       inject: [ConfigService],
     }),
+    AuthModule,
+    UserModule,
+    DatabaseModule,
+    RedisModule,
   ],
   controllers: [AppController],
   providers: [AppService],
