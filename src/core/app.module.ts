@@ -3,10 +3,16 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { AuthModule } from 'src/auth/auth.module';
 import { UserModule } from 'src/user/user.module';
 import { DatabaseModule } from 'src/database/database.module';
-import { RedisModule } from 'src/shared/jwt-helper/redis/redis.service';
+import { RedisModule } from 'src/shared/redis/redis.module';
+import { AuthModule } from 'src/auth/services/auth/auth.module';
+import { databaseConfig } from 'src/database/database.config';
+import { PermissionModule } from 'src/permission/permission.module';
+import { RoleModule } from 'src/role/role.module';
+import { PermissionGroupModule } from 'src/permission-group/permission-group.module';
+import { UserRoleModule } from 'src/user-role/user-role.module';
+import { JwtHelperModule } from 'src/shared/jwt-helper/jwt-helper.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -15,22 +21,18 @@ import { RedisModule } from 'src/shared/jwt-helper/redis/redis.service';
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.get<string>('DB_HOST'),
-        port: configService.get<number>('DB_PORT'),
-        username: configService.get<string>('DB_USERNAME'),
-        password: configService.get<string>('DB_PASSWORD'),
-        database: configService.get<string>('DB_NAME'),
-        autoLoadEntities: true,
-        synchronize: true,
-      }),
+      useFactory: databaseConfig,
       inject: [ConfigService],
     }),
     AuthModule,
     UserModule,
+    PermissionModule,
+    RoleModule,
+    PermissionGroupModule,
+    UserRoleModule,
     DatabaseModule,
     RedisModule,
+    // JwtHelperModule,
   ],
   controllers: [AppController],
   providers: [AppService],
