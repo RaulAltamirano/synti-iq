@@ -43,6 +43,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         where: { id: id },
         select: { id: true, refreshToken: true, isActive: true },
       });
+      console.log();
       if (!user) return done(new UnauthorizedException('Invalid token'), false);
       if (!user.isActive)
         return done(
