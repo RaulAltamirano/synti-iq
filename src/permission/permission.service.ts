@@ -1,26 +1,25 @@
-import { Injectable } from '@nestjs/common';
-import { CreatePermissionDto } from './dto/create-permission.dto';
-import { UpdatePermissionDto } from './dto/update-permission.dto';
+import { Injectable, Logger } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Permission } from './entities/permission.entity';
 
 @Injectable()
 export class PermissionService {
-  create(createPermissionDto: CreatePermissionDto) {
-    return 'This action adds a new permission';
-  }
+  private readonly logger = new Logger(PermissionService.name);
 
-  findAll() {
-    return `This action returns all permission`;
+  constructor(
+    @InjectRepository(Permission)
+    private readonly permissionRepository: Repository<Permission>,
+  ) {}
+  async getUserPermissions(userId: number): Promise<string[]> {
+    const permissions = await this.findPermissionsByUserId(userId);
+    return permissions.map((permission) => permission.name);
   }
-
-  findOne(id: number) {
-    return `This action returns a #${id} permission`;
-  }
-
-  update(id: number, updatePermissionDto: UpdatePermissionDto) {
-    return `This action updates a #${id} permission`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} permission`;
+  async findPermissionsByUserId(userId: number): Promise<Permission[]> {
+    return this.permissionRepository
+      .createQueryBuilder('permission')
+      .innerJoin('permission.roles', 'role')
+      .innerJoin('role.users', 'user', 'user.id = :userId', { userId })
+      .getMany();
   }
 }
