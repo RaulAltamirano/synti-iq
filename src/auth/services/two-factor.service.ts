@@ -41,7 +41,7 @@ export class TwoFactorService {
       secret: tempSecret.toString(),
     });
     if (isValid) {
-      await user.updateTwoFactorSecret(tempSecret);
+      // await user.updateTwoFactorSecret(tempSecret);
       await this.redisService.del(`2fa:setup:${user.id}`);
     }
 
