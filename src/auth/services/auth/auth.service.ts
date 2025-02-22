@@ -8,12 +8,12 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { UserService } from 'src/user/user.service';
 import { JwtHelperService } from 'src/shared/jwt-helper/jwt-helper.service';
-import { LoginUserDto, SignupUserDto } from '../../dto';
+import { LoginUserDto } from '../../dto';
 import { User } from 'src/user/entities/user.entity';
 import { RedisService } from 'src/shared/redis/redis.service';
 import { PasswordService } from '../password/password.service';
-import { UserSession } from 'src/auth/interfaces/user-session';
 import { TokenResponse } from 'src/auth/interfaces';
+import { CreateUserDto } from 'src/user/dtos/CreateUserDto';
 
 @Injectable()
 export class AuthService {
@@ -27,9 +27,9 @@ export class AuthService {
     private readonly passwordService: PasswordService,
   ) {}
 
-  async signup(createAuthDto: SignupUserDto): Promise<any> {
+  async signup(createUserDto: CreateUserDto): Promise<any> {
     this.logger.log('Run signup');
-    const user = await this.userService.create(createAuthDto);
+    const user = await this.userService.create(createUserDto);
     if (!user) {
       this.logger.error('Failed to create user');
       throw new InternalServerErrorException('Unable to create user');
@@ -56,7 +56,7 @@ export class AuthService {
     }
 
     delete user.password;
-    await this.userService.updateLastlogin(user.id);
+    await this.userService.updateLastLogin(user.id);
 
     const tokens = await this.generateTokensAndSaveRefreshToken(user);
     this.userService.saveRefreshToken(user.id, tokens.refreshToken);
@@ -87,7 +87,7 @@ export class AuthService {
 
   async getProfile(user: User): Promise<any> {
     this.logger.log('Run get profile');
-    const objUser = await this.userService.finById(user.id);
+    const objUser = await this.userService.findById(user.id);
     const tokens = await this.generateTokensAndSaveRefreshToken(user);
     return {
       ...objUser,
@@ -105,7 +105,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
-    const user = await this.userService.finById(id);
+    const user = await this.userService.findById(id);
     if (!user) {
       throw new NotFoundException('User not found');
     }
