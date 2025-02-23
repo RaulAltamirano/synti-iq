@@ -1,0 +1,24 @@
+type CashRegisterSession {
+  # Example field (placeholder)
+  exampleField: Int
+}
+
+input CreateCashRegisterSessionInput {
+  # Example field (placeholder)
+  exampleField: Int
+}
+
+input UpdateCashRegisterSessionInput {
+  id: Int!
+}
+
+type Query {
+  cashRegisterSessions: [CashRegisterSession]!
+  cashRegisterSession(id: Int!): CashRegisterSession
+}
+
+type Mutation {
+  createCashRegisterSession(createCashRegisterSessionInput: CreateCashRegisterSessionInput!): CashRegisterSession!
+  updateCashRegisterSession(updateCashRegisterSessionInput: UpdateCashRegisterSessionInput!): CashRegisterSession!
+  removeCashRegisterSession(id: Int!): CashRegisterSession
+}
