@@ -2,7 +2,6 @@ import {
   Injectable,
   Logger,
   UnauthorizedException,
-  NotFoundException,
   InternalServerErrorException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -12,8 +11,9 @@ import { LoginUserDto } from '../../dto';
 import { User } from 'src/user/entities/user.entity';
 import { RedisService } from 'src/shared/redis/redis.service';
 import { PasswordService } from '../password/password.service';
-import { TokenResponse } from 'src/auth/interfaces';
 import { CreateUserDto } from 'src/user/dtos/CreateUserDto';
+import { randomUUID } from 'crypto';
+import { UserSessionService } from 'src/user-session/user-session.service';
 
 @Injectable()
 export class AuthService {
@@ -22,68 +22,178 @@ export class AuthService {
   constructor(
     private readonly userService: UserService,
     private readonly configService: ConfigService,
+    private readonly userSessionService: UserSessionService,
     private readonly jwtHelperService: JwtHelperService,
     private readonly redisService: RedisService,
     private readonly passwordService: PasswordService,
   ) {}
 
-  async signup(createUserDto: CreateUserDto): Promise<any> {
+  async signup(createUserDto: CreateUserDto, request?: Request): Promise<any> {
     this.logger.log('Run signup');
-    const user = await this.userService.create(createUserDto);
+    const hashedPassword = await this.passwordService.hash(
+      createUserDto.password,
+    );
+
+    const userToCreate = { ...createUserDto, password: hashedPassword };
+    const user = await this.userService.create(userToCreate);
     if (!user) {
       this.logger.error('Failed to create user');
       throw new InternalServerErrorException('Unable to create user');
     }
+    const sessionId = randomUUID();
+    const tokens = await this.generateTokensWithSession(user, sessionId);
+    const ipAddress = this.getClientIp(request);
 
-    const tokens = await this.generateTokensAndSaveRefreshToken(user);
-    this.userService.saveRefreshToken(user.id, tokens.refreshToken);
-    return { ...user, tokens };
+    const hashedRefreshToken = await this.passwordService.hash(
+      tokens.refreshToken,
+    );
+
+    await this.userSessionService.saveUserSession(user.id, {
+      sessionId,
+      refreshToken: hashedRefreshToken,
+      userAgent: request?.headers['user-agent'],
+      ipAddress: ipAddress || null,
+      lastUsed: new Date(),
+      isValid: true,
+    });
+
+    return {
+      id: user.id,
+      email: user.email,
+      tokens,
+    };
   }
 
-  async login(loginUserDto: LoginUserDto): Promise<any> {
+  async login(loginUserDto: LoginUserDto, request?: Request): Promise<any> {
     this.logger.log('Run login');
     const { email, password } = loginUserDto;
-    const user = await this.userService.validateUser(email);
-    const comparePassword = await this.passwordService.verify(
-      password,
-      user.password,
-      email,
-    );
-    console.log(comparePassword);
-    if (!user || !comparePassword) {
-      this.logger.warn('Invalid credentials');
+
+    const user = await this.userService.findByEmail(email, {
+      selectPassword: true,
+    });
+
+    if (!user) {
+      this.logger.warn(`Login attempt with non-existent email: ${email}`);
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    delete user.password;
-    await this.userService.updateLastLogin(user.id);
+    if (!user.password) {
+      this.logger.error(`User found but password is missing: ${email}`);
+      throw new InternalServerErrorException('Authentication error');
+    }
 
-    const tokens = await this.generateTokensAndSaveRefreshToken(user);
-    this.userService.saveRefreshToken(user.id, tokens.refreshToken);
+    try {
+      const isPasswordValid = await this.passwordService.verify(
+        password,
+        user.password,
+        email,
+      );
 
-    return { ...user, tokens };
+      if (!isPasswordValid) {
+        this.logger.warn(`Failed login attempt for user: ${email}`);
+        throw new UnauthorizedException('Invalid credentials');
+      }
+
+      await this.userService.updateLastLogin(user.id);
+
+      const sessionId = randomUUID();
+
+      const tokens = await this.generateTokensWithSession(user, sessionId);
+
+      const ipAddress = this.getClientIp(request);
+      const userAgent = request?.headers['user-agent'];
+
+      const hashedRefreshToken = await this.passwordService.hash(
+        tokens.refreshToken,
+      );
+
+      await this.userSessionService.saveUserSession(user.id, {
+        sessionId,
+        refreshToken: hashedRefreshToken,
+        userAgent,
+        ipAddress: ipAddress || null,
+        lastUsed: new Date(),
+        isValid: true,
+      });
+
+      delete user.password;
+
+      return {
+        user: {
+          id: user.id,
+          email: user.email,
+          // role: user.role,
+          isActive: user.isActive,
+        },
+        tokens,
+      };
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+
+      this.logger.error(`Login error: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('Authentication failed');
+    }
   }
-  // async login(loginUserDto: LoginUserDto): Promise<AuthResponse> {
-  //   const { email, password, totpToken } = loginUserDto;
 
-  //   // Rate limiting check
-  //   const canProceed = await this.rateLimiter.checkRateLimit(email, 'login');
-  //   if (!canProceed) {
-  //     throw new TooManyRequestsException('Too many login attempts');
-  //   }
+  private getClientIp(request?: Request): string | null {
+    if (!request) return null;
 
-  //   const user = await this.userService.validateUser(email, password);
+    const ip =
+      (request.headers['x-forwarded-for'] as string)?.split(',').shift() ||
+      (request as any).socket?.remoteAddress ||
+      null;
 
-  //   // 2FA check if enabled
-  //   if (user.twoFactorEnabled) {
-  //     if (
-  //       !totpToken ||
-  //       !(await this.twoFactorService.verify(user, totpToken))
-  //     ) {
-  //       throw new UnauthorizedException('Invalid 2FA token');
-  //     }
-  //   }
-  // }
+    return ip;
+  }
+
+  async refreshTokens(refreshToken: string): Promise<any> {
+    try {
+      const decoded = this.jwtHelperService.verifyRefreshToken(refreshToken);
+      const { sub: userId, sid: sessionId } = decoded;
+
+      const storedTokenHash = await this.redisService.get(
+        `refreshToken:${userId}:${sessionId}`,
+      );
+      if (!storedTokenHash) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      const isValidToken = await this.passwordService.compareHash(
+        refreshToken,
+        storedTokenHash.toString(),
+      );
+      if (!isValidToken) {
+        await this.invalidateSession(userId, sessionId);
+        throw new UnauthorizedException('Token reuse detected');
+      }
+
+      const user = await this.userService.findById(userId);
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
+
+      await this.redisService.del(`refreshToken:${userId}:${sessionId}`);
+
+      const tokens = await this.generateTokensWithSession(user, sessionId);
+
+      await this.userSessionService.updateSessionLastUsed(userId, sessionId);
+
+      return tokens;
+    } catch (error) {
+      this.logger.error(`Token refresh failed: ${error.message}`);
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+  }
+
+  async invalidateSession(userId: string, sessionId: string): Promise<void> {
+    await this.redisService.del(`refreshToken:${userId}:${sessionId}`);
+    await this.userSessionService.invalidateSession(userId, sessionId);
+    this.logger.warn(
+      `Token reuse detected for user ${userId}, session ${sessionId}`,
+    );
+  }
 
   async getProfile(user: User): Promise<any> {
     this.logger.log('Run get profile');
@@ -95,28 +205,9 @@ export class AuthService {
     };
   }
 
-  async refreshToken(refreshToken: string): Promise<TokenResponse> {
-    this.logger.log('Run refresh token');
-
-    const { id } = this.jwtHelperService.verifyRefreshToken(refreshToken);
-    const storedToken = await this.redisService.get(`refreshToken:${id}`);
-    if (storedToken !== refreshToken) {
-      this.logger.warn('Invalid or revoked refresh token');
-      throw new UnauthorizedException('Invalid refresh token');
-    }
-
-    const user = await this.userService.findById(id);
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    const tokens = await this.generateTokensAndSaveRefreshToken(user);
-    return tokens;
-  }
-
   async logout(user: User): Promise<boolean> {
     this.logger.log('Run logout');
-    await this.userService.clearRefreshToken(user);
+    // await this.userService.clearRefreshToken(user);
     await this.redisService.del(`refreshToken:${user.id}`);
     return true;
   }
@@ -157,6 +248,38 @@ export class AuthService {
     await this.redisService.set(
       `refreshToken:${user.id}`,
       refreshToken,
+      refreshTokenExpiration,
+    );
+
+    return { accessToken, refreshToken };
+  }
+  private async generateTokensWithSession(user: User, sessionId: string) {
+    const payload = {
+      sub: user.id,
+      sid: sessionId,
+      jti: randomUUID(),
+    };
+
+    const accessToken = this.jwtHelperService.generateAccessToken(payload);
+
+    const refreshTokenPayload = {
+      ...payload,
+      jti: randomUUID(),
+    };
+    const refreshToken =
+      this.jwtHelperService.generateRefreshToken(refreshTokenPayload);
+
+    const refreshTokenExpirationString = this.configService.get<string>(
+      'JWT_REFRESH_EXPIRATION_TIME',
+    );
+    const refreshTokenExpiration = this.parseExpirationTime(
+      refreshTokenExpirationString,
+    );
+
+    const refreshTokenHash = await this.passwordService.hash(refreshToken);
+    await this.redisService.set(
+      `refreshToken:${user.id}:${sessionId}`,
+      refreshTokenHash,
       refreshTokenExpiration,
     );
 
