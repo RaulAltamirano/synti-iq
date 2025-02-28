@@ -1,3 +1,5 @@
 export interface JwtPayload {
-  id: string;
+  sub: any;
+  sid: any;
+  jti: any;
 }
