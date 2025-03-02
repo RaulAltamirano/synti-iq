@@ -205,11 +205,16 @@ export class AuthService {
     };
   }
 
-  async logout(user: User): Promise<boolean> {
-    this.logger.log('Run logout');
-    // await this.userService.clearRefreshToken(user);
-    await this.redisService.del(`refreshToken:${user.id}`);
-    return true;
+  async logout(user: any, request: any): Promise<void> {
+    // try {
+    this.logger.log(user, request);
+    // const decoded = this.jwtHelperService.verifyAccessToken(token);
+    // const { sub: userId, sid: sessionId } = decoded;
+    // await this.invalidateSession(userId, sessionId);
+    // } catch (error) {
+    //   this.logger.error(`Logout failed: ${error.message}`);
+    //   throw new UnauthorizedException('Invalid token');
+    // }
   }
 
   private parseExpirationTime(expiration: string): number {
@@ -254,35 +259,72 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
   private async generateTokensWithSession(user: User, sessionId: string) {
-    const payload = {
-      sub: user.id,
-      sid: sessionId,
-      jti: randomUUID(),
-    };
+    try {
+      const basePayload = {
+        sub: user.id,
+        sid: sessionId,
+        email: user.email, 
+      };
 
-    const accessToken = this.jwtHelperService.generateAccessToken(payload);
+      const accessTokenJti = randomUUID();
+      const accessTokenPayload = {
+        ...basePayload,
+        jti: accessTokenJti,
+      };
+      const accessToken =
+        this.jwtHelperService.generateAccessToken(accessTokenPayload);
 
-    const refreshTokenPayload = {
-      ...payload,
-      jti: randomUUID(),
-    };
-    const refreshToken =
-      this.jwtHelperService.generateRefreshToken(refreshTokenPayload);
+      const accessTokenKey = `accessToken:${user.id}:${sessionId}:${accessTokenJti}`;
+      const accessTokenExpirationString = this.configService.get<string>(
+        'JWT_ACCESS_EXPIRATION_TIME',
+      );
+      const accessTokenExpiration = this.parseExpirationTime(
+        accessTokenExpirationString,
+      );
+      await this.redisService.set(
+        accessTokenKey,
+        'valid',
+        accessTokenExpiration,
+      );
 
-    const refreshTokenExpirationString = this.configService.get<string>(
-      'JWT_REFRESH_EXPIRATION_TIME',
-    );
-    const refreshTokenExpiration = this.parseExpirationTime(
-      refreshTokenExpirationString,
-    );
+      const refreshTokenJti = randomUUID();
+      const refreshTokenPayload = {
+        ...basePayload,
+        jti: refreshTokenJti,
+      };
+      const refreshToken =
+        this.jwtHelperService.generateRefreshToken(refreshTokenPayload);
 
-    const refreshTokenHash = await this.passwordService.hash(refreshToken);
-    await this.redisService.set(
-      `refreshToken:${user.id}:${sessionId}`,
-      refreshTokenHash,
-      refreshTokenExpiration,
-    );
+      // Almacenar hash del refresh token en Redis
+      const refreshTokenExpirationString = this.configService.get<string>(
+        'JWT_REFRESH_EXPIRATION_TIME',
+      );
+      const refreshTokenExpiration = this.parseExpirationTime(
+        refreshTokenExpirationString,
+      );
+      const refreshTokenHash = await this.passwordService.hash(refreshToken);
 
-    return { accessToken, refreshToken };
+      await this.redisService.set(
+        `refreshToken:${user.id}:${sessionId}:hash`,
+        refreshTokenHash,
+        refreshTokenExpiration,
+      );
+
+      await this.redisService.set(
+        `refreshToken:${user.id}:${sessionId}:jti`,
+        refreshTokenJti,
+        refreshTokenExpiration,
+      );
+
+      return { accessToken, refreshToken };
+    } catch (error) {
+      this.logger.error(
+        `Error generating tokens: ${error.message}`,
+        error.stack,
+      );
+      throw new InternalServerErrorException(
+        'Error generating authentication tokens',
+      );
+    }
   }
 }
