@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get } from '@nestjs/common';
+import { Controller, Post, Body, Get, Req } from '@nestjs/common';
 
 import { User } from 'src/user/entities/user.entity';
 import { AuthService } from './auth.service';
@@ -10,21 +10,21 @@ import { CreateUserDto } from 'src/user/dtos/CreateUserDto';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
   @Post('signup')
-  signup(@Body() createUserDto: CreateUserDto) {
-    return this.authService.signup(createUserDto);
+  signup(@Req() request: Request, @Body() createUserDto: CreateUserDto) {
+    return this.authService.signup(createUserDto, request);
   }
   @Post('login')
-  login(@Body() loginUserDto: LoginUserDto) {
-    return this.authService.login(loginUserDto);
+  login(@Req() request: Request, @Body() loginUserDto: LoginUserDto) {
+    return this.authService.login(loginUserDto, request);
   }
   @Post('refresh-token')
   refreshToken(@Body('refreshToken') refreshToken: string): Promise<any> {
-    return this.authService.refreshToken(refreshToken);
+    return this.authService.refreshTokens(refreshToken);
   }
   @Get('logout')
   @Auth([], [])
-  logout(@GetUser() user: User) {
-    return this.authService.logout(user);
+  logout(@Req() request: Request, @GetUser() user: User) {
+    return this.authService.logout(user, request);
   }
   @Get('me')
   @Auth([], [])
