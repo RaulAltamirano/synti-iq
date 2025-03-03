@@ -5,6 +5,7 @@ import { AuthService } from './auth.service';
 import { Auth, GetUser } from '../../decorator';
 import { LoginUserDto } from '../../dto';
 import { CreateUserDto } from 'src/user/dtos/CreateUserDto';
+import { GetToken } from 'src/auth/decorator/token.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -23,8 +24,8 @@ export class AuthController {
   }
   @Get('logout')
   @Auth([], [])
-  logout(@Req() request: Request, @GetUser() user: User) {
-    return this.authService.logout(user, request);
+  async logout(@GetToken() accessToken: string, @GetUser() user: User) {
+    return this.authService.logout(user.id, accessToken);
   }
   @Get('me')
   @Auth([], [])
