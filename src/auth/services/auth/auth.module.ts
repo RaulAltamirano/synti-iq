@@ -10,12 +10,14 @@ import { RedisModule } from 'src/shared/redis/redis.module';
 import { UserModule } from 'src/user/user.module';
 import { PasswordModule } from '../password/password.module';
 import { JwtHelperModule } from 'src/shared/jwt-helper/jwt-helper.module';
+import { UserSessionModule } from 'src/user-session/user-session.module';
 
 @Module({
   controllers: [AuthController],
   providers: [AuthService],
   imports: [
     UserModule,
+    UserSessionModule,
     DatabaseModule,
     PasswordModule,
     ConfigModule,
