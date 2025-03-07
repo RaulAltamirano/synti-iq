@@ -3,6 +3,7 @@ import {
   Logger,
   UnauthorizedException,
   InternalServerErrorException,
+  BadRequestException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from 'src/user/user.service';
@@ -205,16 +206,28 @@ export class AuthService {
     };
   }
 
-  async logout(user: any, request: any): Promise<void> {
-    // try {
-    this.logger.log(user, request);
-    // const decoded = this.jwtHelperService.verifyAccessToken(token);
-    // const { sub: userId, sid: sessionId } = decoded;
-    // await this.invalidateSession(userId, sessionId);
-    // } catch (error) {
-    //   this.logger.error(`Logout failed: ${error.message}`);
-    //   throw new UnauthorizedException('Invalid token');
-    // }
+  async logout(userId: string, accessToken: string): Promise<void> {
+    try {
+      if (!userId || !accessToken) {
+        throw new BadRequestException('UserId and accessToken are required');
+      }
+
+      const decoded = this.jwtHelperService.verifyAccessToken(accessToken);
+
+      if (!decoded || !decoded.sid) {
+        throw new UnauthorizedException('Invalid token format');
+      }
+
+      const { sid: sessionId } = decoded;
+      this.logger.log(`Logging out user ${userId} with session ${sessionId}`);
+
+      await this.invalidateSession(userId, sessionId);
+
+      return;
+    } catch (error) {
+      // Manejo de errores más específico
+      this.logger.error(`Logout failed: ${error.message}`);
+    }
   }
 
   private parseExpirationTime(expiration: string): number {
@@ -263,7 +276,7 @@ export class AuthService {
       const basePayload = {
         sub: user.id,
         sid: sessionId,
-        email: user.email, 
+        email: user.email,
       };
 
       const accessTokenJti = randomUUID();
