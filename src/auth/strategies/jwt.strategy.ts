@@ -46,12 +46,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     try {
       const { sub: userId, sid: sessionId, jti } = jwtPayload;
 
-      // Validación de UUID
-      if (!isUUID(userId)) {
+      if (!isUUID(userId) || !isUUID(sessionId) || !isUUID(jti)) {
         return done(new UnauthorizedException('Invalid token format'), false);
       }
 
-      // Extracción con manejo de errores
       const user = await this.userRepository.findOne({
         where: { id: userId },
         select: { id: true, isActive: true, email: true },
@@ -68,7 +66,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         );
       }
 
-      // Validación de sesión
       const session = await this.userSessionService.findSessionById(
         userId,
         sessionId,
@@ -81,8 +78,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         return done(new UnauthorizedException('Session is invalid'), false);
       }
 
-      const tokenKey = `accessToken:${userId}:${sessionId}:${jti}`;
-      const isValidToken = await this.redisService.exists(tokenKey);
+      const accessTokenKey = `token:${userId}:${sessionId}:access:${jti}`;
+      const isValidToken = await this.redisService.exists(accessTokenKey);
 
       if (!isValidToken) {
         return done(
@@ -92,6 +89,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       }
 
       await this.userSessionService.updateSessionLastUsed(userId, sessionId);
+
       done(null, user);
     } catch (error) {
       this.logger.error(`Authentication error: ${error.message}`, error.stack);
