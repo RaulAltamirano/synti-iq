@@ -1,0 +1,24 @@
+type CashierProfile {
+  # Example field (placeholder)
+  exampleField: Int
+}
+
+input CreateCashierProfileInput {
+  # Example field (placeholder)
+  exampleField: Int
+}
+
+input UpdateCashierProfileInput {
+  id: Int!
+}
+
+type Query {
+  cashierProfile: [CashierProfile]!
+  cashierProfile(id: Int!): CashierProfile
+}
+
+type Mutation {
+  createCashierProfile(createCashierProfileInput: CreateCashierProfileInput!): CashierProfile!
+  updateCashierProfile(updateCashierProfileInput: UpdateCashierProfileInput!): CashierProfile!
+  removeCashierProfile(id: Int!): CashierProfile
+}
