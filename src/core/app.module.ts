@@ -12,7 +12,7 @@ import { PermissionModule } from 'src/permission/permission.module';
 import { RoleModule } from 'src/role/role.module';
 import { PermissionGroupModule } from 'src/permission-group/permission-group.module';
 import { UserRoleModule } from 'src/user-role/user-role.module';
-import { JwtHelperModule } from 'src/shared/jwt-helper/jwt-helper.module';
+import { LocationModule } from 'src/location/location.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -32,7 +32,7 @@ import { JwtHelperModule } from 'src/shared/jwt-helper/jwt-helper.module';
     UserRoleModule,
     DatabaseModule,
     RedisModule,
-    // JwtHelperModule,
+    LocationModule,
   ],
   controllers: [AppController],
   providers: [AppService],
