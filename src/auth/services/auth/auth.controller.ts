@@ -9,9 +9,13 @@ import { GetToken } from 'src/auth/decorator/token.decorator';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
   @Post('signup')
   signup(@Req() request: Request, @Body() createUserDto: CreateUserDto) {
+    return this.authService.signup(createUserDto, request);
+  }
+  @Post('create-cashier')
+  createCashier(@Req() request: Request, @Body() createUserDto: CreateUserDto) {
     return this.authService.signup(createUserDto, request);
   }
   @Post('login')
