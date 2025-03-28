@@ -30,7 +30,7 @@ export class AuthService {
   ) {}
 
   async signup(createUserDto: CreateUserDto, request?: Request): Promise<any> {
-    this.logger.log('Run signup');
+    this.logger.log('Run signup', createUserDto);
     const hashedPassword = await this.passwordService.hash(
       createUserDto.password,
     );
