@@ -21,7 +21,7 @@ export class CashierScheduleAssignment {
 
   // Bloque de tiempo asignado
   @Field(() => TimeBlock)
-  @ManyToOne(() => TimeBlock, (timeBlock) => timeBlock.assignments, {
+  @ManyToOne(() => TimeBlock, (timeBlock) => timeBlock.storeSchedule, {
     nullable: false,
     onDelete: 'CASCADE',
   })
