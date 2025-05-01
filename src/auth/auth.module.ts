@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { CacheModule } from '@nestjs/cache-manager';
 
 import { AuthService } from './auth.service';
 
@@ -47,6 +48,7 @@ import { BearerTokenExtractor } from './strategies/bearer-token-xtractor';
     PasswordModule,
     ConfigModule,
     RedisModule,
+    CacheModule.register(),
     PassportModule.register({ defaultStrategy: 'jwt' }),
   ],
   exports: [AuthService, PassportModule],
