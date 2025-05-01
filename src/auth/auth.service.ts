@@ -5,6 +5,9 @@ import {
   Logger,
   ForbiddenException,
   BadRequestException,
+  HttpException,
+  HttpStatus,
+  Inject,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { PasswordService } from './services/password/password.service';
@@ -16,16 +19,32 @@ import { AuthResponseDto } from 'src/auth/dto/auth-response.dto';
 import { LoginUserDto, TokensUserDto } from 'src/auth/dto';
 import { RefreshTokenDto } from 'src/auth/dto/refresh-token.dto';
 import { CreateUserSessionDto } from 'src/user-session/dto/create-user-session.dto';
+import { RedisService } from 'src/shared/redis/redis.service';
+import { ThrottlerGuard } from '@nestjs/throttler';
+import { isIP } from 'net';
+import { PaginationCacheUtil } from 'src/pagination/utils/PaginationCacheUtil';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
+import { SessionFilterDto } from './dto/session-filter.dto';
+import { PaginatedResponse } from 'src/pagination/interfaces/PaginatedResponse';
+import { UserSession } from 'src/user-session/entities/user-session.entity';
+import { UserSessionResponseDto } from 'src/user-session/dto/user-session-response.dto';
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
+  private readonly MAX_LOGIN_ATTEMPTS = 5;
+  private readonly LOGIN_ATTEMPT_WINDOW = 15 * 60;
+  private readonly CACHE_PREFIX = 'active_sessions';
 
   constructor(
     private readonly userRepository: UserService,
     private readonly sessionRepository: UserSessionService,
     private readonly tokenFactory: TokenFactory,
     private readonly passwordService: PasswordService,
+    private readonly redisService: RedisService,
+    @Inject(CACHE_MANAGER)
+    private readonly cacheManager: Cache,
   ) {}
 
   async signUp(dto: SignUpDto, request?: Request): Promise<AuthResponseDto> {
@@ -61,6 +80,9 @@ export class AuthService {
   async login(dto: LoginUserDto, request?: Request): Promise<AuthResponseDto> {
     this.logger.log(`Login attempt for user: ${dto.email}`);
 
+    const metadata = this.extractSessionMetadata(request);
+    await this.checkRateLimit(dto.email, metadata.ipAddress || 'unknown');
+
     const user = await this.userRepository.findByEmail(dto.email, {
       selectPassword: true,
     });
@@ -77,9 +99,12 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    // Reset rate limit counter on successful login
+    const key = `login_attempts:${dto.email}:${metadata.ipAddress || 'unknown'}`;
+    await this.redisService.del(key);
+
     await this.userRepository.updateLastLogin(user.id);
 
-    const metadata = this.extractSessionMetadata(request);
     const tokens = await this.createUserSession({
       userId: user.id,
       ...metadata,
@@ -130,6 +155,56 @@ export class AuthService {
     await this.sessionRepository.invalidateSession(userId, sessionId);
   }
 
+  /**
+   * Get all active sessions for a user
+   * @param userId - The user's ID
+   * @returns Array of active sessions
+   */
+  async getActiveSessions(userId: string, filters: SessionFilterDto): Promise<PaginatedResponse<UserSessionResponseDto>> {
+    try {
+      const cacheKey = PaginationCacheUtil.buildCacheKey(`${this.CACHE_PREFIX}_${userId}`, filters);
+      const cachedResult = await this.cacheManager.get<PaginatedResponse<UserSessionResponseDto>>(cacheKey);
+      
+      if (cachedResult) {
+        return cachedResult;
+      }
+
+      const response = await this.sessionRepository.getActiveSessions(userId, filters);
+      await this.cacheManager.set(cacheKey, response, 300);
+      return response;
+    } catch (error) {
+      this.logger.error(`Error getting active sessions: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('Failed to get active sessions');
+    }
+  }
+
+  /**
+   * Delete a specific device session
+   * @param userId - The user's ID
+   * @param sessionId - The session ID to delete
+   */
+  async deleteDeviceSession(userId: string, sessionId: string): Promise<void> {
+    try {
+      await this.sessionRepository.invalidateSession(userId, sessionId);
+    } catch (error) {
+      this.logger.error(`Error deleting device session: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('Failed to delete device session');
+    }
+  }
+
+  /**
+   * Close all sessions for a user
+   * @param userId - The user's ID
+   */
+  async closeAllSessions(userId: string): Promise<void> {
+    try {
+      await this.sessionRepository.invalidateAllSessions(userId);
+    } catch (error) {
+      this.logger.error(`Error closing all sessions: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('Failed to close all sessions');
+    }
+  }
+
   async refreshTokens(dto: RefreshTokenDto): Promise<TokensUserDto> {
     this.logger.log('running refresh token');
     const { userId, sessionId } = await this.tokenFactory.verifyRefreshToken(
@@ -156,6 +231,7 @@ export class AuthService {
     tokenId?: string,
   ): Promise<any> {
     try {
+      this.logger.log('validateUserAndSession');
       const user = await this.validateUser(userId);
       if (sessionId) {
         await this.validateSession(userId, sessionId);
@@ -285,10 +361,23 @@ export class AuthService {
   }
 
   private extractSessionMetadata(request?: Request): any {
+    const userAgent = request?.headers['user-agent'];
+    const forwardedFor = request?.headers['x-forwarded-for']?.toString();
+    const ipAddress = forwardedFor ? forwardedFor.split(',')[0].trim() : null;
+
+    // Validate IP address
+    if (ipAddress && !isIP(ipAddress)) {
+      this.logger.warn(`Invalid IP address detected: ${ipAddress}`);
+      return {
+        userAgent: userAgent || null,
+        ipAddress: null,
+        lastUsed: new Date(),
+      };
+    }
+
     return {
-      userAgent: request?.headers['user-agent'] || null,
-      ipAddress:
-        request?.headers['x-forwarded-for']?.toString().split(',')[0] || null,
+      userAgent: userAgent || null,
+      ipAddress,
       lastUsed: new Date(),
     };
   }
@@ -307,6 +396,22 @@ export class AuthService {
       this.logger.warn(`Failed to verify access token: ${error.message}`);
       const unverified = this.tokenFactory.decodeToken(accessToken);
       return unverified?.sub === userId ? unverified.sid : null;
+    }
+  }
+
+  private async checkRateLimit(email: string, ip: string): Promise<void> {
+    const key = `login_attempts:${email}:${ip}`;
+    const attempts = await this.redisService.incr(key);
+    
+    if (attempts === 1) {
+      await this.redisService.expire(key, this.LOGIN_ATTEMPT_WINDOW);
+    }
+
+    if (attempts > this.MAX_LOGIN_ATTEMPTS) {
+      throw new HttpException(
+        'Too many login attempts. Please try again later.',
+        HttpStatus.TOO_MANY_REQUESTS
+      );
     }
   }
 }
