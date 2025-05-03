@@ -1,109 +1,68 @@
-import { Repository } from 'typeorm';
-import { Request as RequestType } from 'express';
-
-import {
-  Injectable,
-  ForbiddenException,
-  UnauthorizedException,
-  InternalServerErrorException,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
-import { InjectRepository } from '@nestjs/typeorm';
-import { ExtractJwt, Strategy, VerifiedCallback } from 'passport-jwt';
-import { User } from '../../user/entities/user.entity';
-import { JwtPayload } from '../interfaces/jwt-payload.interface';
-
-import { validate as isUUID } from 'uuid';
-import { UserSessionService } from 'src/user-session/user-session.service';
-import { RedisService } from 'src/shared/redis/redis.service';
+import { JwtPayload } from 'src/shared/jwt-helper/interfaces/jwt-payload.interface';
+import { AuthService } from '../auth.service';
+import { TokenFormatValidator } from './token-format.validator';
+import { TokenExtractorChain } from './token-extractor-chain';
+import { Request } from 'express';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   private readonly logger = new Logger(JwtStrategy.name);
 
   constructor(
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
     private readonly configService: ConfigService,
-    private readonly userSessionService: UserSessionService,
-    private readonly redisService: RedisService,
+    private readonly authService: AuthService,
+    private readonly tokenValidator: TokenFormatValidator,
+    private readonly tokenExtractorChain: TokenExtractorChain,
   ) {
     super({
-      secretOrKey: configService.get('JWT_ACCESS_SECRET'),
-      jwtFromRequest: ExtractJwt.fromExtractors([
-        JwtStrategy.extractJWT,
-        ExtractJwt.fromAuthHeaderAsBearerToken(),
-      ]),
+      secretOrKey: configService.get<string>('JWT_ACCESS_SECRET'),
+      jwtFromRequest: (req) => tokenExtractorChain.extract(req),
+      ignoreExpiration: false,
+      passReqToCallback: true,
     });
   }
 
-  async validate(
-    jwtPayload: JwtPayload,
-    done: VerifiedCallback,
-  ): Promise<void> {
+  /**
+   * Validates the JWT payload and authenticates the user
+   *
+   * @param req - Express request object
+   * @param payload - The decoded JWT payload
+   * @returns The authenticated user object
+   * @throws UnauthorizedException when validation fails
+   */
+  async validate(req: Request, payload: JwtPayload): Promise<any> {
     try {
-      const { sub: userId, sid: sessionId, jti } = jwtPayload;
-
-      if (!isUUID(userId) || !isUUID(sessionId) || !isUUID(jti)) {
-        return done(new UnauthorizedException('Invalid token format'), false);
-      }
-
-      const user = await this.userRepository.findOne({
-        where: { id: userId },
-        select: { id: true, isActive: true, email: true },
-      });
-
-      if (!user) {
-        return done(new UnauthorizedException('User not found'), false);
-      }
-
-      if (!user.isActive) {
-        return done(
-          new ForbiddenException('User is inactive, contact admin'),
-          false,
-        );
-      }
-
-      const session = await this.userSessionService.findSessionById(
-        userId,
-        sessionId,
+      this.logger.debug(`Validating JWT payload: ${JSON.stringify(payload)}`);
+      
+      // Validate token format
+      await this.tokenValidator.validate(payload);
+      this.logger.debug('Token format validation passed');
+      
+      // Validate user and session
+      const user = await this.authService.validateUserAndSession(
+        payload.sub,
+        payload.sid,
+        payload.jti,
       );
-      if (!session) {
-        return done(new UnauthorizedException('Session not found'), false);
-      }
+      this.logger.debug(`User validation successful: ${JSON.stringify(user)}`);
 
-      if (!session.isValid) {
-        return done(new UnauthorizedException('Session is invalid'), false);
-      }
+      // Attach both user and payload to the request
+      req.user = {
+        ...user,
+        sub: payload.sub,
+        sid: payload.sid,
+        jti: payload.jti
+      };
 
-      const accessTokenKey = `token:${userId}:${sessionId}:access:${jti}`;
-      const isValidToken = await this.redisService.exists(accessTokenKey);
-
-      if (!isValidToken) {
-        return done(
-          new UnauthorizedException('Token expired or revoked'),
-          false,
-        );
-      }
-
-      await this.userSessionService.updateSessionLastUsed(userId, sessionId);
-
-      done(null, user);
+      return req.user;
     } catch (error) {
       this.logger.error(`Authentication error: ${error.message}`, error.stack);
-      return done(
-        new InternalServerErrorException('Authentication error'),
-        false,
-      );
+      this.logger.error(`Failed payload: ${JSON.stringify(payload)}`);
+      throw error;
     }
-  }
-
-  private static extractJWT(req: RequestType): string | null {
-    if (req.cookies && 'access_token' in req.cookies) {
-      return req.cookies.access_token;
-    }
-    return null;
   }
 }
