@@ -1,96 +1,114 @@
 import {
   Injectable,
-  UnauthorizedException,
   Logger,
   BadRequestException,
   InternalServerErrorException,
 } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
-import { RedisService } from 'src/shared/redis/redis.service';
+import { HashingStrategy } from './strategies/hashing.strategy.ts';
+import { PepperStrategy } from './strategies/pepper.strategy.js';
+import { LockoutStrategy } from './strategies/lockout.strategy.js';
+import { PasswordOptions } from './interfaces/password-options.interface.js';
+import {
+  DEFAULT_SALT_ROUNDS,
+  MAX_LOGIN_ATTEMPTS,
+  LOCKOUT_DURATION,
+} from './interfaces/password.constants.js';
 
 @Injectable()
 export class PasswordService {
   private readonly logger = new Logger(PasswordService.name);
+  private readonly options: PasswordOptions;
 
-  private readonly SALT_ROUNDS = process.env.SALT_ROUNDS
-    ? parseInt(process.env.SALT_ROUNDS)
-    : 12;
-  private PASSWORD_PEPPER = process.env.PASSWORD_PEPPER || 'default_pepper';
-  private readonly RECOVERY_TOKEN_LENGTH = 32;
-  private readonly RECOVERY_TOKEN_EXPIRY = 3600;
-  private readonly TOKEN_PREFIX = 'pwReset:';
+  constructor(
+    private readonly hashingStrategy: HashingStrategy,
+    private readonly pepperStrategy: PepperStrategy,
+    private readonly lockoutStrategy: LockoutStrategy,
+  ) {
+    this.options = {
+      saltRounds: process.env.SALT_ROUNDS
+        ? parseInt(process.env.SALT_ROUNDS)
+        : DEFAULT_SALT_ROUNDS,
+      maxAttempts: MAX_LOGIN_ATTEMPTS,
+      lockoutDuration: LOCKOUT_DURATION,
+    };
+  }
 
-  private readonly MAX_ATTEMPTS = 5;
-  private readonly LOCKOUT_DURATION = 900;
-
-  constructor(private readonly redisService: RedisService) {}
-
-  async hash(password: string): Promise<string> {
-    if (!password) {
-      throw new Error('Password is required for hashing');
+  /**
+   * Hashes a password with salt and pepper
+   * @param plainPassword The password to hash
+   * @returns Promise resolving to the hashed password
+   * @throws {BadRequestException} If password is empty
+   * @throws {InternalServerErrorException} If hashing fails
+   */
+  async hash(plainPassword: string): Promise<string> {
+    if (!plainPassword?.trim()) {
+      throw new BadRequestException('Password cannot be empty');
     }
-    const pepperedPassword = `${password}${this.PASSWORD_PEPPER}`;
+
     try {
-      const hashedResult = await bcrypt.hash(
+      const pepperedPassword = this.pepperStrategy.apply(plainPassword);
+      return await this.hashingStrategy.hash(
         pepperedPassword,
-        this.SALT_ROUNDS,
+        this.options.saltRounds,
       );
-      return hashedResult;
     } catch (error) {
-      this.logger.error('Error hashing password', error);
-      throw new InternalServerErrorException('Error processing password');
+      this.logger.error(`Hashing failed: ${error.message}`, error.stack);
+      throw new InternalServerErrorException('Password processing failed');
     }
   }
 
+  /**
+   * Verifies a password against a hash with account lockout protection
+   * @param plainPassword The password to verify
+   * @param hashedPassword The hash to compare against
+   * @param identifier Account identifier (email/userId) for lockout tracking
+   * @returns Promise resolving to boolean indicating match
+   * @throws {BadRequestException} If inputs are invalid
+   * @throws {UnauthorizedException} If account is locked or max attempts reached
+   */
   async verify(
     plainPassword: string,
     hashedPassword: string,
-    email: string,
+    identifier: string,
   ): Promise<boolean> {
-    if (!plainPassword || !hashedPassword) {
-      this.logger.error('Missing password arguments for verification');
-      throw new BadRequestException('Password and hash are required');
+    if (!plainPassword || !hashedPassword || !identifier) {
+      throw new BadRequestException(
+        'Password, hash and identifier are required',
+      );
     }
 
-    const attemptsKey = `loginAttempts:${email}`;
-    const lockoutKey = `lockout:${email}`;
-
-    if (await this.redisService.get(lockoutKey)) {
-      throw new UnauthorizedException('Account is locked. Try again later.');
-    }
+    await this.lockoutStrategy.checkLockout(identifier);
 
     try {
-      const pepperedPassword = `${plainPassword}${this.PASSWORD_PEPPER}`;
-      const isMatch = await bcrypt.compare(pepperedPassword, hashedPassword);
+      const pepperedPassword = this.pepperStrategy.apply(plainPassword);
+      const isMatch = await this.hashingStrategy.compare(
+        pepperedPassword,
+        hashedPassword,
+      );
 
-      if (!isMatch) {
-        const attempts = await this.redisService.incr(attemptsKey);
-        const lockoutDuration = Math.min(2 ** attempts, 900);
-
-        if (attempts >= this.MAX_ATTEMPTS) {
-          await this.redisService.set(
-            lockoutKey,
-            'locked',
-            this.LOCKOUT_DURATION,
-          );
-          throw new UnauthorizedException(
-            `Too many failed attempts. Locked for ${lockoutDuration / 60} min.`,
-          );
-        }
-      } else {
-        await this.redisService.del(attemptsKey);
+      if (isMatch) {
+        await this.lockoutStrategy.resetAttempts(identifier);
+        return true;
       }
 
-      return isMatch;
+      await this.lockoutStrategy.recordFailedAttempt(identifier);
+      return false;
     } catch (error) {
-      if (error instanceof UnauthorizedException) {
-        throw error;
-      }
-      this.logger.error('Error verifying password', error);
-      throw new InternalServerErrorException('Error verifying password');
+      this.logger.error(
+        `Verification failed for ${identifier}: ${error.message}`,
+        error.stack,
+      );
+      throw new InternalServerErrorException('Password verification failed');
     }
   }
-  async compareHash(data: string, hash: string): Promise<boolean> {
-    return bcrypt.compare(data, hash);
+
+  /**
+   * Compares data with a hash (without lockout or pepper)
+   * @param data The data to compare
+   * @param hash The hash to compare against
+   * @returns Promise resolving to boolean indicating match
+   */
+  async compare(data: string, hash: string): Promise<boolean> {
+    return this.hashingStrategy.compare(data, hash);
   }
 }
