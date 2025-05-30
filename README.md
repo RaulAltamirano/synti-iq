@@ -76,6 +76,26 @@ $ yarn test:e2e
 $ yarn test:cov
 ```
 
+✔ **Pros**: Ideal para importar/exportar datos.  
+❌ **Contras**: No muestra relaciones entre tablas directamente.  
+
+---
+
+## 🔹 **4. Generar un Diagrama de Base de Datos (Para visualización gráfica)**
+Si prefieres mostrar las relaciones entre tablas gráficamente, puedes usar **Mermaid.js**, que GitHub soporta en Markdown:
+
+```md
+## 📊 Diagrama de la Base de Datos
+
+```mermaid
+erDiagram
+    USUARIOS {
+        INT id PK
+        VARCHAR nombre
+        VARCHAR email
+        TIMESTAMP creado_en
+    }
+
 ## Project Structure
 
 ```
