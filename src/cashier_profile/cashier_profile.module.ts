@@ -7,7 +7,7 @@ import { CashierProfileService } from './cashier_profile.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([CashierProfile, Store])],
-  providers: [CashierProfileStrategy],
+  providers: [CashierProfileStrategy, CashierProfileService],
   exports: [CashierProfileStrategy, CashierProfileService, TypeOrmModule],
 })
 export class CashierProfileModule {}
