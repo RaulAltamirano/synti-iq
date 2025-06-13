@@ -29,6 +29,7 @@ import { SessionFilterDto } from './dto/session-filter.dto';
 import { PaginatedResponse } from 'src/pagination/interfaces/PaginatedResponse';
 import { UserSession } from 'src/user-session/entities/user-session.entity';
 import { UserSessionResponseDto } from 'src/user-session/dto/user-session-response.dto';
+import { UAParser } from 'ua-parser-js';
 
 @Injectable()
 export class AuthService {
@@ -81,7 +82,7 @@ export class AuthService {
     this.logger.log(`Login attempt for user: ${dto.email}`);
 
     const metadata = this.extractSessionMetadata(request);
-    await this.checkRateLimit(dto.email, metadata.ipAddress || 'unknown');
+    await this.checkRateLimit(dto.email, metadata.deviceInfo?.ipAddress || 'unknown');
 
     const user = await this.userRepository.findByEmail(dto.email, {
       selectPassword: true,
@@ -100,14 +101,15 @@ export class AuthService {
     }
 
     // Reset rate limit counter on successful login
-    const key = `login_attempts:${dto.email}:${metadata.ipAddress || 'unknown'}`;
+    const key = `login_attempts:${dto.email}:${metadata.deviceInfo?.ipAddress || 'unknown'}`;
     await this.redisService.del(key);
 
     await this.userRepository.updateLastLogin(user.id);
 
     const tokens = await this.createUserSession({
       userId: user.id,
-      ...metadata,
+      deviceInfo: metadata.deviceInfo,
+      lastUsed: metadata.lastUsed,
     });
 
     return {
@@ -153,56 +155,6 @@ export class AuthService {
       return;
     }
     await this.sessionRepository.invalidateSession(userId, sessionId);
-  }
-
-  /**
-   * Get all active sessions for a user
-   * @param userId - The user's ID
-   * @returns Array of active sessions
-   */
-  async getActiveSessions(userId: string, filters: SessionFilterDto): Promise<PaginatedResponse<UserSessionResponseDto>> {
-    try {
-      const cacheKey = PaginationCacheUtil.buildCacheKey(`${this.CACHE_PREFIX}_${userId}`, filters);
-      const cachedResult = await this.cacheManager.get<PaginatedResponse<UserSessionResponseDto>>(cacheKey);
-      
-      if (cachedResult) {
-        return cachedResult;
-      }
-
-      const response = await this.sessionRepository.getActiveSessions(userId, filters);
-      await this.cacheManager.set(cacheKey, response, 300);
-      return response;
-    } catch (error) {
-      this.logger.error(`Error getting active sessions: ${error.message}`, error.stack);
-      throw new InternalServerErrorException('Failed to get active sessions');
-    }
-  }
-
-  /**
-   * Delete a specific device session
-   * @param userId - The user's ID
-   * @param sessionId - The session ID to delete
-   */
-  async deleteDeviceSession(userId: string, sessionId: string): Promise<void> {
-    try {
-      await this.sessionRepository.invalidateSession(userId, sessionId);
-    } catch (error) {
-      this.logger.error(`Error deleting device session: ${error.message}`, error.stack);
-      throw new InternalServerErrorException('Failed to delete device session');
-    }
-  }
-
-  /**
-   * Close all sessions for a user
-   * @param userId - The user's ID
-   */
-  async closeAllSessions(userId: string): Promise<void> {
-    try {
-      await this.sessionRepository.invalidateAllSessions(userId);
-    } catch (error) {
-      this.logger.error(`Error closing all sessions: ${error.message}`, error.stack);
-      throw new InternalServerErrorException('Failed to close all sessions');
-    }
   }
 
   async refreshTokens(dto: RefreshTokenDto): Promise<TokensUserDto> {
@@ -309,77 +261,47 @@ export class AuthService {
     await this.sessionRepository.updateSessionLastUsed(userId, sessionId);
   }
 
-  private async createUserSession(
-    dto: CreateUserSessionDto,
-  ): Promise<TokensUserDto> {
-    try {
-      if (!dto.userId) {
-        throw new BadRequestException('User ID is required');
-      }
-
-      const sessionId = this.tokenFactory.generateId();
-      const tokens = await this.tokenFactory.generateTokens(
-        dto.userId,
-        sessionId,
-      );
-
-      const hashedToken = await this.passwordService.hash(
-        tokens.refreshToken.token,
-      );
-
-      const createSessionDto: CreateUserSessionDto = {
-        userId: dto.userId,
-        refreshToken: hashedToken,
-        userAgent: dto.userAgent,
-        ipAddress: dto.ipAddress,
-        sessionId,
-      };
-
-      await this.sessionRepository.createSession({
-        ...createSessionDto,
-      });
-
-      this.logger.debug(
-        `Created new session ${sessionId} for user ${dto.userId}`,
-      );
-
-      return tokens;
-    } catch (error) {
-      this.logger.error(
-        `Error creating user session for user ${dto?.userId}: ${error.message}`,
-        error.stack,
-      );
-
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-
-      throw new InternalServerErrorException(
-        'Failed to create user authentication session',
-      );
-    }
-  }
-
   private extractSessionMetadata(request?: Request): any {
-    const userAgent = request?.headers['user-agent'];
-    const forwardedFor = request?.headers['x-forwarded-for']?.toString();
-    const ipAddress = forwardedFor ? forwardedFor.split(',')[0].trim() : null;
-
-    // Validate IP address
-    if (ipAddress && !isIP(ipAddress)) {
-      this.logger.warn(`Invalid IP address detected: ${ipAddress}`);
+    if (!request) {
       return {
-        userAgent: userAgent || null,
-        ipAddress: null,
         lastUsed: new Date(),
       };
     }
 
-    return {
+    const userAgent = request.headers['user-agent'];
+    const forwardedFor = request.headers['x-forwarded-for']?.toString();
+    const ipAddress = forwardedFor ? forwardedFor.split(',')[0].trim() : null;
+
+    // Parse user agent for device information
+    const uaParser = new UAParser(userAgent);
+    const deviceInfo = {
+      deviceType: this.determineDeviceType(uaParser.getDevice().type),
+      deviceName: uaParser.getDevice().model || uaParser.getOS().name,
+      browser: uaParser.getBrowser().name,
+      browserVersion: uaParser.getBrowser().version,
+      os: uaParser.getOS().name,
+      osVersion: uaParser.getOS().version,
       userAgent: userAgent || null,
-      ipAddress,
+      ipAddress: isIP(ipAddress) ? ipAddress : null,
+    };
+
+    return {
+      deviceInfo,
       lastUsed: new Date(),
     };
+  }
+
+  private determineDeviceType(deviceType: string | undefined): string {
+    if (!deviceType) return 'desktop';
+    
+    switch (deviceType.toLowerCase()) {
+      case 'mobile':
+        return 'mobile';
+      case 'tablet':
+        return 'tablet';
+      default:
+        return 'desktop';
+    }
   }
 
   private extractSessionIdFromToken(
@@ -411,6 +333,56 @@ export class AuthService {
       throw new HttpException(
         'Too many login attempts. Please try again later.',
         HttpStatus.TOO_MANY_REQUESTS
+      );
+    }
+  }
+
+  private async createUserSession(
+    dto: CreateUserSessionDto,
+  ): Promise<TokensUserDto> {
+    try {
+      if (!dto.userId) {
+        throw new BadRequestException('User ID is required');
+      }
+
+      const sessionId = this.tokenFactory.generateId();
+      const tokens = await this.tokenFactory.generateTokens(
+        dto.userId,
+        sessionId,
+      );
+
+      const hashedToken = await this.passwordService.hash(
+        tokens.refreshToken.token,
+      );
+
+      const createSessionDto: CreateUserSessionDto = {
+        userId: dto.userId,
+        refreshToken: hashedToken,
+        sessionId,
+        deviceInfo: dto.deviceInfo,
+        lastUsed: dto.lastUsed || new Date(),
+      };
+
+      await this.sessionRepository.createSession(createSessionDto);
+
+      this.logger.debug(
+        `Created new session ${sessionId} for user ${dto.userId} with device info:`,
+        JSON.stringify(createSessionDto.deviceInfo, null, 2),
+      );
+
+      return tokens;
+    } catch (error) {
+      this.logger.error(
+        `Error creating user session for user ${dto?.userId}: ${error.message}`,
+        error.stack,
+      );
+
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(
+        'Failed to create user authentication session',
       );
     }
   }
