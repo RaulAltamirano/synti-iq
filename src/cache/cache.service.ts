@@ -18,7 +18,7 @@ export class CacheService {
     options: {
       ttl?: number;
       staleWhileRevalidate?: boolean;
-    } = {},
+    } = {}
   ): Promise<T> {
     const cached = await this.cacheManager.get<T>(key);
     
