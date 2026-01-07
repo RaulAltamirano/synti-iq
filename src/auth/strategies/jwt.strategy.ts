@@ -53,8 +53,6 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 
   async validate(req: Request, payload: JwtPayload): Promise<unknown> {
     try {
-      this.logger.debug(`Validating token for user: ${payload.sub}, session: ${payload.sid}`);
-
       if (!payload.sub) {
         this.logger.error('Token missing user ID (sub)');
         throw new Error('Invalid token: missing user ID');
@@ -85,7 +83,6 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         jti: payload.jti,
       };
 
-      this.logger.debug(`Token validated successfully for user: ${payload.sub}`);
       return req.user;
     } catch (error) {
       this.logger.error(`Authentication error: ${error.message}`, error.stack, {

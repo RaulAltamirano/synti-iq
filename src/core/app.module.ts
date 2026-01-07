@@ -26,6 +26,8 @@ import { TimeBlockModule } from 'src/time-block/time-block.module';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { ProductCategorieModule } from 'src/product-categorie/product-categorie.module';
+import { ResponseModule } from 'src/shared/response/response.module';
+import { ObservabilityModule } from 'src/shared/observability/observability.module';
 
 @Module({
   imports: [
@@ -64,6 +66,8 @@ import { ProductCategorieModule } from 'src/product-categorie/product-categorie.
     LocationModule,
     TimeBlockModule,
     ProductCategorieModule,
+    ObservabilityModule,
+    ResponseModule,
   ],
   controllers: [AppController],
   providers: [
