@@ -1,27 +1,26 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { createClient } from 'redis';
+import { RedisModule as NestRedisModule } from '@nestjs-modules/ioredis';
 import { RedisService } from './redis.service';
 
 @Module({
-  imports: [ConfigModule],
-  providers: [
-    {
-      provide: 'REDIS_CLIENT',
-      useFactory: async (configService: ConfigService) => {
-        const redisClient = createClient({
-          url: configService.get<string>('REDIS_URL'),
-        });
-        redisClient.on('error', (err) =>
-          console.error('Redis Client Error', err),
-        );
-        await redisClient.connect();
-        return redisClient;
-      },
+  imports: [
+    ConfigModule,
+    NestRedisModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        type: 'single',
+        url: configService.get<string>('REDIS_URL', 'redis://localhost:6379'),
+        options: {
+          password: configService.get<string>('REDIS_PASSWORD'),
+          db: configService.get<number>('REDIS_DB', 0),
+          keyPrefix: configService.get<string>('REDIS_PREFIX', 'app:'),
+        },
+      }),
       inject: [ConfigService],
-    },
-    RedisService,
+    }),
   ],
-  exports: ['REDIS_CLIENT', RedisService],
+  providers: [RedisService],
+  exports: [RedisService],
 })
 export class RedisModule {}

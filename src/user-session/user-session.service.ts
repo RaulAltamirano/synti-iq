@@ -1,8 +1,6 @@
 import {
   Injectable,
   Logger,
-  Inject,
-  forwardRef,
   NotFoundException,
   BadRequestException,
   HttpException,
@@ -11,143 +9,116 @@ import {
 import { plainToInstance } from 'class-transformer';
 import { CreateUserSessionDto } from './dto/create-user-session.dto';
 import { UserSessionResponseDto } from './dto/user-session-response.dto';
-import { SessionCacheService } from './user-session-cache.service';
 import { UserSessionRepository } from './user-session.repository';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
-import { PaginationCacheUtil } from 'src/pagination/utils/PaginationCacheUtil';
+import { RedisService } from 'src/shared/redis/redis.service';
 import { PaginatedResponse } from 'src/pagination/interfaces/PaginatedResponse';
 import { FilterUserSessionDto } from './dto/filter-user-session.dto';
+import { DeviceInfoDto } from './dto/device-info.dto';
+import { UserSession } from './entities/user-session.entity';
 
 @Injectable()
 export class UserSessionService {
   private readonly logger = new Logger(UserSessionService.name);
-  private readonly CACHE_PREFIX = 'user_sessions';
+  private readonly SESSION_PREFIX = 'session';
+  private readonly SESSION_TTL = 7 * 24 * 60 * 60;
 
   constructor(
     private readonly userSessionRepository: UserSessionRepository,
-    private readonly sessionCacheService: SessionCacheService,
-    @Inject(CACHE_MANAGER)
-    private readonly cacheManager: Cache,
+    private readonly redisService: RedisService,
   ) {}
 
-  /**
-   * Verifica si el usuario es dueño de la sesión
-   */
-  async validateSessionOwnership(
-    userId: string,
-    sessionId: string,
-  ): Promise<boolean> {
+  async validateSessionOwnership(userId: string, sessionId: string): Promise<boolean> {
     this.validateParams(userId, sessionId);
 
     try {
-      this.logger.debug(`Validating session ownership for user ${userId} and session ${sessionId}`);
-      
-      // First check the database directly
-      const session = await this.userSessionRepository.findByUserAndSessionId({
+      const sessionKey = this.getSessionKey(userId, sessionId);
+      const sessionData = await this.redisService.get<{
+        isValid: boolean;
+        refreshTokenHash?: string;
+      }>(sessionKey);
+
+      if (sessionData !== null) {
+        return sessionData.isValid === true;
+      }
+
+      const dbSession = await this.userSessionRepository.findByUserAndSessionId({
         userId,
         sessionId,
       });
-      
-      const isValid = !!session;
-      this.logger.debug(`Database check result for session ${sessionId}: ${isValid}`);
 
-      // Update cache with the database result
-      await this.sessionCacheService.setSessionValidity(
-        userId,
-        sessionId,
-        isValid,
-      );
+      if (dbSession && dbSession.isValid) {
+        await this.setSessionInRedisUnified(userId, sessionId, {
+          refreshTokenHash: dbSession.refreshToken,
+          isValid: dbSession.isValid,
+          lastUsed: dbSession.lastUsed.toISOString(),
+          deviceInfo: dbSession.deviceInfo,
+        });
+        return true;
+      }
 
-      return isValid;
+      return false;
     } catch (error) {
       this.logger.error(`Error validating session ownership: ${error.message}`, error.stack);
-      return this.handleError(error, 'validating session ownership');
+      throw this.handleError(error, 'validating session ownership');
     }
   }
 
-  /**
-   * Invalida una sesión
-   */
   async invalidateSession(userId: string, sessionId: string): Promise<void> {
     this.validateParams(userId, sessionId);
 
     try {
-      const affected = await this.userSessionRepository.update(
-        userId,
-        sessionId,
-        { isValid: false },
-      );
-      if (affected === 0) throw new NotFoundException('Session not found');
+      const sessionKey = this.getSessionKey(userId, sessionId);
+      await this.redisService.del(sessionKey);
 
-      await this.sessionCacheService.setSessionValidity(
-        userId,
-        sessionId,
-        false,
-      );
+      await this.userSessionRepository.update(userId, sessionId, {
+        isValid: false,
+      });
     } catch (error) {
-      this.handleError(error, 'invalidating session');
+      throw this.handleError(error, 'invalidating session');
     }
   }
 
-  /**
-   * Crea una sesión
-   */
-  async createSession(
-    dto: CreateUserSessionDto,
-  ): Promise<UserSessionResponseDto> {
+  async createSession(dto: CreateUserSessionDto): Promise<UserSessionResponseDto> {
     this.ensureUserId(dto.userId);
 
     try {
-      // Limpiamos cualquier caché existente para este usuario
-      await this.sessionCacheService.deleteSession(dto.userId, dto.sessionId);
-
       const saved = await this.userSessionRepository.create({
         ...dto,
+        lastUsed: dto.lastUsed || new Date(),
       });
 
-      // Cacheamos la nueva sesión como válida
-      await this.sessionCacheService.setSessionValidity(
-        dto.userId,
-        saved.sessionId,
-        true,
-      );
-
-      this.logger.debug(`Created and cached new session ${saved.sessionId} for user ${dto.userId}`);
       return this.mapToResponseDto(saved);
     } catch (error) {
-      this.handleError(error, 'creating user session');
+      throw this.handleError(error, 'creating user session');
     }
   }
 
-  /**
-   * Invalida todas las sesiones de un usuario
-   */
+  async findActiveByUserId(userId: string): Promise<UserSession[]> {
+    this.ensureUserId(userId);
+    return this.userSessionRepository.findActiveByUserId(userId);
+  }
+
   async invalidateAllSessions(userId: string): Promise<void> {
     this.ensureUserId(userId);
 
     try {
-      const sessions =
-        await this.userSessionRepository.findActiveByUserId(userId);
-      await this.userSessionRepository.invalidateAllForUser(userId);
+      const sessions = await this.userSessionRepository.findActiveByUserId(userId);
 
-      await Promise.all(
-        sessions.map((session) =>
-          this.sessionCacheService.setSessionValidity(
-            userId,
-            session.sessionId,
-            false,
-          ),
-        ),
-      );
+      if (sessions.length === 0) {
+        return;
+      }
+
+      const sessionKeys = sessions.map(session => this.getSessionKey(userId, session.sessionId));
+      if (sessionKeys.length > 0) {
+        await this.redisService.del(...sessionKeys);
+      }
+
+      await this.userSessionRepository.invalidateAllForUser(userId);
     } catch (error) {
-      this.handleError(error, 'invalidating all sessions');
+      throw this.handleError(error, 'invalidating all sessions');
     }
   }
 
-  /**
-   * Obtiene sesiones activas con paginación
-   */
   async getActiveSessions(
     userId: string,
     filters: FilterUserSessionDto,
@@ -155,114 +126,212 @@ export class UserSessionService {
     this.ensureUserId(userId);
 
     try {
-      const cacheKey = PaginationCacheUtil.buildCacheKey(
-        `${this.CACHE_PREFIX}_${userId}`,
-        filters,
-      );
-      const cachedResult = await this.cacheManager.get<PaginatedResponse<UserSessionResponseDto>>(
-        cacheKey,
-      );
-
-      if (cachedResult) {
-        return cachedResult;
-      }
-
-      const [sessions, total] = await this.userSessionRepository.getActiveSessions(
-        userId,
-        filters,
-      );
+      const [sessions, total] = await this.userSessionRepository.getActiveSessions(userId, filters);
 
       if (!sessions || sessions.length === 0) {
-        this.logger.debug(`No active sessions found for user ${userId}`);
-        return PaginationCacheUtil.createPaginatedResponse({
+        return {
           data: [],
           total: 0,
           page: filters.page,
           limit: filters.limit,
-        });
+          totalPages: 0,
+        };
       }
 
-      const mappedSessions = sessions.map((session) => this.mapToResponseDto(session));
-      const response = PaginationCacheUtil.createPaginatedResponse({
+      const mappedSessions = sessions.map(session => this.mapToResponseDto(session));
+      return {
         data: mappedSessions,
         total,
         page: filters.page,
         limit: filters.limit,
-      });
-
-      await this.cacheManager.set(cacheKey, response, 300); // Cache for 5 minutes
-      return response;
+        totalPages: Math.ceil(total / filters.limit),
+      };
     } catch (error) {
-      this.logger.error(`Error getting active sessions: ${error.message}`, error.stack);
-      return this.handleError(error, 'getting active sessions');
+      throw this.handleError(error, 'getting active sessions');
     }
   }
 
-  /**
-   * Limpia sesiones expiradas
-   */
+  async getActiveDevices(userId: string): Promise<
+    {
+      deviceType: string;
+      count: number;
+      lastUsed: Date;
+      deviceInfo: DeviceInfoDto;
+    }[]
+  > {
+    this.ensureUserId(userId);
+
+    try {
+      const sessions = await this.userSessionRepository.findActiveByUserId(userId);
+
+      const deviceMap = new Map<
+        string,
+        {
+          count: number;
+          lastUsed: Date;
+          deviceInfo: DeviceInfoDto;
+        }
+      >();
+
+      sessions.forEach(session => {
+        const deviceType = session.deviceInfo?.deviceType || 'unknown';
+        const current = deviceMap.get(deviceType) || {
+          count: 0,
+          lastUsed: session.lastUsed,
+          deviceInfo: session.deviceInfo,
+        };
+
+        deviceMap.set(deviceType, {
+          count: current.count + 1,
+          lastUsed: session.lastUsed > current.lastUsed ? session.lastUsed : current.lastUsed,
+          deviceInfo: session.deviceInfo,
+        });
+      });
+
+      return Array.from(deviceMap.entries()).map(([deviceType, data]) => ({
+        deviceType,
+        ...data,
+      }));
+    } catch (error) {
+      throw this.handleError(error, 'getting active devices');
+    }
+  }
+
+  async invalidateDeviceSessions(userId: string, deviceType: string): Promise<void> {
+    this.ensureUserId(userId);
+    if (!deviceType) {
+      throw new BadRequestException('Device type is required');
+    }
+
+    try {
+      const sessions = await this.userSessionRepository.findByDeviceType(userId, deviceType);
+
+      if (sessions.length === 0) {
+        return;
+      }
+
+      const sessionKeys = sessions.map(session => this.getSessionKey(userId, session.sessionId));
+      if (sessionKeys.length > 0) {
+        await this.redisService.del(...sessionKeys);
+      }
+
+      await this.userSessionRepository.invalidateByDeviceType(userId, deviceType);
+    } catch (error) {
+      throw this.handleError(error, 'invalidating device sessions');
+    }
+  }
+
+  async invalidateOtherSessions(userId: string, currentSessionId: string): Promise<void> {
+    this.validateParams(userId, currentSessionId);
+
+    try {
+      const sessions = await this.userSessionRepository.findActiveByUserId(userId);
+      const otherSessions = sessions.filter(session => session.sessionId !== currentSessionId);
+
+      if (otherSessions.length === 0) {
+        return;
+      }
+
+      const sessionKeys = otherSessions.map(session =>
+        this.getSessionKey(userId, session.sessionId),
+      );
+      if (sessionKeys.length > 0) {
+        await this.redisService.del(...sessionKeys);
+      }
+
+      await this.userSessionRepository.invalidateAllExcept(userId, currentSessionId);
+    } catch (error) {
+      throw this.handleError(error, 'invalidating other sessions');
+    }
+  }
+
+  async updateSessionLastUsed(userId: string, sessionId: string): Promise<void> {
+    this.validateParams(userId, sessionId);
+
+    try {
+      const affected = await this.userSessionRepository.update(userId, sessionId, {
+        lastUsed: new Date(),
+      });
+
+      if (affected === 0) {
+        throw new NotFoundException('Session not found');
+      }
+
+      const sessionKey = this.getSessionKey(userId, sessionId);
+      const sessionData = await this.redisService.get<{
+        refreshTokenHash: string;
+        isValid: boolean;
+        lastUsed?: string;
+        deviceInfo?: any;
+      }>(sessionKey);
+      if (sessionData && sessionData.refreshTokenHash) {
+        sessionData.lastUsed = new Date().toISOString();
+        await this.setSessionInRedisUnified(userId, sessionId, sessionData);
+      }
+    } catch (error) {
+      throw this.handleError(error, 'updating session last used');
+    }
+  }
+
   async cleanupExpiredSessions(expirationDays = 30): Promise<void> {
     try {
-      const expiration = new Date(
-        Date.now() - expirationDays * 24 * 60 * 60 * 1000,
-      );
-      const deleted =
-        await this.userSessionRepository.deleteOlderThan(expiration);
-      this.logger.log(`Cleaned up ${deleted} expired sessions`);
+      const expiration = new Date(Date.now() - expirationDays * 24 * 60 * 60 * 1000);
+      await this.userSessionRepository.deleteOlderThan(expiration);
     } catch (error) {
       this.logger.error(`Cleanup failed: ${error.message}`, error.stack);
     }
   }
 
-  /**
-   * Actualiza la última fecha de uso de una sesión
-   */
-  async updateSessionLastUsed(
-    userId: string,
-    sessionId: string,
-  ): Promise<void> {
-    this.validateParams(userId, sessionId);
-
-    try {
-      const affected = await this.userSessionRepository.update(
-        userId,
-        sessionId,
-        { lastUsed: new Date() },
-      );
-      if (affected === 0) throw new NotFoundException('Session not found');
-    } catch (error) {
-      this.handleError(error, 'updating session last used');
-    }
-  }
-
-  /**
-   * Mapea una entidad a su DTO
-   */
-  private mapToResponseDto(session: any): UserSessionResponseDto {
+  private mapToResponseDto(session: UserSession): UserSessionResponseDto {
     return plainToInstance(UserSessionResponseDto, session, {
       excludeExtraneousValues: true,
     });
   }
 
-  /**
-   * Valida parámetros de entrada
-   */
   private validateParams(userId: string, sessionId: string): void {
     if (!userId || !sessionId) {
       throw new BadRequestException('User ID and Session ID are required');
     }
   }
 
-  /**
-   * Valida que el userId esté presente
-   */
   private ensureUserId(userId: string): void {
-    if (!userId) throw new BadRequestException('User ID is required');
+    if (!userId) {
+      throw new BadRequestException('User ID is required');
+    }
   }
 
-  /**
-   * Maneja errores de forma centralizada
-   */
+  private getSessionKey(userId: string, sessionId: string): string {
+    return `${this.SESSION_PREFIX}:${userId}:${sessionId}`;
+  }
+
+  async setSessionInRedisUnified(
+    userId: string,
+    sessionId: string,
+    data: {
+      refreshTokenHash: string;
+      isValid: boolean;
+      lastUsed?: string;
+      deviceInfo?: any;
+    },
+  ): Promise<void> {
+    const sessionKey = this.getSessionKey(userId, sessionId);
+    await this.redisService.set(sessionKey, data, this.SESSION_TTL);
+  }
+
+  private async setSessionInRedis(
+    userId: string,
+    sessionId: string,
+    data: {
+      refreshTokenHash?: string;
+      isValid: boolean;
+      lastUsed?: string;
+      deviceInfo?: any;
+    },
+  ): Promise<void> {
+    const sessionKey = this.getSessionKey(userId, sessionId);
+    await this.redisService.set(sessionKey, data, this.SESSION_TTL);
+  }
+
   private handleError(error: any, context: string): never {
     if (error instanceof HttpException) {
       throw error;

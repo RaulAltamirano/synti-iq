@@ -1,4 +1,15 @@
-import { Controller, Post, Body, Get, Req, Logger, Delete, Param, UnauthorizedException, Query } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Req,
+  Logger,
+  Delete,
+  Param,
+  UnauthorizedException,
+  Query,
+} from '@nestjs/common';
 
 import { User } from 'src/user/entities/user.entity';
 import { Auth, GetUser } from './decorator';
@@ -50,19 +61,13 @@ export class AuthController {
   }
   @Auth()
   @Get('sessions')
-  async getActiveSessions(
-    @Req() req: Request,
-    @Query() filters: SessionFilterDto,
-  ) {
+  async getActiveSessions(@Req() req: Request, @Query() filters: SessionFilterDto) {
     const userId = req.user['sub'];
     return this.authService.getActiveSessions(userId, filters);
   }
   @Auth()
   @Delete('sessions/:sessionId')
-  async deleteDeviceSession(
-    @Req() req: Request,
-    @Param('sessionId') sessionId: string,
-  ) {
+  async deleteDeviceSession(@Req() req: Request, @Param('sessionId') sessionId: string) {
     const userId = req.user['sub'];
     return this.authService.deleteDeviceSession(userId, sessionId);
   }

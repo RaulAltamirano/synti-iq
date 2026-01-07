@@ -86,7 +86,9 @@ describe('CashierScheduleAssignmentService', () => {
     }).compile();
 
     service = module.get<CashierScheduleAssignmentService>(CashierScheduleAssignmentService);
-    repository = module.get<CashierScheduleAssignmentRepository>(CashierScheduleAssignmentRepository);
+    repository = module.get<CashierScheduleAssignmentRepository>(
+      CashierScheduleAssignmentRepository,
+    );
     factory = module.get<AssignmentFactory>(AssignmentFactory);
   });
 
@@ -106,8 +108,12 @@ describe('CashierScheduleAssignmentService', () => {
     it('should create a time block and assignment successfully', async () => {
       mockRepository.findOverlappingAssignments.mockResolvedValue(0);
       mockTimeBlockTemplateRepository.findOne.mockResolvedValue(null);
-      mockTimeBlockTemplateRepository.create.mockReturnValue({ id: 'template1' });
-      mockTimeBlockTemplateRepository.save.mockResolvedValue({ id: 'template1' });
+      mockTimeBlockTemplateRepository.create.mockReturnValue({
+        id: 'template1',
+      });
+      mockTimeBlockTemplateRepository.save.mockResolvedValue({
+        id: 'template1',
+      });
       mockEntityManager.findOne.mockResolvedValue({ id: 'schedule1' });
       mockTimeBlockRepository.create.mockReturnValue({ id: 'timeBlock1' });
       mockTimeBlockRepository.save.mockResolvedValue({ id: 'timeBlock1' });
@@ -129,9 +135,7 @@ describe('CashierScheduleAssignmentService', () => {
     it('should throw BadRequestException if cashier is not available', async () => {
       mockRepository.findOverlappingAssignments.mockResolvedValue(1);
 
-      await expect(service.createTimeBlockAndAssign(mockDto)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.createTimeBlockAndAssign(mockDto)).rejects.toThrow(BadRequestException);
     });
   });
 

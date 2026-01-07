@@ -1,0 +1,2209 @@
+{
+  "info": {
+    "_postman_id": "synti-iq-api-collection",
+    "name": "🚀 Synti IQ API",
+    "description": "# 📚 Synti IQ E-commerce API Collection\n\nComplete API collection for Synti IQ E-commerce platform with automated token management, comprehensive documentation, and best practices.\n\n## 🎯 Features\n\n- ✅ Automated token management\n- 📖 Comprehensive documentation\n- 🧪 Automated tests\n- 🔄 Auto-refresh tokens\n- 📊 Response validation\n\n## 🚀 Getting Started\n\n1. Import this collection and environment\n2. Select the environment: **Synti IQ - Development**\n3. Run **🔐 Authentication → Login** to get your tokens\n4. All protected endpoints will automatically use your access token\n\n## 📝 Environment Variables\n\n- `base_url`: API base URL (default: http://localhost:3000)\n- `access_token`: JWT access token (auto-set after login)\n- `refresh_token`: JWT refresh token (auto-set after login)\n- `user_id`: Current user ID (auto-set after login)\n- `user_email`: User email for login\n- `user_password`: User password for login\n\n## 🔗 Swagger Documentation\n\nVisit: `{{base_url}}/api/docs` for interactive API documentation",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "synti-iq",
+    "version": "1.0.0"
+  },
+  "item": [
+    {
+      "name": "🔐 Authentication",
+      "description": "## 🔐 Authentication Endpoints\n\nManage user authentication, registration, login, logout, and session management.\n\n### 📋 Available Endpoints\n\n- **Sign Up**: Register a new user account\n- **Login**: Authenticate and get access/refresh tokens\n- **Logout**: End current session\n- **Refresh Token**: Get new access token using refresh token\n- **Get Profile**: Get current user profile\n- **Get Sessions**: List all active sessions\n- **Delete Session**: Remove a specific session\n- **Close All Sessions**: End all user sessions",
+      "item": [
+        {
+          "name": "📝 Sign Up",
+          "description": "## 📝 Register New User\n\nRegister a new user account in the system.\n\n### 📥 Request Body\n\n```json\n{\n  \"email\": \"user@example.com\",\n  \"password\": \"Password123\",\n  \"fullName\": \"John Doe\",\n  \"profileType\": \"CASHIER\"\n}\n```\n\n### ✅ Success Response (200/201)\n\n```json\n{\n  \"user\": {\n    \"id\": \"uuid\",\n    \"email\": \"user@example.com\"\n  },\n  \"tokens\": {\n    \"token\": {\n      \"token\": \"jwt-access-token\",\n      \"expiresIn\": \"15m\"\n    },\n    \"refreshToken\": {\n      \"token\": \"jwt-refresh-token\",\n      \"expiresIn\": \"7d\"\n    }\n  }\n}\n```\n\n### 🔄 Auto-Actions\n\n- ✅ Automatically saves `access_token` to environment\n- ✅ Automatically saves `refresh_token` to environment\n- ✅ Automatically saves `user_id` to environment\n- ✅ Automatically saves `user_email` to environment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Log response for debugging",
+                  "const statusCode = pm.response.code;",
+                  "console.log('Response status code:', statusCode);",
+                  "console.log('Response status text:', pm.response.status);",
+                  "console.log('Response body:', pm.response.text());",
+                  "",
+                  "// Accept any 2xx status code (200-299)",
+                  "const isSuccess = statusCode >= 200 && statusCode < 300;",
+                  "console.log('Is success status:', isSuccess);",
+                  "",
+                  "if (isSuccess) {",
+                  "    try {",
+                  "        const response = pm.response.json();",
+                  "        console.log('Parsed response:', JSON.stringify(response, null, 2));",
+                  "        ",
+                  "        // Check if tokens exist in response",
+                  "        if (response.tokens) {",
+                  "            if (response.tokens.token && response.tokens.token.token) {",
+                  "                pm.environment.set('access_token', response.tokens.token.token);",
+                  "                console.log('Access token saved');",
+                  "            } else {",
+                  "                console.error('Access token not found in response.tokens.token.token');",
+                  "            }",
+                  "            ",
+                  "            if (response.tokens.refreshToken && response.tokens.refreshToken.token) {",
+                  "                pm.environment.set('refresh_token', response.tokens.refreshToken.token);",
+                  "                console.log('Refresh token saved');",
+                  "            } else {",
+                  "                console.error('Refresh token not found in response.tokens.refreshToken.token');",
+                  "            }",
+                  "            ",
+                  "            if (response.user) {",
+                  "                if (response.user.id) {",
+                  "                    pm.environment.set('user_id', response.user.id);",
+                  "                }",
+                  "                if (response.user.email) {",
+                  "                    pm.environment.set('user_email', response.user.email);",
+                  "                }",
+                  "            }",
+                  "        } else {",
+                  "            console.error('Tokens not found in response. Response structure:', Object.keys(response));",
+                  "        }",
+                  "    } catch (error) {",
+                  "        console.error('Error parsing response:', error);",
+                  "        console.error('Response text:', pm.response.text());",
+                  "    }",
+                  "} else {",
+                  "    console.error('Sign up failed with status:', pm.response.code);",
+                  "    console.error('Response:', pm.response.text());",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"user@example.com\",\n    \"password\": \"Password123\",\n    \"fullName\": \"John Doe\",\n    \"profileType\": \"CASHIER\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/signup",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "signup"]
+            },
+            "description": "Register a new user account with email, password, full name, and profile type. Returns user info and authentication tokens."
+          },
+          "response": []
+        },
+        {
+          "name": "🔑 Login",
+          "description": "## 🔑 User Login\n\nAuthenticate user and receive access/refresh tokens.\n\n### 📥 Request Body\n\n```json\n{\n  \"email\": \"{{user_email}}\",\n  \"password\": \"{{user_password}}\"\n}\n```\n\n### ✅ Success Response (200)\n\n```json\n{\n  \"user\": {\n    \"id\": \"uuid\",\n    \"email\": \"user@example.com\"\n  },\n  \"tokens\": {\n    \"token\": {\n      \"token\": \"jwt-access-token\",\n      \"expiresIn\": \"15m\"\n    },\n    \"refreshToken\": {\n      \"token\": \"jwt-refresh-token\",\n      \"expiresIn\": \"7d\"\n    }\n  }\n}\n```\n\n### ⚠️ Error Responses\n\n- **401 Unauthorized**: Invalid credentials\n- **429 Too Many Requests**: Too many login attempts\n\n### 🔄 Auto-Actions\n\n- ✅ Automatically saves `access_token` to environment\n- ✅ Automatically saves `refresh_token` to environment\n- ✅ Automatically saves `user_id` to environment\n- ✅ Automatically saves `user_email` to environment\n\n### 💡 Usage\n\nUse the environment variables `{{user_email}}` and `{{user_password}}` for quick login.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Log response for debugging",
+                  "const statusCode = pm.response.code;",
+                  "console.log('Response status code:', statusCode);",
+                  "console.log('Response status text:', pm.response.status);",
+                  "console.log('Response body:', pm.response.text());",
+                  "",
+                  "// Accept any 2xx status code (200-299)",
+                  "const isSuccess = statusCode >= 200 && statusCode < 300;",
+                  "console.log('Is success status:', isSuccess);",
+                  "",
+                  "if (isSuccess) {",
+                  "    try {",
+                  "        const response = pm.response.json();",
+                  "        console.log('Parsed response:', JSON.stringify(response, null, 2));",
+                  "        ",
+                  "        // Check if tokens exist in response",
+                  "        if (response.tokens) {",
+                  "            if (response.tokens.token && response.tokens.token.token) {",
+                  "                pm.environment.set('access_token', response.tokens.token.token);",
+                  "                console.log('Access token saved');",
+                  "            } else {",
+                  "                console.error('Access token not found in response.tokens.token.token');",
+                  "            }",
+                  "            ",
+                  "            if (response.tokens.refreshToken && response.tokens.refreshToken.token) {",
+                  "                pm.environment.set('refresh_token', response.tokens.refreshToken.token);",
+                  "                console.log('Refresh token saved');",
+                  "            } else {",
+                  "                console.error('Refresh token not found in response.tokens.refreshToken.token');",
+                  "            }",
+                  "            ",
+                  "            if (response.user) {",
+                  "                if (response.user.id) {",
+                  "                    pm.environment.set('user_id', response.user.id);",
+                  "                }",
+                  "                if (response.user.email) {",
+                  "                    pm.environment.set('user_email', response.user.email);",
+                  "                }",
+                  "            }",
+                  "        } else {",
+                  "            console.error('Tokens not found in response. Response structure:', Object.keys(response));",
+                  "        }",
+                  "        ",
+                  "        pm.test('Login successful', function () {",
+                  "            pm.expect(response.tokens).to.exist;",
+                  "            pm.expect(response.tokens.token).to.exist;",
+                  "            pm.expect(response.tokens.refreshToken).to.exist;",
+                  "        });",
+                  "    } catch (error) {",
+                  "        console.error('Error parsing response:', error);",
+                  "        console.error('Response text:', pm.response.text());",
+                  "    }",
+                  "} else {",
+                  "    console.error('Login failed with status:', pm.response.code);",
+                  "    console.error('Response:', pm.response.text());",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"{{user_email}}\",\n    \"password\": \"{{user_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Authenticate user and receive access/refresh tokens"
+          },
+          "response": []
+        },
+        {
+          "name": "🔄 Refresh Token",
+          "description": "## 🔄 Refresh Access Token\n\nGet a new access token using a valid refresh token.\n\n### 📥 Request Body\n\n```json\n{\n  \"refreshToken\": \"{{refresh_token}}\"\n}\n```\n\n### ✅ Success Response (200)\n\n```json\n{\n  \"token\": {\n    \"token\": \"new-jwt-access-token\",\n    \"expiresIn\": \"15m\"\n  },\n  \"refreshToken\": {\n    \"token\": \"new-jwt-refresh-token\",\n    \"expiresIn\": \"7d\"\n  }\n}\n```\n\n### 🔄 Auto-Actions\n\n- ✅ Automatically updates `access_token` in environment\n- ✅ Automatically updates `refresh_token` in environment (if provided)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Log response for debugging",
+                  "const statusCode = pm.response.code;",
+                  "console.log('Refresh Token - Response status:', statusCode);",
+                  "",
+                  "if (statusCode >= 200 && statusCode < 300) {",
+                  "    try {",
+                  "        const response = pm.response.json();",
+                  "        console.log('Refresh Token - Parsed response:', JSON.stringify(response, null, 2));",
+                  "        ",
+                  "        // Update access token",
+                  "        if (response.token && response.token.token) {",
+                  "            pm.environment.set('access_token', response.token.token);",
+                  "            console.log('✅ Access token refreshed and saved');",
+                  "        } else if (response.tokens && response.tokens.token && response.tokens.token.token) {",
+                  "            pm.environment.set('access_token', response.tokens.token.token);",
+                  "            console.log('✅ Access token refreshed and saved (nested format)');",
+                  "        } else {",
+                  "            console.error('❌ Access token not found in response');",
+                  "        }",
+                  "        ",
+                  "        // Update refresh token if provided",
+                  "        if (response.refreshToken && response.refreshToken.token) {",
+                  "            pm.environment.set('refresh_token', response.refreshToken.token);",
+                  "            console.log('✅ Refresh token updated');",
+                  "        } else if (response.tokens && response.tokens.refreshToken && response.tokens.refreshToken.token) {",
+                  "            pm.environment.set('refresh_token', response.tokens.refreshToken.token);",
+                  "            console.log('✅ Refresh token updated (nested format)');",
+                  "        }",
+                  "        ",
+                  "        pm.test('Token refresh successful', function () {",
+                  "            pm.expect(response.token || response.tokens).to.exist;",
+                  "        });",
+                  "    } catch (error) {",
+                  "        console.error('❌ Error parsing refresh token response:', error);",
+                  "        console.error('Response text:', pm.response.text());",
+                  "    }",
+                  "} else {",
+                  "    console.error('❌ Token refresh failed with status:', statusCode);",
+                  "    console.error('Response:', pm.response.text());",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"refreshToken\": \"{{refresh_token}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "refresh"]
+            },
+            "description": "Refresh the access token using a valid refresh token. Returns new access and refresh tokens."
+          },
+          "response": []
+        },
+        {
+          "name": "👤 Get Profile",
+          "description": "## 👤 Get User Profile\n\nGet the profile information of the currently authenticated user.\n\n### 🔒 Authentication\n\nRequires valid Bearer token in Authorization header.\n\n### ✅ Success Response (200)\n\n```json\n{\n  \"id\": \"user-uuid\",\n  \"email\": \"user@example.com\",\n  \"name\": \"John Doe\",\n  \"roles\": [...]\n}\n```\n\n### ⚠️ Error Responses\n\n- **401 Unauthorized**: Invalid or expired token\n\n### 🔄 Auto-Actions\n\n- ✅ Automatically refreshes token if expired (pre-request script)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Auto-refresh token if needed",
+                  "if (!pm.environment.get('access_token')) {",
+                  "    pm.sendRequest({",
+                  "        url: pm.environment.get('base_url') + '/api/auth/refresh',",
+                  "        method: 'POST',",
+                  "        header: {",
+                  "            'Content-Type': 'application/json'",
+                  "        },",
+                  "        body: {",
+                  "            mode: 'raw',",
+                  "            raw: JSON.stringify({ refreshToken: pm.environment.get('refresh_token') })",
+                  "        }",
+                  "    }, function (err, res) {",
+                  "        if (res && res.json() && res.json().token) {",
+                  "            pm.environment.set('access_token', res.json().token.token);",
+                  "        }",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "profile"]
+            },
+            "description": "Get the profile information of the currently authenticated user. Requires valid access token."
+          },
+          "response": []
+        },
+        {
+          "name": "📋 Get Active Sessions",
+          "description": "## 📋 Get Active Sessions\n\nGet all active sessions for the current authenticated user.\n\n### 🔒 Authentication\n\nRequires valid Bearer token in Authorization header.\n\n### 📥 Query Parameters\n\n- `page` (optional): Page number (default: 1)\n- `limit` (optional): Items per page (default: 10)\n- `isValid` (optional): Filter by validity status\n- `lastUsedAfter` (optional): Filter sessions used after this date\n- `lastUsedBefore` (optional): Filter sessions used before this date\n\n### ✅ Success Response (200)\n\n```json\n{\n  \"data\": [...],\n  \"total\": 5,\n  \"page\": 1,\n  \"limit\": 10,\n  \"totalPages\": 1\n}\n```",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/sessions?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "sessions"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Get all active sessions for the current authenticated user with pagination support."
+          },
+          "response": []
+        },
+        {
+          "name": "🗑️ Delete Session",
+          "description": "## 🗑️ Delete Session\n\nDelete a specific session by session ID.\n\n### 🔒 Authentication\n\nRequires valid Bearer token in Authorization header.\n\n### 📥 Path Parameters\n\n- `sessionId`: UUID of the session to delete\n\n### ✅ Success Response (200/204)\n\nSession deleted successfully.",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/sessions/:sessionId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "sessions", ":sessionId"],
+              "variable": [
+                {
+                  "key": "sessionId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Delete a specific session by session ID. Requires valid access token."
+          },
+          "response": []
+        },
+        {
+          "name": "Close All Sessions",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/sessions",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "sessions"]
+            },
+            "description": "Close all active sessions for the current authenticated user. This will log you out from all devices."
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "logout"]
+            },
+            "description": "Logout from the current session. Invalidates the current access token."
+          },
+          "response": []
+        }
+      ],
+      "description": "Authentication endpoints for user registration, login, and session management"
+    },
+    {
+      "name": "📱 User Sessions",
+      "description": "## 📱 User Session Management\n\nManage user sessions, device tracking, and session invalidation.\n\n### 📋 Available Endpoints\n\n- **Get Active Sessions**: List all active sessions\n- **Invalidate Device Sessions**: End all sessions for a specific device type\n- **Invalidate Other Sessions**: End all sessions except current\n- **Invalidate All Sessions**: End all user sessions",
+      "item": [
+        {
+          "name": "Get Active Sessions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/user-session?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "user-session"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Get paginated list of active sessions"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Active Devices",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/user-session/devices",
+              "host": ["{{base_url}}"],
+              "path": ["api", "user-session", "devices"]
+            },
+            "description": "Get summary of active devices with session counts"
+          },
+          "response": []
+        },
+        {
+          "name": "Invalidate Session",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/user-session/:sessionId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "user-session", ":sessionId"],
+              "variable": [
+                {
+                  "key": "sessionId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Invalidate a specific session"
+          },
+          "response": []
+        },
+        {
+          "name": "Invalidate Device Sessions",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/user-session/devices/:deviceType",
+              "host": ["{{base_url}}"],
+              "path": ["api", "user-session", "devices", ":deviceType"],
+              "variable": [
+                {
+                  "key": "deviceType",
+                  "value": "mobile",
+                  "description": "mobile, tablet, or desktop"
+                }
+              ]
+            },
+            "description": "Invalidate all sessions for a specific device type"
+          },
+          "response": []
+        },
+        {
+          "name": "Invalidate Other Sessions",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/user-session/current/:sessionId/others",
+              "host": ["{{base_url}}"],
+              "path": ["api", "user-session", "current", ":sessionId", "others"],
+              "variable": [
+                {
+                  "key": "sessionId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Invalidate all sessions except the current one"
+          },
+          "response": []
+        },
+        {
+          "name": "Invalidate All Sessions",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/user-session/all",
+              "host": ["{{base_url}}"],
+              "path": ["api", "user-session", "all"]
+            },
+            "description": "Invalidate all sessions for current user"
+          },
+          "response": []
+        },
+        {
+          "name": "Validate Session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/user-session/:sessionId/validate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "user-session", ":sessionId", "validate"],
+              "variable": [
+                {
+                  "key": "sessionId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Validate session ownership"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Session Last Used",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/user-session/:sessionId/last-used",
+              "host": ["{{base_url}}"],
+              "path": ["api", "user-session", ":sessionId", "last-used"],
+              "variable": [
+                {
+                  "key": "sessionId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Update session last used timestamp"
+          },
+          "response": []
+        }
+      ],
+      "description": "User session management endpoints"
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Filter Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/user?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "user"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Get paginated list of users with filters"
+          },
+          "response": []
+        }
+      ],
+      "description": "User management endpoints"
+    },
+    {
+      "name": "Products",
+      "item": [
+        {
+          "name": "Get All Products",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/product?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "product"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Get paginated list of products"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Product by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/product/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "product", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get product details by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Product",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Premium Headphones\",\n    \"description\": \"High-quality wireless headphones\",\n    \"sku\": \"PH-001\",\n    \"barcode\": \"123456789012\",\n    \"purchasePrice\": 50.0,\n    \"sellingPrice\": 99.99,\n    \"taxRate\": 0.16,\n    \"brand\": \"Sony\",\n    \"storeId\": \"{{store_id}}\",\n    \"isActive\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/product",
+              "host": ["{{base_url}}"],
+              "path": ["api", "product"]
+            },
+            "description": "Create a new product"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Product",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Updated Product Name\",\n    \"sellingPrice\": 89.99\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/product/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "product", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Update product details"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Product",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/product/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "product", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Permanently delete a product"
+          },
+          "response": []
+        },
+        {
+          "name": "Soft Delete Product",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/product/:id/soft",
+              "host": ["{{base_url}}"],
+              "path": ["api", "product", ":id", "soft"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Soft delete (deactivate) a product"
+          },
+          "response": []
+        },
+        {
+          "name": "Search by SKU or Barcode",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/product/search/sku-barcode?sku=PH-001",
+              "host": ["{{base_url}}"],
+              "path": ["api", "product", "search", "sku-barcode"],
+              "query": [
+                {
+                  "key": "sku",
+                  "value": "PH-001"
+                },
+                {
+                  "key": "barcode",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Search products by SKU or barcode"
+          },
+          "response": []
+        }
+      ],
+      "description": "Product management endpoints"
+    },
+    {
+      "name": "Inventory",
+      "item": [
+        {
+          "name": "Create Inventory Movement",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"productId\": \"\",\n    \"quantity\": 10,\n    \"movementType\": \"IN\",\n    \"reason\": \"Stock replenishment\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/inventory/movements",
+              "host": ["{{base_url}}"],
+              "path": ["api", "inventory", "movements"]
+            },
+            "description": "Create a new inventory movement"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Product Stock",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/inventory/products/:id/stock",
+              "host": ["{{base_url}}"],
+              "path": ["api", "inventory", "products", ":id", "stock"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get current stock level for a product"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Product Movements",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/inventory/products/:id/movements?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "inventory", "products", ":id", "movements"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get paginated movement history for a product"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Low Stock Products",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/inventory/products/low-stock?threshold=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "inventory", "products", "low-stock"],
+              "query": [
+                {
+                  "key": "threshold",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Get products with stock below threshold"
+          },
+          "response": []
+        }
+      ],
+      "description": "Inventory management endpoints"
+    },
+    {
+      "name": "Stores",
+      "item": [
+        {
+          "name": "Get All Stores",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/store",
+              "host": ["{{base_url}}"],
+              "path": ["api", "store"]
+            },
+            "description": "Get all stores with optional filters"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Store by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/store/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "store", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get store details by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Store",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Main Store\",\n    \"phoneNumber\": \"+1234567890\",\n    \"email\": \"store@example.com\",\n    \"isActive\": true,\n    \"storeType\": \"RETAIL\",\n    \"location\": {\n        \"address\": \"123 Main St\",\n        \"city\": \"New York\",\n        \"state\": \"NY\",\n        \"zipCode\": \"10001\",\n        \"country\": \"USA\"\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/store",
+              "host": ["{{base_url}}"],
+              "path": ["api", "store"]
+            },
+            "description": "Create a new store"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Store",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/store/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "store", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Delete a store"
+          },
+          "response": []
+        },
+        {
+          "name": "Assign Cashier to Store",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"cashierId\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/store/:id/cashiers",
+              "host": ["{{base_url}}"],
+              "path": ["api", "store", ":id", "cashiers"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Assign a cashier to a store"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Store Cashiers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/store/:id/cashiers",
+              "host": ["{{base_url}}"],
+              "path": ["api", "store", ":id", "cashiers"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get all cashiers assigned to a store"
+          },
+          "response": []
+        }
+      ],
+      "description": "Store management endpoints"
+    },
+    {
+      "name": "Store Schedules",
+      "item": [
+        {
+          "name": "Create Store Schedule",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"storeId\": \"\",\n    \"dayOfWeek\": \"MONDAY\",\n    \"openTime\": \"09:00\",\n    \"closeTime\": \"18:00\",\n    \"isActive\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/store-schedule",
+              "host": ["{{base_url}}"],
+              "path": ["api", "store-schedule"]
+            },
+            "description": "Create a new store schedule"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Store Schedule",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/store-schedule/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "store-schedule", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get store schedule by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Store Schedule",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"openTime\": \"10:00\",\n    \"closeTime\": \"20:00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/store-schedule/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "store-schedule", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Update store schedule"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Store Schedule",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/store-schedule/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "store-schedule", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Soft delete store schedule"
+          },
+          "response": []
+        },
+        {
+          "name": "Toggle Store Schedule Active",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/store-schedule/:id/toggle-active",
+              "host": ["{{base_url}}"],
+              "path": ["api", "store-schedule", ":id", "toggle-active"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Toggle store schedule active status"
+          },
+          "response": []
+        }
+      ],
+      "description": "Store schedule management endpoints"
+    },
+    {
+      "name": "Cashier Schedules",
+      "item": [
+        {
+          "name": "Create Cashier Schedule",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"cashierId\": \"\",\n    \"storeId\": \"\",\n    \"startTime\": \"2024-01-01T09:00:00Z\",\n    \"endTime\": \"2024-01-01T17:00:00Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/cashier-schedules",
+              "host": ["{{base_url}}"],
+              "path": ["api", "cashier-schedules"]
+            },
+            "description": "Create a new cashier schedule assignment"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Cashier Schedules",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/cashier-schedules",
+              "host": ["{{base_url}}"],
+              "path": ["api", "cashier-schedules"]
+            },
+            "description": "Get all cashier schedules with filters"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Cashier Schedule by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/cashier-schedules/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "cashier-schedules", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get cashier schedule by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Cashier Schedule",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"startTime\": \"2024-01-01T10:00:00Z\",\n    \"endTime\": \"2024-01-01T18:00:00Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/cashier-schedules/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "cashier-schedules", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Update cashier schedule"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Cashier Schedule",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/cashier-schedules/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "cashier-schedules", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Delete cashier schedule"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Cashier Schedules by Cashier",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/cashier-schedules/cashiers/:cashierId/schedules",
+              "host": ["{{base_url}}"],
+              "path": ["api", "cashier-schedules", "cashiers", ":cashierId", "schedules"],
+              "variable": [
+                {
+                  "key": "cashierId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get all schedules for a specific cashier"
+          },
+          "response": []
+        },
+        {
+          "name": "Request Shift Swap",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"requestingCashierId\": \"\",\n    \"targetAssignmentId\": \"\",\n    \"reason\": \"Personal emergency\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/cashier-schedules/swap/request",
+              "host": ["{{base_url}}"],
+              "path": ["api", "cashier-schedules", "swap", "request"]
+            },
+            "description": "Request a shift swap"
+          },
+          "response": []
+        },
+        {
+          "name": "Confirm Shift Swap",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/cashier-schedules/swap/:assignmentId/confirm",
+              "host": ["{{base_url}}"],
+              "path": ["api", "cashier-schedules", "swap", ":assignmentId", "confirm"],
+              "variable": [
+                {
+                  "key": "assignmentId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Confirm a shift swap request"
+          },
+          "response": []
+        }
+      ],
+      "description": "Cashier schedule management endpoints"
+    },
+    {
+      "name": "Sales",
+      "item": [
+        {
+          "name": "Create Sale",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"storeId\": \"\",\n    \"cashierId\": \"\",\n    \"totalAmount\": 99.99,\n    \"paymentMethod\": \"CASH\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/sale",
+              "host": ["{{base_url}}"],
+              "path": ["api", "sale"]
+            },
+            "description": "Create a new sale"
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Sales",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/sale",
+              "host": ["{{base_url}}"],
+              "path": ["api", "sale"]
+            },
+            "description": "Get all sales"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Sale by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/sale/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "sale", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get sale details by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Sale",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"totalAmount\": 149.99\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/sale/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "sale", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Update sale details"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Sale",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/sale/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "sale", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Delete a sale"
+          },
+          "response": []
+        }
+      ],
+      "description": "Sales management endpoints"
+    },
+    {
+      "name": "Payment Methods",
+      "item": [
+        {
+          "name": "Create Payment Method",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Credit Card\",\n    \"type\": \"CARD\",\n    \"isActive\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/payment-method",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payment-method"]
+            },
+            "description": "Create a new payment method"
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Payment Methods",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/payment-method",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payment-method"]
+            },
+            "description": "Get all payment methods"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Payment Method by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/payment-method/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payment-method", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get payment method by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Payment Method",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Updated Payment Method\",\n    \"isActive\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/payment-method/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payment-method", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Update payment method"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Payment Method",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/payment-method/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "payment-method", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Delete payment method"
+          },
+          "response": []
+        }
+      ],
+      "description": "Payment method management endpoints"
+    },
+    {
+      "name": "Product Categories",
+      "item": [
+        {
+          "name": "Create Product Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Electronics\",\n    \"description\": \"Electronic products\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/product-categorie",
+              "host": ["{{base_url}}"],
+              "path": ["api", "product-categorie"]
+            },
+            "description": "Create a new product category"
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Product Categories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/product-categorie",
+              "host": ["{{base_url}}"],
+              "path": ["api", "product-categorie"]
+            },
+            "description": "Get all product categories"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Product Category by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/product-categorie/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "product-categorie", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get product category by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Product Category",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Updated Category Name\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/product-categorie/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "product-categorie", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Update product category"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Product Category",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/product-categorie/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "product-categorie", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Delete product category"
+          },
+          "response": []
+        }
+      ],
+      "description": "Product category management endpoints"
+    },
+    {
+      "name": "GraphQL",
+      "item": [
+        {
+          "name": "User Queries",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"query\": \"query { getUserById(id: \\\"{{user_id}}\\\") { id email fullName } }\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/graphql",
+              "host": ["{{base_url}}"],
+              "path": ["graphql"]
+            },
+            "description": "GraphQL query for user data"
+          },
+          "response": []
+        },
+        {
+          "name": "Store Queries",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"query\": \"query { store(id: \\\"{{store_id}}\\\") { id name isActive } }\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/graphql",
+              "host": ["{{base_url}}"],
+              "path": ["graphql"]
+            },
+            "description": "GraphQL query for store data"
+          },
+          "response": []
+        },
+        {
+          "name": "Transaction Mutations",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"query\": \"mutation { createTransaction(createTransactionInput: { amount: 100.0, type: SALE }) { id amount type } }\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/graphql",
+              "host": ["{{base_url}}"],
+              "path": ["graphql"]
+            },
+            "description": "GraphQL mutation for creating transactions"
+          },
+          "response": []
+        }
+      ],
+      "description": "GraphQL endpoints"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// 🔄 Global Pre-Request Script",
+          "// Automatically refreshes token if needed before protected requests",
+          "",
+          "const accessToken = pm.environment.get('access_token');",
+          "const refreshToken = pm.environment.get('refresh_token');",
+          "const requestUrl = pm.request.url.toString();",
+          "",
+          "// Skip token refresh for auth endpoints",
+          "const isAuthRequest = requestUrl.includes('/auth/login') || ",
+          "                     requestUrl.includes('/auth/signup') || ",
+          "                     requestUrl.includes('/auth/refresh');",
+          "",
+          "// Only refresh if we have refresh token but no access token",
+          "// and this is not an auth request",
+          "if (!isAuthRequest && refreshToken && !accessToken) {",
+          "    console.log('🔄 Auto-refreshing access token...');",
+          "    ",
+          "    pm.sendRequest({",
+          "        url: pm.environment.get('base_url') + '/api/auth/refresh',",
+          "        method: 'POST',",
+          "        header: {",
+          "            'Content-Type': 'application/json'",
+          "        },",
+          "        body: {",
+          "            mode: 'raw',",
+          "            raw: JSON.stringify({ refreshToken: refreshToken })",
+          "        }",
+          "    }, function (err, res) {",
+          "        if (err) {",
+          "            console.error('❌ Token refresh error:', err);",
+          "            return;",
+          "        }",
+          "        ",
+          "        if (res && res.code >= 200 && res.code < 300) {",
+          "            try {",
+          "                const response = res.json();",
+          "                ",
+          "                // Handle different response formats",
+          "                if (response.token && response.token.token) {",
+          "                    pm.environment.set('access_token', response.token.token);",
+          "                    console.log('✅ Access token refreshed');",
+          "                } else if (response.tokens && response.tokens.token && response.tokens.token.token) {",
+          "                    pm.environment.set('access_token', response.tokens.token.token);",
+          "                    console.log('✅ Access token refreshed (nested format)');",
+          "                }",
+          "                ",
+          "                // Update refresh token if provided",
+          "                if (response.refreshToken && response.refreshToken.token) {",
+          "                    pm.environment.set('refresh_token', response.refreshToken.token);",
+          "                } else if (response.tokens && response.tokens.refreshToken && response.tokens.refreshToken.token) {",
+          "                    pm.environment.set('refresh_token', response.tokens.refreshToken.token);",
+          "                }",
+          "            } catch (parseError) {",
+          "                console.error('❌ Error parsing refresh response:', parseError);",
+          "            }",
+          "        } else {",
+          "            console.warn('⚠️ Token refresh failed:', res ? res.code : 'no response');",
+          "        }",
+          "    });",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// 🧪 Global Test Script",
+          "// Runs after every request to validate response",
+          "",
+          "// Test response time",
+          "pm.test('⏱️ Response time is less than 5000ms', function () {",
+          "    pm.expect(pm.response.responseTime).to.be.below(5000);",
+          "});",
+          "",
+          "// Test that response has a status code",
+          "pm.test('✅ Status code exists', function () {",
+          "    pm.expect(pm.response.code).to.be.a('number');",
+          "});",
+          "",
+          "// Log 401 errors for debugging",
+          "if (pm.response.code === 401) {",
+          "    console.warn('⚠️ Unauthorized - Check if token is valid or expired');",
+          "    console.warn('Current access_token:', pm.environment.get('access_token') ? 'Set' : 'Not set');",
+          "}",
+          "",
+          "// Auto-refresh token on 401",
+          "if (pm.response.code === 401 && pm.environment.get('refresh_token')) {",
+          "    const refreshToken = pm.environment.get('refresh_token');",
+          "    pm.sendRequest({",
+          "        url: pm.environment.get('base_url') + '/api/auth/refresh',",
+          "        method: 'POST',",
+          "        header: {",
+          "            'Content-Type': 'application/json'",
+          "        },",
+          "        body: {",
+          "            mode: 'raw',",
+          "            raw: JSON.stringify({ refreshToken: refreshToken })",
+          "        }",
+          "    }, function (err, res) {",
+          "        if (res && res.code === 200 && res.json() && res.json().token) {",
+          "            pm.environment.set('access_token', res.json().token.token);",
+          "            if (res.json().refreshToken) {",
+          "                pm.environment.set('refresh_token', res.json().refreshToken.token);",
+          "            }",
+          "            // Retry the original request",
+          "            console.log('Token refreshed, please retry the request');",
+          "        }",
+          "    });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    }
+  ]
+}

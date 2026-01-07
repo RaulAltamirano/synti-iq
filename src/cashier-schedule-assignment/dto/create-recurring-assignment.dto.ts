@@ -31,4 +31,4 @@ export class CreateRecurringAssignmentDto {
   @IsOptional()
   @IsUUID()
   recurringTemplateId?: string;
-} 
+}

@@ -1,14 +1,7 @@
 import { PermissionGroup } from 'src/permission-group/entities/permission-group.entity';
 import { UserRole } from 'src/user-role/entities/user-role.entity';
 import { User } from 'src/user/entities/user.entity';
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  ManyToMany,
-  JoinTable,
-  OneToMany,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, JoinTable, OneToMany } from 'typeorm';
 
 @Entity('roles')
 export class Role {
@@ -29,6 +22,6 @@ export class Role {
   })
   permissionGroups: PermissionGroup[];
 
-  @OneToMany(() => UserRole, (userRole) => userRole.role)
+  @OneToMany(() => UserRole, userRole => userRole.role)
   users: User[];
 }

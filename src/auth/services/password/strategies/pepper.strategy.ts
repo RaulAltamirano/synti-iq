@@ -12,11 +12,6 @@ export class PepperStrategy {
     }
   }
 
-  /**
-   * Applies pepper to a password
-   * @param password The password to pepper
-   * @returns The peppered password
-   */
   apply(password: string): string {
     return `${password}${this.pepper}`;
   }

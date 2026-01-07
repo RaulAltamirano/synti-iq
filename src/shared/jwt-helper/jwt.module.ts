@@ -1,13 +1,13 @@
 import { ConfigModule } from '@nestjs/config';
-import { JwtStrategy } from 'src/auth/strategies/jwt.strategy';
-import { JwtHelperService } from './jwt-helper.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from 'src/user/entities/user.entity';
 import { Module } from '@nestjs/common';
+import { JwtService } from './jwt.service';
+import { JwtTokenStrategy } from './strategies/token-strategy';
 
 @Module({
   imports: [ConfigModule, TypeOrmModule.forFeature([User])],
-  providers: [JwtHelperService, JwtStrategy],
-  exports: [JwtHelperService, JwtStrategy],
+  providers: [JwtService, JwtTokenStrategy],
+  exports: [JwtService],
 })
-export class JwtHelperModule {}
+export class JwtModule {}

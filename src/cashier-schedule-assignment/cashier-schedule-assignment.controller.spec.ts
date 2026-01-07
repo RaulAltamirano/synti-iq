@@ -11,7 +11,9 @@ describe('CashierScheduleAssignmentController', () => {
       providers: [CashierScheduleAssignmentService],
     }).compile();
 
-    controller = module.get<CashierScheduleAssignmentController>(CashierScheduleAssignmentController);
+    controller = module.get<CashierScheduleAssignmentController>(
+      CashierScheduleAssignmentController,
+    );
   });
 
   it('should be defined', () => {

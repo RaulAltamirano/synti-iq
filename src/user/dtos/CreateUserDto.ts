@@ -27,8 +27,6 @@ export class CreateUserDto {
 
   @IsOptional()
   @IsObject()
-  @ValidateNested()
-  @Type(() => Object)
   profileData?: any;
 
   @IsOptional()

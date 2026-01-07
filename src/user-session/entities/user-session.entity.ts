@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { DeviceInfoDto } from '../dto/device-info.dto';
 
 @Entity('user_sessions')
 export class UserSession {
@@ -14,11 +15,14 @@ export class UserSession {
   @Column('uuid')
   userId: string;
 
-  @Column('uuid')
+  @Column('uuid', { unique: true })
   sessionId: string;
 
   @Column({ type: 'varchar', length: 1024 })
   refreshToken: string;
+
+  @Column({ type: 'jsonb', nullable: true })
+  deviceInfo: DeviceInfoDto;
 
   @Column({ nullable: true })
   userAgent: string;

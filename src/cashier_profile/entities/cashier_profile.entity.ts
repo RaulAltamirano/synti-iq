@@ -1,5 +1,6 @@
 import { ObjectType, Field, ID } from '@nestjs/graphql';
 import { CashierScheduleAssignment } from 'src/cashier-schedule-assignment/entities/cashier-schedule-assignment.entity';
+import { RecurringScheduleTemplate } from 'src/recurring-schedule-template/entities/recurring-schedule-template.entity';
 import { StoreSchedule } from 'src/store-schedule/entities/store-schedule.entity';
 import { Store } from 'src/store/entities/store.entity';
 import { User } from 'src/user/entities/user.entity';
@@ -22,8 +23,7 @@ export class CashierProfile {
   @JoinColumn()
   user: User;
 
-  // Relación directa con la tienda
-  @ManyToOne(() => Store, (store) => store.cashiers, { nullable: false })
+  @ManyToOne(() => Store, store => store.cashiers, { nullable: false })
   @JoinColumn({ name: 'store_id' })
   store: Store;
 
@@ -31,11 +31,12 @@ export class CashierProfile {
   storeId: string;
 
   @Field(() => [CashierScheduleAssignment])
-  @OneToMany(
-    () => CashierScheduleAssignment,
-    (assignment) => assignment.cashier,
-  )
+  @OneToMany(() => CashierScheduleAssignment, assignment => assignment.cashier)
   scheduleAssignments: CashierScheduleAssignment[];
+
+  @Field(() => [RecurringScheduleTemplate])
+  @OneToMany(() => RecurringScheduleTemplate, template => template.cashier)
+  recurringTemplates: RecurringScheduleTemplate[];
 
   @Field()
   @Column('text')

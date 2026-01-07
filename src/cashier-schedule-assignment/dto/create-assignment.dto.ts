@@ -1,4 +1,13 @@
-import { IsString, IsDate, IsOptional, IsNumber, Min, IsUUID, IsArray, IsEnum } from 'class-validator';
+import {
+  IsString,
+  IsDate,
+  IsOptional,
+  IsNumber,
+  Min,
+  IsUUID,
+  IsArray,
+  IsEnum,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { InputType, Field } from '@nestjs/graphql';
 
@@ -9,9 +18,6 @@ export enum RecurrenceType {
   YEARLY = 'YEARLY',
 }
 
-/**
- * DTO para crear una asignación de horario
- */
 @InputType()
 export class CreateAssignmentDto {
   @Field()
@@ -76,9 +82,6 @@ export class CreateAssignmentDto {
   timeBlockId?: string;
 }
 
-/**
- * DTO para solicitar un intercambio de turno
- */
 export class RequestShiftSwapDto {
   @IsString()
   assignmentId: string;
@@ -89,4 +92,4 @@ export class RequestShiftSwapDto {
   @IsOptional()
   @IsString()
   reason?: string;
-} 
+}

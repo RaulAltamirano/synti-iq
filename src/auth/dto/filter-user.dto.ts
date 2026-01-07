@@ -1,10 +1,4 @@
-import {
-  IsArray,
-  IsBoolean,
-  IsEmail,
-  IsOptional,
-  IsString,
-} from 'class-validator';
+import { IsArray, IsBoolean, IsEmail, IsOptional, IsString } from 'class-validator';
 import { PaginationParams } from 'src/pagination/interfaces/PaginationParams';
 
 export class FilterUserDto extends PaginationParams {

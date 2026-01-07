@@ -1,0 +1,10 @@
+node_modules
+dist
+build
+coverage
+*.js
+!jest.config.js
+*.d.ts
+.vscode
+.idea
+.eslintrc.js

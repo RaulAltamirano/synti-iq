@@ -33,4 +33,4 @@ export class UpdateAssignmentDto {
   @IsOptional()
   @IsDateString()
   updateFromDate?: Date;
-} 
+}

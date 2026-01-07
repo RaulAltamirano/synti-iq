@@ -33,4 +33,4 @@ export class AssignmentFilterDto extends BasePaginationParams {
   @IsOptional()
   @IsUUID()
   recurringTemplateId?: string;
-} 
+}

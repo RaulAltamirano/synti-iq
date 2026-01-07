@@ -9,7 +9,7 @@ import { TokenExtractorChain } from './token-extractor-chain';
 import { Request } from 'express';
 
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy) {
+export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   private readonly logger = new Logger(JwtStrategy.name);
 
   constructor(
@@ -20,48 +20,53 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   ) {
     super({
       secretOrKey: configService.get<string>('JWT_ACCESS_SECRET'),
-      jwtFromRequest: (req) => tokenExtractorChain.extract(req),
+      jwtFromRequest: req => tokenExtractorChain.extract(req),
       ignoreExpiration: false,
       passReqToCallback: true,
     });
   }
 
-  /**
-   * Validates the JWT payload and authenticates the user
-   *
-   * @param req - Express request object
-   * @param payload - The decoded JWT payload
-   * @returns The authenticated user object
-   * @throws UnauthorizedException when validation fails
-   */
   async validate(req: Request, payload: JwtPayload): Promise<any> {
     try {
-      this.logger.debug(`Validating JWT payload: ${JSON.stringify(payload)}`);
-      
-      // Validate token format
+      this.logger.debug(`Validating token for user: ${payload.sub}, session: ${payload.sid}`);
+
+      if (!payload.sub) {
+        this.logger.error('Token missing user ID (sub)');
+        throw new Error('Invalid token: missing user ID');
+      }
+
+      if (!payload.sid) {
+        this.logger.error('Token missing session ID (sid)');
+        throw new Error('Invalid token: missing session ID');
+      }
+
       await this.tokenValidator.validate(payload);
-      this.logger.debug('Token format validation passed');
-      
-      // Validate user and session
+
       const user = await this.authService.validateUserAndSession(
         payload.sub,
         payload.sid,
         payload.jti,
       );
-      this.logger.debug(`User validation successful: ${JSON.stringify(user)}`);
 
-      // Attach both user and payload to the request
+      if (!user) {
+        this.logger.error(`User validation returned null for user: ${payload.sub}`);
+        throw new Error('User validation failed');
+      }
+
       req.user = {
         ...user,
         sub: payload.sub,
         sid: payload.sid,
-        jti: payload.jti
+        jti: payload.jti,
       };
 
+      this.logger.debug(`Token validated successfully for user: ${payload.sub}`);
       return req.user;
     } catch (error) {
-      this.logger.error(`Authentication error: ${error.message}`, error.stack);
-      this.logger.error(`Failed payload: ${JSON.stringify(payload)}`);
+      this.logger.error(`Authentication error: ${error.message}`, error.stack, {
+        userId: payload?.sub,
+        sessionId: payload?.sid,
+      });
       throw error;
     }
   }

@@ -18,8 +18,7 @@ export class RolesPermissionsGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const requiredRoles =
-      this.reflector.get<string[]>('roles', context.getHandler()) || [];
+    const requiredRoles = this.reflector.get<string[]>('roles', context.getHandler()) || [];
     const requiredPermissions =
       this.reflector.get<string[]>('permissions', context.getHandler()) || [];
 
@@ -32,9 +31,7 @@ export class RolesPermissionsGuard implements CanActivate {
 
     if (requiredRoles.length > 0) {
       const userRoles = await this.userRolesService.getUserRoles(user.id);
-      const hasValidRole = requiredRoles.some((role) =>
-        userRoles.includes(role),
-      );
+      const hasValidRole = requiredRoles.some(role => userRoles.includes(role));
 
       if (!hasValidRole) {
         throw new ForbiddenException(
@@ -44,10 +41,8 @@ export class RolesPermissionsGuard implements CanActivate {
     }
 
     if (requiredPermissions.length > 0) {
-      const userPermissions = await this.permissionsService.getUserPermissions(
-        user.id,
-      );
-      const hasValidPermissions = requiredPermissions.every((permission) =>
+      const userPermissions = await this.permissionsService.getUserPermissions(user.id);
+      const hasValidPermissions = requiredPermissions.every(permission =>
         userPermissions.includes(permission),
       );
 

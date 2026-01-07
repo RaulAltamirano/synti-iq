@@ -7,7 +7,6 @@ import {
   BadRequestException,
   HttpException,
   HttpStatus,
-  Inject,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { PasswordService } from './services/password/password.service';
@@ -20,14 +19,10 @@ import { LoginUserDto, TokensUserDto } from 'src/auth/dto';
 import { RefreshTokenDto } from 'src/auth/dto/refresh-token.dto';
 import { CreateUserSessionDto } from 'src/user-session/dto/create-user-session.dto';
 import { RedisService } from 'src/shared/redis/redis.service';
-import { ThrottlerGuard } from '@nestjs/throttler';
 import { isIP } from 'net';
-import { PaginationCacheUtil } from 'src/pagination/utils/PaginationCacheUtil';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
 import { SessionFilterDto } from './dto/session-filter.dto';
+import { FilterUserSessionDto } from 'src/user-session/dto/filter-user-session.dto';
 import { PaginatedResponse } from 'src/pagination/interfaces/PaginatedResponse';
-import { UserSession } from 'src/user-session/entities/user-session.entity';
 import { UserSessionResponseDto } from 'src/user-session/dto/user-session-response.dto';
 import { UAParser } from 'ua-parser-js';
 
@@ -36,21 +31,16 @@ export class AuthService {
   private readonly logger = new Logger(AuthService.name);
   private readonly MAX_LOGIN_ATTEMPTS = 5;
   private readonly LOGIN_ATTEMPT_WINDOW = 15 * 60;
-  private readonly CACHE_PREFIX = 'active_sessions';
 
   constructor(
     private readonly userRepository: UserService,
-    private readonly sessionRepository: UserSessionService,
+    private readonly sessionService: UserSessionService,
     private readonly tokenFactory: TokenFactory,
     private readonly passwordService: PasswordService,
     private readonly redisService: RedisService,
-    @Inject(CACHE_MANAGER)
-    private readonly cacheManager: Cache,
   ) {}
 
   async signUp(dto: SignUpDto, request?: Request): Promise<AuthResponseDto> {
-    this.logger.log(`Registering user: ${dto.email}`);
-
     const existingUser = await this.userRepository.findByEmail(dto.email);
     if (existingUser) {
       throw new UnauthorizedException('Email already in use');
@@ -79,8 +69,6 @@ export class AuthService {
   }
 
   async login(dto: LoginUserDto, request?: Request): Promise<AuthResponseDto> {
-    this.logger.log(`Login attempt for user: ${dto.email}`);
-
     const metadata = this.extractSessionMetadata(request);
     await this.checkRateLimit(dto.email, metadata.deviceInfo?.ipAddress || 'unknown');
 
@@ -91,16 +79,19 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const passwordValid = await this.passwordService.verify(
-      dto.password,
-      user.password,
-      dto.email,
-    );
+    if (user.isDelete) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (!user.isActive) {
+      throw new UnauthorizedException('Account is inactive. Please contact support.');
+    }
+
+    const passwordValid = await this.passwordService.verify(dto.password, user.password, dto.email);
     if (!passwordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Reset rate limit counter on successful login
     const key = `login_attempts:${dto.email}:${metadata.deviceInfo?.ipAddress || 'unknown'}`;
     await this.redisService.del(key);
 
@@ -110,6 +101,8 @@ export class AuthService {
       userId: user.id,
       deviceInfo: metadata.deviceInfo,
       lastUsed: metadata.lastUsed,
+      sessionId: undefined,
+      refreshToken: undefined,
     });
 
     return {
@@ -124,7 +117,6 @@ export class AuthService {
       if (!decoded?.sub) {
         throw new UnauthorizedException('Token inválido');
       }
-      this.logger.warn({ decoded });
       const user = await this.userRepository.findById(decoded.sub);
 
       if (!user) {
@@ -138,10 +130,7 @@ export class AuthService {
         roles: user.roles,
       };
     } catch (error) {
-      if (
-        error.name === 'JsonWebTokenError' ||
-        error.name === 'TokenExpiredError'
-      ) {
+      if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
         throw new UnauthorizedException('Sesión expirada o inválida');
       }
       throw error;
@@ -151,20 +140,18 @@ export class AuthService {
   async logout(userId: string, accessToken: string): Promise<void> {
     const sessionId = this.extractSessionIdFromToken(accessToken, userId);
     if (!sessionId) {
-      await this.sessionRepository.invalidateAllSessions(userId);
+      await this.sessionService.invalidateAllSessions(userId);
       return;
     }
-    await this.sessionRepository.invalidateSession(userId, sessionId);
+
+    await this.sessionService.invalidateSession(userId, sessionId);
+    await this.tokenFactory.deleteRefreshToken(userId, sessionId);
   }
 
   async refreshTokens(dto: RefreshTokenDto): Promise<TokensUserDto> {
-    this.logger.log('running refresh token');
-    const { userId, sessionId } = await this.tokenFactory.verifyRefreshToken(
-      dto.refreshToken,
-    );
+    const { userId, sessionId } = await this.tokenFactory.verifyRefreshToken(dto.refreshToken);
 
-    const isValidSession =
-      await this.sessionRepository.validateSessionOwnership(userId, sessionId);
+    const isValidSession = await this.sessionService.validateSessionOwnership(userId, sessionId);
     if (!isValidSession) {
       throw new UnauthorizedException('Invalid session');
     }
@@ -174,32 +161,105 @@ export class AuthService {
       throw new UnauthorizedException('User not found');
     }
 
-    return this.tokenFactory.generateTokens(user.id, sessionId);
+    if (user.isDelete) {
+      throw new UnauthorizedException('User account is no longer active');
+    }
+
+    if (!user.isActive) {
+      throw new UnauthorizedException('User account is inactive');
+    }
+
+    await this.sessionService.updateSessionLastUsed(userId, sessionId);
+
+    const { tokens, refreshTokenHash } = await this.tokenFactory.generateTokens(user.id, sessionId);
+
+    const sessionKey = `session:${userId}:${sessionId}`;
+    const currentSession = await this.redisService.get<{
+      refreshTokenHash: string;
+      isValid: boolean;
+      lastUsed?: string;
+      deviceInfo?: any;
+    }>(sessionKey);
+
+    if (currentSession) {
+      await this.sessionService.setSessionInRedisUnified(userId, sessionId, {
+        refreshTokenHash,
+        isValid: currentSession.isValid,
+        lastUsed: new Date().toISOString(),
+        deviceInfo: currentSession.deviceInfo,
+      });
+    } else {
+      const activeSessions = await this.sessionService.findActiveByUserId(userId);
+      const dbSession = activeSessions.find(s => s.sessionId === sessionId);
+
+      await this.sessionService.setSessionInRedisUnified(userId, sessionId, {
+        refreshTokenHash,
+        isValid: dbSession?.isValid ?? true,
+        lastUsed: new Date().toISOString(),
+        deviceInfo: dbSession?.deviceInfo ?? null,
+      });
+    }
+
+    return tokens;
   }
 
-  async validateUserAndSession(
+  async getActiveSessions(
     userId: string,
-    sessionId?: string,
-    tokenId?: string,
-  ): Promise<any> {
-    try {
-      this.logger.log('validateUserAndSession');
-      const user = await this.validateUser(userId);
-      if (sessionId) {
-        await this.validateSession(userId, sessionId);
-      }
-      this.logger.warn(tokenId);
+    filters: SessionFilterDto,
+  ): Promise<PaginatedResponse<UserSessionResponseDto>> {
+    const filterDto: FilterUserSessionDto = {
+      page: filters.page,
+      limit: filters.limit,
+      isValid: filters.isValid,
+      lastUsedAfter: filters.lastUsedAfter,
+      lastUsedBefore: filters.lastUsedBefore,
+    };
+    return this.sessionService.getActiveSessions(userId, filterDto);
+  }
 
+  async deleteDeviceSession(userId: string, sessionId: string): Promise<void> {
+    await this.sessionService.invalidateSession(userId, sessionId);
+  }
+
+  async closeAllSessions(userId: string): Promise<void> {
+    const activeSessions = await this.sessionService.findActiveByUserId(userId);
+    await this.sessionService.invalidateAllSessions(userId);
+
+    const sessionKeys = activeSessions.map(session => `session:${userId}:${session.sessionId}`);
+    if (sessionKeys.length > 0) {
+      await this.redisService.del(...sessionKeys);
+    }
+  }
+
+  async validateUserAndSession(userId: string, sessionId?: string, tokenId?: string): Promise<any> {
+    try {
+      this.logger.debug(`Validating user and session: userId=${userId}, sessionId=${sessionId}`);
+
+      if (!userId) {
+        throw new UnauthorizedException('User ID is required');
+      }
+
+      const user = await this.validateUser(userId);
+
+      if (!sessionId) {
+        this.logger.warn(`Session ID missing for user: ${userId}`);
+        throw new UnauthorizedException('Session ID is required');
+      }
+
+      await this.validateSession(userId, sessionId);
+
+      this.logger.debug(`User and session validated successfully: userId=${userId}`);
       return user;
     } catch (error) {
-      if (
-        error instanceof UnauthorizedException ||
-        error instanceof ForbiddenException
-      ) {
+      if (error instanceof UnauthorizedException || error instanceof ForbiddenException) {
+        this.logger.warn(`User/session validation failed: ${error.message}`, { userId, sessionId });
         throw error;
       }
 
-      this.logger.error(`User validation error: ${error.message}`, error.stack);
+      this.logger.error(`User validation error: ${error.message}`, error.stack, {
+        userId,
+        sessionId,
+      });
       throw new InternalServerErrorException('Authentication error');
     }
   }
@@ -207,7 +267,6 @@ export class AuthService {
   async validateToken(userId: string, tokenId: string): Promise<void> {
     try {
       const payload = this.tokenFactory.verifyAccessToken(tokenId);
-      this.logger.debug({ tokenId });
 
       if (!payload || payload.sub !== userId) {
         throw new ForbiddenException('Token user ID mismatch');
@@ -219,17 +278,11 @@ export class AuthService {
 
       await this.validateSession(userId, payload.sid);
     } catch (error) {
-      if (
-        error instanceof UnauthorizedException ||
-        error instanceof ForbiddenException
-      ) {
+      if (error instanceof UnauthorizedException || error instanceof ForbiddenException) {
         throw error;
       }
 
-      this.logger.error(
-        `Token validation failed: ${error.message}`,
-        error.stack,
-      );
+      this.logger.error(`Token validation failed: ${error.message}`, error.stack);
       throw new UnauthorizedException('Invalid access token');
     }
   }
@@ -237,28 +290,31 @@ export class AuthService {
   private async validateUser(userId: string): Promise<any> {
     const user = await this.userRepository.findById(userId);
     if (!user) {
-      this.logger.warn(`User validation failed: User ${userId} not found`);
       throw new UnauthorizedException('User not found');
     }
+
+    if (user.isDelete) {
+      throw new UnauthorizedException('User account is no longer active');
+    }
+
+    if (!user.isActive) {
+      throw new UnauthorizedException('User account is inactive');
+    }
+
     return user;
   }
 
-  private async validateSession(
-    userId: string,
-    sessionId: string,
-  ): Promise<void> {
-    const session = await this.sessionRepository.validateSessionOwnership(
-      userId,
-      sessionId,
-    );
-    if (!session) {
-      this.logger.warn(
-        `Session validation failed: Session ${sessionId} not found for user ${userId}`,
-      );
+  private async validateSession(userId: string, sessionId: string): Promise<void> {
+    this.logger.debug(`Validating session: userId=${userId}, sessionId=${sessionId}`);
+
+    const isValid = await this.sessionService.validateSessionOwnership(userId, sessionId);
+    if (!isValid) {
+      this.logger.warn(`Session validation failed: userId=${userId}, sessionId=${sessionId}`);
       throw new UnauthorizedException('Invalid session');
     }
 
-    await this.sessionRepository.updateSessionLastUsed(userId, sessionId);
+    this.logger.debug(`Session validated successfully: userId=${userId}, sessionId=${sessionId}`);
+    await this.sessionService.updateSessionLastUsed(userId, sessionId);
   }
 
   private extractSessionMetadata(request?: Request): any {
@@ -272,7 +328,6 @@ export class AuthService {
     const forwardedFor = request.headers['x-forwarded-for']?.toString();
     const ipAddress = forwardedFor ? forwardedFor.split(',')[0].trim() : null;
 
-    // Parse user agent for device information
     const uaParser = new UAParser(userAgent);
     const deviceInfo = {
       deviceType: this.determineDeviceType(uaParser.getDevice().type),
@@ -293,7 +348,7 @@ export class AuthService {
 
   private determineDeviceType(deviceType: string | undefined): string {
     if (!deviceType) return 'desktop';
-    
+
     switch (deviceType.toLowerCase()) {
       case 'mobile':
         return 'mobile';
@@ -304,10 +359,7 @@ export class AuthService {
     }
   }
 
-  private extractSessionIdFromToken(
-    accessToken: string,
-    userId: string,
-  ): string | null {
+  private extractSessionIdFromToken(accessToken: string, userId: string): string | null {
     try {
       const decoded = this.tokenFactory.verifyAccessToken(accessToken);
       if (decoded.sub !== userId) {
@@ -315,7 +367,6 @@ export class AuthService {
       }
       return decoded.sid;
     } catch (error) {
-      this.logger.warn(`Failed to verify access token: ${error.message}`);
       const unverified = this.tokenFactory.decodeToken(accessToken);
       return unverified?.sub === userId ? unverified.sid : null;
     }
@@ -324,7 +375,7 @@ export class AuthService {
   private async checkRateLimit(email: string, ip: string): Promise<void> {
     const key = `login_attempts:${email}:${ip}`;
     const attempts = await this.redisService.incr(key);
-    
+
     if (attempts === 1) {
       await this.redisService.expire(key, this.LOGIN_ATTEMPT_WINDOW);
     }
@@ -332,43 +383,40 @@ export class AuthService {
     if (attempts > this.MAX_LOGIN_ATTEMPTS) {
       throw new HttpException(
         'Too many login attempts. Please try again later.',
-        HttpStatus.TOO_MANY_REQUESTS
+        HttpStatus.TOO_MANY_REQUESTS,
       );
     }
   }
 
-  private async createUserSession(
-    dto: CreateUserSessionDto,
-  ): Promise<TokensUserDto> {
+  private async createUserSession(dto: CreateUserSessionDto): Promise<TokensUserDto> {
     try {
       if (!dto.userId) {
         throw new BadRequestException('User ID is required');
       }
 
       const sessionId = this.tokenFactory.generateId();
-      const tokens = await this.tokenFactory.generateTokens(
+
+      const { tokens, refreshTokenHash } = await this.tokenFactory.generateTokens(
         dto.userId,
         sessionId,
       );
 
-      const hashedToken = await this.passwordService.hash(
-        tokens.refreshToken.token,
-      );
-
       const createSessionDto: CreateUserSessionDto = {
         userId: dto.userId,
-        refreshToken: hashedToken,
+        refreshToken: refreshTokenHash,
         sessionId,
         deviceInfo: dto.deviceInfo,
         lastUsed: dto.lastUsed || new Date(),
       };
 
-      await this.sessionRepository.createSession(createSessionDto);
+      await this.sessionService.createSession(createSessionDto);
 
-      this.logger.debug(
-        `Created new session ${sessionId} for user ${dto.userId} with device info:`,
-        JSON.stringify(createSessionDto.deviceInfo, null, 2),
-      );
+      await this.sessionService.setSessionInRedisUnified(dto.userId, sessionId, {
+        refreshTokenHash,
+        isValid: true,
+        lastUsed: (dto.lastUsed || new Date()).toISOString(),
+        deviceInfo: dto.deviceInfo,
+      });
 
       return tokens;
     } catch (error) {
@@ -381,9 +429,7 @@ export class AuthService {
         throw error;
       }
 
-      throw new InternalServerErrorException(
-        'Failed to create user authentication session',
-      );
+      throw new InternalServerErrorException('Failed to create user authentication session');
     }
   }
 }

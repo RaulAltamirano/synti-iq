@@ -14,7 +14,6 @@ import {
 
 @ObjectType()
 @Entity('default_profile')
-// @ChildEntity('default_profile')
 export class DefaultProfile {
   @PrimaryGeneratedColumn('uuid')
   id: string;

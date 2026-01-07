@@ -12,10 +12,7 @@ export class DatabaseService {
   handlerDBexceptions(error: any): void {
     if (error.code === '23505') {
       this.logger.error('Duplicate entry found in the database.', error.detail);
-      throw new DatabaseConflictException(
-        'Duplicate entry found in the database.',
-        error.detail,
-      );
+      throw new DatabaseConflictException('Duplicate entry found in the database.', error.detail);
     }
 
     if (error.code === '22P02') {

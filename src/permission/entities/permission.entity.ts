@@ -1,11 +1,5 @@
 import { PermissionGroup } from 'src/permission-group/entities/permission-group.entity';
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  ManyToMany,
-  JoinTable,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, JoinTable } from 'typeorm';
 
 @Entity('permissions')
 export class Permission {
@@ -18,7 +12,7 @@ export class Permission {
   @Column({ nullable: true })
   description: string;
 
-  @ManyToMany(() => PermissionGroup, (group) => group.permissions)
+  @ManyToMany(() => PermissionGroup, group => group.permissions)
   @JoinTable()
   groups: PermissionGroup[];
 }

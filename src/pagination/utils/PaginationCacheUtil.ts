@@ -1,28 +1,44 @@
 import { createHash } from 'crypto';
 import { PaginatedResponse } from '../interfaces/PaginatedResponse';
 import { BasePaginationParams } from '../dtos/base-pagination-params';
+import { CacheService } from 'src/cache/cache.service';
 
 export class PaginationCacheUtil {
-  // Método estático para generar clave de caché
   static buildCacheKey(prefix: string, filters: Record<string, any>): string {
-    // Ordenar claves para consistencia
-    const orderedFilters = Object.keys(filters)
-      .sort()
-      .reduce((obj, key) => {
-        // Evitar incluir valores undefined o null
-        if (filters[key] !== undefined && filters[key] !== null) {
-          obj[key] = filters[key];
-        }
-        return obj;
-      }, {});
+    if (!prefix) {
+      throw new Error('Cache prefix is required');
+    }
 
-    // Generar hash usando SHA-256
+    if (!filters || typeof filters !== 'object') {
+      throw new Error('Filters must be a valid object');
+    }
+
+    const sanitizedFilters = this.sanitizeFilters(filters);
+
     return `${prefix}:${createHash('sha256')
-      .update(JSON.stringify(orderedFilters))
+      .update(JSON.stringify(sanitizedFilters))
       .digest('hex')}`;
   }
 
-  // Método para crear respuesta paginada
+  private static sanitizeFilters(filters: Record<string, any>, depth = 0): Record<string, any> {
+    if (depth > 3) return {};
+
+    return Object.keys(filters)
+      .sort()
+      .reduce((obj, key) => {
+        const value = filters[key];
+        if (value === undefined || value === null) return obj;
+
+        if (typeof value === 'object' && !Array.isArray(value)) {
+          obj[key] = this.sanitizeFilters(value, depth + 1);
+        } else {
+          obj[key] = value;
+        }
+
+        return obj;
+      }, {});
+  }
+
   static createPaginatedResponse<T>({
     data,
     total,
@@ -34,30 +50,131 @@ export class PaginationCacheUtil {
     page: number;
     limit: number;
   }): PaginatedResponse<T> {
+    const safeTotal = Math.max(0, total || 0);
+    const safeLimit = Math.max(1, limit || 10);
+    const safePage = Math.max(1, page || 1);
+    const totalPages = Math.ceil(safeTotal / safeLimit) || 1;
+
     return {
-      data,
-      total,
-      page,
-      totalPages: Math.ceil(total / limit),
-      limit,
+      data: data || [],
+      total: safeTotal,
+      page: safePage,
+      totalPages,
+      limit: safeLimit,
+      hasNextPage: safePage < totalPages,
+      hasPreviousPage: safePage > 1,
     };
   }
 
-  // Método para aplicar paginación a una consulta
   static applyPagination<T>(
     queryBuilder: any,
     paginationParams: BasePaginationParams,
+    options?: {
+      aliasOverride?: string;
+      columnMap?: Record<string, string>;
+      metricsCollector?: (metrics: any) => void;
+    },
   ) {
-    const { page, limit, sortBy, sortOrder } = paginationParams;
+    const startTime = options?.metricsCollector ? Date.now() : 0;
 
-    // Aplicar ordenamiento
+    const { page = 1, limit = 10, sortBy, sortOrder = 'ASC' } = paginationParams;
+
+    const validPage = Math.max(1, Number(page) || 1);
+    const validLimit = Math.min(Math.max(1, Number(limit) || 10), 100); // Prevenir límites extremos
+
+    const alias = options?.aliasOverride || queryBuilder.alias || '';
+
     if (sortBy) {
-      queryBuilder.orderBy(`${queryBuilder.alias}.${sortBy}`, sortOrder);
+      const actualColumn = options?.columnMap?.[sortBy] || sortBy;
+      const columnRef = alias ? `${alias}.${actualColumn}` : actualColumn;
+      queryBuilder.orderBy(columnRef, sortOrder);
     }
 
-    // Aplicar paginación
-    queryBuilder.skip((page - 1) * limit).take(limit);
+    queryBuilder.skip((validPage - 1) * validLimit).take(validLimit);
+
+    if (options?.metricsCollector) {
+      options.metricsCollector({
+        page: validPage,
+        limit: validLimit,
+        executionTime: Date.now() - startTime,
+        filters: paginationParams,
+      });
+    }
 
     return queryBuilder;
+  }
+
+  static async getPaginatedResults<T>(
+    cacheService: CacheService,
+    cachePrefix: string,
+    paginationParams: BasePaginationParams,
+    fetchDataFn: () => Promise<{ data: T[]; total: number }>,
+    options: {
+      ttl?: number;
+      staleWhileRevalidate?: boolean;
+      metricsCollector?: (metrics: any) => void;
+    } = {},
+  ): Promise<PaginatedResponse<T>> {
+    const cacheKey = this.buildCacheKey(cachePrefix, paginationParams);
+
+    const startTime = options?.metricsCollector ? Date.now() : 0;
+
+    const fetchFreshData = async (): Promise<PaginatedResponse<T>> => {
+      try {
+        const { data, total } = await fetchDataFn();
+
+        return this.createPaginatedResponse({
+          data,
+          total,
+          page: Number(paginationParams.page) || 1,
+          limit: Number(paginationParams.limit) || 10,
+        });
+      } catch (error) {
+        console.error('Error fetching paginated data:', error);
+        throw error;
+      }
+    };
+
+    try {
+      const result = await cacheService.get<PaginatedResponse<T>>(cacheKey, fetchFreshData, {
+        ttl: options.ttl,
+        staleWhileRevalidate: options.staleWhileRevalidate,
+      });
+
+      if (options?.metricsCollector) {
+        options.metricsCollector({
+          cacheKey,
+          executionTime: Date.now() - startTime,
+          params: paginationParams,
+          cached: true,
+        });
+      }
+
+      return result;
+    } catch (error) {
+      console.error(`Error retrieving paginated data for key ${cacheKey}:`, error);
+
+      const freshData = await fetchFreshData();
+
+      if (options?.metricsCollector) {
+        options.metricsCollector({
+          cacheKey,
+          executionTime: Date.now() - startTime,
+          params: paginationParams,
+          cached: false,
+          error: true,
+        });
+      }
+
+      return freshData;
+    }
+  }
+
+  static async invalidateCache(cacheService: any, prefix: string): Promise<void> {
+    try {
+      await cacheService.invalidate(`${prefix}:*`);
+    } catch (error) {
+      console.error(`Error invalidating cache with prefix ${prefix}:`, error);
+    }
   }
 }

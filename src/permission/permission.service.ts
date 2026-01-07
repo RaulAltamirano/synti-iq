@@ -13,7 +13,7 @@ export class PermissionService {
   ) {}
   async getUserPermissions(userId: number): Promise<string[]> {
     const permissions = await this.findPermissionsByUserId(userId);
-    return permissions.map((permission) => permission.name);
+    return permissions.map(permission => permission.name);
   }
   async findPermissionsByUserId(userId: number): Promise<Permission[]> {
     return this.permissionRepository

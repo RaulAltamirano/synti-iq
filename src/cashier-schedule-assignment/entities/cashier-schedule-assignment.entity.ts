@@ -19,9 +19,8 @@ export class CashierScheduleAssignment {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  // Bloque de tiempo asignado
   @Field(() => TimeBlock)
-  @ManyToOne(() => TimeBlock, (timeBlock) => timeBlock.storeSchedule, {
+  @ManyToOne(() => TimeBlock, timeBlock => timeBlock.storeSchedule, {
     nullable: false,
     onDelete: 'CASCADE',
   })
@@ -32,9 +31,8 @@ export class CashierScheduleAssignment {
   @Column('uuid', { name: 'time_block_id' })
   timeBlockId: string;
 
-  // Cajero asignado
   @Field(() => CashierProfile)
-  @ManyToOne(() => CashierProfile, (cashier) => cashier.scheduleAssignments, {
+  @ManyToOne(() => CashierProfile, cashier => cashier.scheduleAssignments, {
     nullable: false,
     onDelete: 'CASCADE',
   })
@@ -45,12 +43,10 @@ export class CashierScheduleAssignment {
   @Column('uuid', { name: 'cashier_id' })
   cashierId: string;
 
-  // Referencia a plantilla recurrente (si aplica)
   @Field({ nullable: true })
   @Column('uuid', { name: 'recurring_template_id', nullable: true })
   recurringTemplateId?: string;
 
-  // Estado de la asignación
   @Field(() => AssignmentStatus)
   @Column({
     type: 'enum',
@@ -59,7 +55,6 @@ export class CashierScheduleAssignment {
   })
   status: AssignmentStatus;
 
-  // Tiempos reales de la asignación
   @Field(() => Date, { nullable: true })
   @Column('timestamp with time zone', { nullable: true })
   actualStartTime?: Date;
@@ -68,7 +63,6 @@ export class CashierScheduleAssignment {
   @Column('timestamp with time zone', { nullable: true })
   actualEndTime?: Date;
 
-  // Solicitud de cambio
   @Field(() => CashierProfile, { nullable: true })
   @ManyToOne(() => CashierProfile, { nullable: true })
   @JoinColumn({ name: 'swap_requested_with_id' })
@@ -78,7 +72,6 @@ export class CashierScheduleAssignment {
   @Column('uuid', { name: 'swap_requested_with_id', nullable: true })
   swapRequestedWithId?: string;
 
-  // Razón de cancelación o cambio
   @Field({ nullable: true })
   @Column('text', { nullable: true })
   reason?: string;

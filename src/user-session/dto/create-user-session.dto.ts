@@ -1,4 +1,6 @@
-import { IsUUID, IsNotEmpty, IsString, IsOptional } from 'class-validator';
+import { IsUUID, IsNotEmpty, IsString, IsOptional, ValidateNested, IsDate } from 'class-validator';
+import { Type } from 'class-transformer';
+import { DeviceInfoDto } from './device-info.dto';
 
 export class CreateUserSessionDto {
   @IsUUID()
@@ -7,11 +9,16 @@ export class CreateUserSessionDto {
 
   @IsUUID()
   @IsOptional()
-  sessionId: string;
+  sessionId?: string;
 
   @IsString()
-  @IsNotEmpty()
-  refreshToken: string;
+  @IsOptional()
+  refreshToken?: string;
+
+  @ValidateNested()
+  @Type(() => DeviceInfoDto)
+  @IsOptional()
+  deviceInfo?: DeviceInfoDto;
 
   @IsString()
   @IsOptional()
@@ -20,4 +27,9 @@ export class CreateUserSessionDto {
   @IsString()
   @IsOptional()
   ipAddress?: string;
+
+  @IsDate()
+  @IsOptional()
+  @Type(() => Date)
+  lastUsed?: Date;
 }

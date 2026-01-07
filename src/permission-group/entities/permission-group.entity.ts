@@ -12,6 +12,6 @@ export class PermissionGroup {
   @Column({ nullable: true })
   description: string;
 
-  @ManyToMany(() => Permission, (permission) => permission.groups)
+  @ManyToMany(() => Permission, permission => permission.groups)
   permissions: Permission[];
 }

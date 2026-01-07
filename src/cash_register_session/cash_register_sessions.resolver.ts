@@ -8,7 +8,10 @@ export class CashRegisterSessionsResolver {
   constructor(private readonly cashRegisterSessionsService: CashRegisterSessionsService) {}
 
   @Mutation('createCashRegisterSession')
-  create(@Args('createCashRegisterSessionInput') createCashRegisterSessionInput: CreateCashRegisterSessionInput) {
+  create(
+    @Args('createCashRegisterSessionInput')
+    createCashRegisterSessionInput: CreateCashRegisterSessionInput,
+  ) {
     return this.cashRegisterSessionsService.create(createCashRegisterSessionInput);
   }
 
@@ -23,8 +26,14 @@ export class CashRegisterSessionsResolver {
   }
 
   @Mutation('updateCashRegisterSession')
-  update(@Args('updateCashRegisterSessionInput') updateCashRegisterSessionInput: UpdateCashRegisterSessionInput) {
-    return this.cashRegisterSessionsService.update(updateCashRegisterSessionInput.id, updateCashRegisterSessionInput);
+  update(
+    @Args('updateCashRegisterSessionInput')
+    updateCashRegisterSessionInput: UpdateCashRegisterSessionInput,
+  ) {
+    return this.cashRegisterSessionsService.update(
+      updateCashRegisterSessionInput.id,
+      updateCashRegisterSessionInput,
+    );
   }
 
   @Mutation('removeCashRegisterSession')

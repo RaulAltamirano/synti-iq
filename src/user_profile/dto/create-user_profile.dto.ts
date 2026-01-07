@@ -1,3 +1,1 @@
-export class CreateUserProfileDto {
-    
-}
+export class CreateUserProfileDto {}

@@ -27,4 +27,4 @@ export class AssignmentFactory {
     updatedAssignment.reason = reason;
     return updatedAssignment;
   }
-} 
+}

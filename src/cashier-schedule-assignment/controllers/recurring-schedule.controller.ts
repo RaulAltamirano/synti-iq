@@ -13,12 +13,9 @@ import { CreateRecurringAssignmentDto } from '../dto/create-recurring-assignment
 import { TimeBlockTemplate } from '../../time-block-template/entities/time-block-template.entity';
 import { CashierScheduleAssignment } from '../entities/cashier-schedule-assignment.entity';
 
-
 @Controller('recurring-schedule')
 export class RecurringScheduleController {
-  constructor(
-    private readonly recurringScheduleService: RecurringScheduleService,
-  ) {}
+  constructor(private readonly recurringScheduleService: RecurringScheduleService) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -34,9 +31,6 @@ export class RecurringScheduleController {
     @Param('assignment1Id') assignment1Id: string,
     @Param('assignment2Id') assignment2Id: string,
   ): Promise<CashierScheduleAssignment[]> {
-    return this.recurringScheduleService.swapAssignments(
-      assignment1Id,
-      assignment2Id,
-    );
+    return this.recurringScheduleService.swapAssignments(assignment1Id, assignment2Id);
   }
-} 
+}

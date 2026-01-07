@@ -18,9 +18,7 @@ export class TwoFactorService {
     };
   }
 
-  async generateSecret(
-    user: User,
-  ): Promise<{ secret: string; qrCode: string }> {
+  async generateSecret(user: User): Promise<{ secret: string; qrCode: string }> {
     const secret = authenticator.generateSecret();
     const appName = this.configService.get<string>('APP_NAME');
     const otpauthUrl = authenticator.keyuri(user.email, appName, secret);
@@ -41,7 +39,6 @@ export class TwoFactorService {
       secret: tempSecret.toString(),
     });
     if (isValid) {
-      // await user.updateTwoFactorSecret(tempSecret);
       await this.redisService.del(`2fa:setup:${user.id}`);
     }
 

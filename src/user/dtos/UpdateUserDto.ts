@@ -1,12 +1,5 @@
 import { Type } from 'class-transformer';
-import {
-  IsEmail,
-  IsString,
-  IsEnum,
-  IsOptional,
-  IsObject,
-  ValidateNested,
-} from 'class-validator';
+import { IsEmail, IsString, IsEnum, IsOptional, IsObject, ValidateNested } from 'class-validator';
 import { UserProfileType } from '../types/user-profile.type';
 
 export class UpdateUserDto {

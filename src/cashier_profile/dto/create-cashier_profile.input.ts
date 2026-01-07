@@ -1,5 +1,5 @@
 import { Field } from '@nestjs/graphql';
-import { IsUUID, IsOptional, IsString, IsDate } from 'class-validator';
+import { IsUUID, IsString, IsOptional, IsDate } from 'class-validator';
 
 export class CreateCashierProfileInput {
   @IsUUID()
@@ -10,6 +10,10 @@ export class CreateCashierProfileInput {
   @IsUUID()
   @Field()
   userId: string;
+
+  @IsUUID()
+  @Field()
+  storeId: string;
 
   @IsString()
   @Field()

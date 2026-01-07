@@ -25,7 +25,5 @@ export class AppController {
   }
   @Delete('test-endpoint')
   @HttpCode(204)
-  delete() {
-    // return this.appService.deleteMethod();
-  }
+  delete() {}
 }

@@ -9,12 +9,6 @@ import { TokenPayloadDto } from '../dto/token-payload.dto';
 export class TokenFormatValidator implements ITokenValidator {
   private readonly logger = new Logger(TokenFormatValidator.name);
 
-  /**
-   * Validates the JWT payload format using DTO validation
-   *
-   * @param payload - The JWT payload to validate
-   * @throws UnauthorizedException when the token format is invalid
-   */
   async validate(payload: JwtPayload): Promise<void> {
     try {
       const payloadDto = plainToInstance(TokenPayloadDto, payload);
@@ -22,22 +16,16 @@ export class TokenFormatValidator implements ITokenValidator {
 
       if (errors.length > 0) {
         const errorMessages = errors
-          .map((error) => Object.values(error.constraints || {}).join(', '))
+          .map(error => Object.values(error.constraints || {}).join(', '))
           .join('; ');
 
-        this.logger.warn(`Token validation failed: ${errorMessages}`);
-        throw new UnauthorizedException(
-          `Invalid token format: ${errorMessages}`,
-        );
+        throw new UnauthorizedException(`Invalid token format: ${errorMessages}`);
       }
     } catch (error) {
       if (error instanceof UnauthorizedException) {
         throw error;
       }
-      this.logger.error(
-        `Token validation error: ${error.message}`,
-        error.stack,
-      );
+      this.logger.error(`Token validation error: ${error.message}`, error.stack);
       throw new UnauthorizedException('Token validation failed');
     }
   }

@@ -5,17 +5,23 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { DatabaseModule } from 'src/database/database.module';
 import { PasswordModule } from 'src/auth/services/password/password.module';
-// import { AuthModule } from 'src/auth/services/auth/auth.module';
 import { PassportModule } from '@nestjs/passport';
+import { RedisModule } from 'src/shared/redis/redis.module';
+import { CacheModule } from '@nestjs/cache-manager';
+import { UserProfileModule } from 'src/user_profile/user_profile.module';
+import { Location } from 'src/location/entities/location.entity';
+import { UserProfile } from 'src/user_profile/entities/user_profile.entity';
 
 @Module({
   controllers: [UserController],
   providers: [UserService],
   imports: [
-    // AuthModule,
+    UserProfileModule,
+    CacheModule.register(),
+    RedisModule,
     PasswordModule,
     DatabaseModule,
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, Location, UserProfile]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
   ],
   exports: [UserService, TypeOrmModule],

@@ -1,14 +1,7 @@
 import { ObjectType, Field, ID, Float } from '@nestjs/graphql';
 import { CashierProfile } from 'src/cashier_profile/entities/cashier_profile.entity';
 import { Transaction } from 'src/transactions/entities/transaction.entity';
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  ManyToOne,
-  JoinColumn,
-  Column,
-  OneToMany,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn, Column, OneToMany } from 'typeorm';
 
 @ObjectType()
 @Entity('cash_register_sessions')
@@ -42,7 +35,7 @@ export class CashRegisterSession {
   isActive: boolean;
 
   @Field(() => [Transaction])
-  @OneToMany(() => Transaction, (transaction) => transaction.session)
+  @OneToMany(() => Transaction, transaction => transaction.session)
   transactions: Transaction[];
 
   @Field(() => String)

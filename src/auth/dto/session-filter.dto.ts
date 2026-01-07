@@ -14,4 +14,4 @@ export class SessionFilterDto extends BasePaginationParams {
   @IsOptional()
   @IsDateString()
   lastUsedBefore?: string;
-} 
+}

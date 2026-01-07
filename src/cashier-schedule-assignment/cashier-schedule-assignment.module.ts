@@ -12,11 +12,7 @@ import { TimeBlockModule } from 'src/time-block/time-block.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      CashierScheduleAssignment,
-      TimeBlock,
-      TimeBlockTemplate,
-    ]),
+    TypeOrmModule.forFeature([CashierScheduleAssignment, TimeBlock, TimeBlockTemplate]),
     CacheModule.register(),
     TimeBlockModule,
   ],

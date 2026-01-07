@@ -38,7 +38,6 @@ import { BearerTokenExtractor } from './strategies/bearer-token-xtractor';
       inject: [CookieTokenExtractor, BearerTokenExtractor],
     },
     TokenFormatValidator,
-    JwtStrategy,
   ],
   imports: [
     UserModule,

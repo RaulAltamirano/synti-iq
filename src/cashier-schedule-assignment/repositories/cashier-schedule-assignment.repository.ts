@@ -1,6 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, EntityManager, FindOneOptions, SaveOptions, RemoveOptions, FindOptionsWhere, DeepPartial } from 'typeorm';
+import {
+  Repository,
+  EntityManager,
+  FindOneOptions,
+  SaveOptions,
+  RemoveOptions,
+  FindOptionsWhere,
+  DeepPartial,
+} from 'typeorm';
 import { CashierScheduleAssignment } from '../entities/cashier-schedule-assignment.entity';
 import { AssignmentStatus } from '../enums/assignment-status.dto';
 import { AssignmentFilterDto } from '../dto/assignment-filter.dto';
@@ -17,7 +25,10 @@ export class CashierScheduleAssignmentRepository {
     return this.repository.findOne({ where: { id } });
   }
 
-  async findByStatusAndId(id: string, status: AssignmentStatus): Promise<CashierScheduleAssignment | null> {
+  async findByStatusAndId(
+    id: string,
+    status: AssignmentStatus,
+  ): Promise<CashierScheduleAssignment | null> {
     return this.repository.findOne({ where: { id, status } });
   }
 
@@ -43,12 +54,13 @@ export class CashierScheduleAssignmentRepository {
     endTime: Date,
     excludeId?: string,
   ): Promise<number> {
-    const queryBuilder = this.repository.createQueryBuilder('assignment')
+    const queryBuilder = this.repository
+      .createQueryBuilder('assignment')
       .where('assignment.cashierId = :cashierId', { cashierId })
-      .andWhere(
-        '(assignment.startTime <= :endTime AND assignment.endTime >= :startTime)',
-        { startTime, endTime },
-      );
+      .andWhere('(assignment.startTime <= :endTime AND assignment.endTime >= :startTime)', {
+        startTime,
+        endTime,
+      });
 
     if (excludeId) {
       queryBuilder.andWhere('assignment.id != :excludeId', { excludeId });
@@ -57,8 +69,11 @@ export class CashierScheduleAssignmentRepository {
     return queryBuilder.getCount();
   }
 
-  async findAllWithFilters(filters: AssignmentFilterDto): Promise<[CashierScheduleAssignment[], number]> {
-    const queryBuilder = this.repository.createQueryBuilder('assignment')
+  async findAllWithFilters(
+    filters: AssignmentFilterDto,
+  ): Promise<[CashierScheduleAssignment[], number]> {
+    const queryBuilder = this.repository
+      .createQueryBuilder('assignment')
       .leftJoinAndSelect('assignment.timeBlock', 'timeBlock')
       .leftJoinAndSelect('assignment.cashier', 'cashier');
 
@@ -81,15 +96,8 @@ export class CashierScheduleAssignmentRepository {
   }
 
   private applyFilters(queryBuilder: any, filters: AssignmentFilterDto): void {
-    const {
-      cashierId,
-      storeId,
-      status,
-      startDate,
-      endDate,
-      timeBlockId,
-      recurringTemplateId,
-    } = filters;
+    const { cashierId, storeId, status, startDate, endDate, timeBlockId, recurringTemplateId } =
+      filters;
 
     if (cashierId) {
       queryBuilder.andWhere('assignment.cashierId = :cashierId', { cashierId });
@@ -112,11 +120,15 @@ export class CashierScheduleAssignmentRepository {
     }
 
     if (timeBlockId) {
-      queryBuilder.andWhere('assignment.timeBlockId = :timeBlockId', { timeBlockId });
+      queryBuilder.andWhere('assignment.timeBlockId = :timeBlockId', {
+        timeBlockId,
+      });
     }
 
     if (recurringTemplateId) {
-      queryBuilder.andWhere('assignment.recurringTemplateId = :recurringTemplateId', { recurringTemplateId });
+      queryBuilder.andWhere('assignment.recurringTemplateId = :recurringTemplateId', {
+        recurringTemplateId,
+      });
     }
   }
 
@@ -124,7 +136,9 @@ export class CashierScheduleAssignmentRepository {
     return this.repository.save(entity);
   }
 
-  async findOne(options: FindOneOptions<CashierScheduleAssignment>): Promise<CashierScheduleAssignment> {
+  async findOne(
+    options: FindOneOptions<CashierScheduleAssignment>,
+  ): Promise<CashierScheduleAssignment> {
     return this.repository.findOne(options);
   }
 
@@ -144,7 +158,8 @@ export class CashierScheduleAssignmentRepository {
     storeId: string,
     filters: AssignmentFilterDto,
   ): Promise<[CashierScheduleAssignment[], number]> {
-    const query = this.repository.createQueryBuilder('assignment')
+    const query = this.repository
+      .createQueryBuilder('assignment')
       .innerJoinAndSelect('assignment.timeBlock', 'timeBlock')
       .where('timeBlock.storeId = :storeId', { storeId });
 
@@ -153,11 +168,15 @@ export class CashierScheduleAssignmentRepository {
     }
 
     if (filters.startDate) {
-      query.andWhere('timeBlock.startTime >= :startDate', { startDate: filters.startDate });
+      query.andWhere('timeBlock.startTime >= :startDate', {
+        startDate: filters.startDate,
+      });
     }
 
     if (filters.endDate) {
-      query.andWhere('timeBlock.endTime <= :endDate', { endDate: filters.endDate });
+      query.andWhere('timeBlock.endTime <= :endDate', {
+        endDate: filters.endDate,
+      });
     }
 
     return query
@@ -170,20 +189,27 @@ export class CashierScheduleAssignmentRepository {
     status: AssignmentStatus,
     filters: AssignmentFilterDto,
   ): Promise<[CashierScheduleAssignment[], number]> {
-    const query = this.repository.createQueryBuilder('assignment')
+    const query = this.repository
+      .createQueryBuilder('assignment')
       .innerJoinAndSelect('assignment.timeBlock', 'timeBlock')
       .where('assignment.status = :status', { status });
 
     if (filters.storeId) {
-      query.andWhere('timeBlock.storeId = :storeId', { storeId: filters.storeId });
+      query.andWhere('timeBlock.storeId = :storeId', {
+        storeId: filters.storeId,
+      });
     }
 
     if (filters.startDate) {
-      query.andWhere('timeBlock.startTime >= :startDate', { startDate: filters.startDate });
+      query.andWhere('timeBlock.startTime >= :startDate', {
+        startDate: filters.startDate,
+      });
     }
 
     if (filters.endDate) {
-      query.andWhere('timeBlock.endTime <= :endDate', { endDate: filters.endDate });
+      query.andWhere('timeBlock.endTime <= :endDate', {
+        endDate: filters.endDate,
+      });
     }
 
     return query
@@ -197,13 +223,16 @@ export class CashierScheduleAssignmentRepository {
     endDate: Date,
     filters: AssignmentFilterDto,
   ): Promise<[CashierScheduleAssignment[], number]> {
-    const query = this.repository.createQueryBuilder('assignment')
+    const query = this.repository
+      .createQueryBuilder('assignment')
       .innerJoinAndSelect('assignment.timeBlock', 'timeBlock')
       .where('timeBlock.startTime >= :startDate', { startDate })
       .andWhere('timeBlock.endTime <= :endDate', { endDate });
 
     if (filters.storeId) {
-      query.andWhere('timeBlock.storeId = :storeId', { storeId: filters.storeId });
+      query.andWhere('timeBlock.storeId = :storeId', {
+        storeId: filters.storeId,
+      });
     }
 
     if (filters.status) {
@@ -215,4 +244,4 @@ export class CashierScheduleAssignmentRepository {
       .take(filters.limit)
       .getManyAndCount();
   }
-} 
+}

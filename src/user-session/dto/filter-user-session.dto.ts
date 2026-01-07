@@ -1,4 +1,4 @@
-import { IsOptional, IsNumber, Min, IsBoolean, IsDateString } from 'class-validator';
+import { IsOptional, IsNumber, Min, IsBoolean, IsDateString, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class FilterUserSessionDto {
@@ -25,4 +25,20 @@ export class FilterUserSessionDto {
   @IsOptional()
   @IsDateString()
   lastUsedBefore?: string;
-} 
+
+  @IsOptional()
+  @IsString()
+  deviceType?: string;
+
+  @IsOptional()
+  @IsString()
+  browser?: string;
+
+  @IsOptional()
+  @IsString()
+  os?: string;
+
+  @IsOptional()
+  @IsString()
+  ipAddress?: string;
+}

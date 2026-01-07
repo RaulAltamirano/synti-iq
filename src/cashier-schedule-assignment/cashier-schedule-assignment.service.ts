@@ -21,9 +21,6 @@ import { TimeBlockTemplateService } from 'src/time-block-template/time-block-tem
 import { TimeBlockService } from 'src/time-block/time-block.service';
 import { UpdateAssignmentDto } from './dto/update-assignment.dto';
 
-/**
- * DTO para crear una asignación de horario
- */
 export class CreateTimeBlockAndAssignDto {
   @IsDate()
   @Type(() => Date)
@@ -48,37 +45,32 @@ export class CreateTimeBlockAndAssignDto {
   storeId: string;
 }
 
-/**
- * Servicio para gestionar las asignaciones de horarios de cajeros
- */
 @Injectable()
 export class CashierScheduleAssignmentService {
   private readonly CACHE_PREFIX = 'assignments_list';
   private readonly logger = new Logger(CashierScheduleAssignmentService.name);
   private timeOffsetCache = new Map<string, number>();
 
-  // Métricas de Prometheus
   private readonly metrics = {
     assignmentCreation: new Counter({
       name: 'assignment_creation_total',
-      help: 'Total number of assignment creations'
+      help: 'Total number of assignment creations',
     }),
     assignmentErrors: new Counter({
       name: 'assignment_errors_total',
-      help: 'Total number of assignment errors'
+      help: 'Total number of assignment errors',
     }),
     operationDuration: new Histogram({
       name: 'operation_duration_seconds',
       help: 'Duration of operations in seconds',
-      buckets: [0.1, 0.5, 1, 2, 5]
-    })
+      buckets: [0.1, 0.5, 1, 2, 5],
+    }),
   };
 
-  // Configuración de cache
   private readonly CACHE_TTL = {
     ASSIGNMENTS: 300,
     AVAILABILITY: 60,
-    TEMPLATES: 3600
+    TEMPLATES: 3600,
   };
 
   constructor(
@@ -91,17 +83,11 @@ export class CashierScheduleAssignmentService {
     private readonly assignmentFactory: AssignmentFactory,
   ) {}
 
-  /**
-   * Crea un nuevo bloque de tiempo y lo asigna a un cajero en una sola transacción
-   */
-  async createTimeBlockAndAssign(
-    dto: CreateAssignmentDto,
-  ): Promise<CashierScheduleAssignment> {
+  async createTimeBlockAndAssign(dto: CreateAssignmentDto): Promise<CashierScheduleAssignment> {
     const timer = this.metrics.operationDuration.startTimer();
     try {
       this.validateCreateAssignmentDto(dto);
 
-      // Verificar que el horario de la tienda existe
       const storeSchedule = await this.entityManager.findOne(StoreSchedule, {
         where: { id: dto.storeScheduleId },
       });
@@ -110,22 +96,20 @@ export class CashierScheduleAssignmentService {
         throw new NotFoundException(`Store schedule with id ${dto.storeScheduleId} not found`);
       }
 
-      // Verificar disponibilidad del cajero
       const isAvailable = await this.checkCashierAvailability(
         dto.cashierId,
         dto.startTime,
-        dto.endTime
+        dto.endTime,
       );
 
       if (!isAvailable) {
         throw new BadRequestException('Cashier is not available during this time block');
       }
 
-      // Crear o obtener template y bloque de tiempo en una transacción
-      return await this.entityManager.transaction(async (transactionalEntityManager) => {
+      return await this.entityManager.transaction(async transactionalEntityManager => {
         const timeBlockTemplate = await this.getOrCreateTimeBlockTemplate(dto);
         const timeBlock = await this.createTimeBlock(dto, timeBlockTemplate);
-        
+
         const assignmentDto: CreateAssignmentDto = {
           ...dto,
           timeBlockId: timeBlock.id,
@@ -133,36 +117,33 @@ export class CashierScheduleAssignmentService {
 
         const assignment = this.assignmentFactory.createAssignment(assignmentDto);
         const result = await this.assignmentRepository.save(assignment);
-        
+
         this.metrics.assignmentCreation.inc();
         return result;
       });
     } catch (error) {
       this.metrics.assignmentErrors.inc();
       this.logger.error(`Error creating time block and assignment: ${error.message}`, error.stack);
-      
+
       if (error instanceof NotFoundException || error instanceof BadRequestException) {
         throw error;
       }
-      
+
       throw new BadRequestException(`Failed to create time block and assignment: ${error.message}`);
     } finally {
       timer();
     }
   }
 
-  /**
-   * Verifica la disponibilidad de un cajero con cache
-   */
   private async checkCashierAvailability(
     cashierId: string,
     startTime: Date,
     endTime: Date,
-    excludeAssignmentId?: string
+    excludeAssignmentId?: string,
   ): Promise<boolean> {
     const cacheKey = `availability:${cashierId}:${startTime.toISOString()}:${endTime.toISOString()}:${excludeAssignmentId || ''}`;
     const cached = await this.cacheManager.get<boolean>(cacheKey);
-    
+
     if (cached !== undefined) {
       return cached;
     }
@@ -171,7 +152,7 @@ export class CashierScheduleAssignmentService {
       cashierId,
       startTime,
       endTime,
-      excludeAssignmentId
+      excludeAssignmentId,
     );
 
     const isAvailable = overlapping === 0;
@@ -179,16 +160,11 @@ export class CashierScheduleAssignmentService {
     return isAvailable;
   }
 
-  /**
-   * Solicita un intercambio de turno entre cajeros
-   */
-  async requestShiftSwap(
-    dto: RequestShiftSwapDto,
-  ): Promise<{ success: boolean; message: string }> {
+  async requestShiftSwap(dto: RequestShiftSwapDto): Promise<{ success: boolean; message: string }> {
     try {
       this.validateRequestShiftSwapDto(dto);
 
-      return this.entityManager.transaction(async (transactionalEntityManager) => {
+      return this.entityManager.transaction(async transactionalEntityManager => {
         const originalAssignment = await this.assignmentRepository.findById(dto.assignmentId);
 
         if (!originalAssignment) {
@@ -237,12 +213,7 @@ export class CashierScheduleAssignmentService {
     }
   }
 
-  /**
-   * Confirma y ejecuta un intercambio de turno usando el patrón Command
-   */
-  async confirmShiftSwap(
-    assignmentId: string,
-  ): Promise<{ success: boolean; message: string }> {
+  async confirmShiftSwap(assignmentId: string): Promise<{ success: boolean; message: string }> {
     try {
       if (!assignmentId) {
         throw new BadRequestException('assignmentId is required');
@@ -300,9 +271,6 @@ export class CashierScheduleAssignmentService {
     }
   }
 
-  /**
-   * Obtiene las asignaciones actuales de un cajero
-   */
   async getCashierAssignments(
     cashierId: string,
     startDate: Date,
@@ -316,15 +284,15 @@ export class CashierScheduleAssignmentService {
     }
   }
 
-  /**
-   * Obtiene todas las asignaciones con filtros y paginación optimizada
-   */
-  async findAll(filters: AssignmentFilterDto): Promise<PaginatedResponse<CashierScheduleAssignment>> {
+  async findAll(
+    filters: AssignmentFilterDto,
+  ): Promise<PaginatedResponse<CashierScheduleAssignment>> {
     const timer = this.metrics.operationDuration.startTimer();
     try {
       const cacheKey = PaginationCacheUtil.buildCacheKey(this.CACHE_PREFIX, filters);
-      const cachedResult = await this.cacheManager.get<PaginatedResponse<CashierScheduleAssignment>>(cacheKey);
-      
+      const cachedResult =
+        await this.cacheManager.get<PaginatedResponse<CashierScheduleAssignment>>(cacheKey);
+
       if (cachedResult) {
         return cachedResult;
       }
@@ -340,19 +308,25 @@ export class CashierScheduleAssignmentService {
           'assignment.endTime',
           'assignment.status',
           'timeBlock.id',
-          'storeSchedule.id'
+          'storeSchedule.id',
         ]);
 
       if (filters.cashierId) {
-        queryBuilder.andWhere('assignment.cashierId = :cashierId', { cashierId: filters.cashierId });
+        queryBuilder.andWhere('assignment.cashierId = :cashierId', {
+          cashierId: filters.cashierId,
+        });
       }
 
       if (filters.startDate) {
-        queryBuilder.andWhere('assignment.startTime >= :startDate', { startDate: filters.startDate });
+        queryBuilder.andWhere('assignment.startTime >= :startDate', {
+          startDate: filters.startDate,
+        });
       }
 
       if (filters.endDate) {
-        queryBuilder.andWhere('assignment.endTime <= :endDate', { endDate: filters.endDate });
+        queryBuilder.andWhere('assignment.endTime <= :endDate', {
+          endDate: filters.endDate,
+        });
       }
 
       const [assignments, total] = await queryBuilder
@@ -378,9 +352,6 @@ export class CashierScheduleAssignmentService {
     }
   }
 
-  /**
-   * Obtiene una asignación por su ID
-   */
   async findOne(id: string): Promise<CashierScheduleAssignment> {
     try {
       const assignment = await this.assignmentRepository.findById(id);
@@ -396,9 +367,6 @@ export class CashierScheduleAssignmentService {
     }
   }
 
-  /**
-   * Actualiza una asignación existente y opcionalmente sus bloques futuros
-   */
   async updateAssignment(
     id: string,
     updateDto: UpdateAssignmentDto,
@@ -410,13 +378,12 @@ export class CashierScheduleAssignmentService {
         throw new NotFoundException(`Assignment with id ${id} not found`);
       }
 
-      // Verificar disponibilidad si se está cambiando el horario
       if (updateDto.startTime && updateDto.endTime) {
         const isAvailable = await this.checkCashierAvailability(
           updateDto.cashierId || assignment.cashierId,
           updateDto.startTime,
           updateDto.endTime,
-          id
+          id,
         );
 
         if (!isAvailable) {
@@ -424,8 +391,7 @@ export class CashierScheduleAssignmentService {
         }
       }
 
-      return await this.entityManager.transaction(async (transactionalEntityManager) => {
-        // Actualizar el bloque de tiempo
+      return await this.entityManager.transaction(async transactionalEntityManager => {
         const timeBlock = await transactionalEntityManager.findOne(TimeBlock, {
           where: { id: assignment.timeBlockId },
           relations: ['template'],
@@ -435,39 +401,38 @@ export class CashierScheduleAssignmentService {
           throw new NotFoundException(`Time block with id ${assignment.timeBlockId} not found`);
         }
 
-        // Si hay cambios en el horario y se debe actualizar bloques futuros
         if (updateDto.updateFutureBlocks && timeBlock.template) {
           const fromDate = updateDto.updateFromDate || new Date();
-          
-          // Actualizar la plantilla
+
           const templateUpdates = {
-            startTimeOffset: updateDto.startTime ? this.calculateTimeOffset(updateDto.startTime) : undefined,
-            endTimeOffset: updateDto.endTime ? this.calculateTimeOffset(updateDto.endTime) : undefined,
+            startTimeOffset: updateDto.startTime
+              ? this.calculateTimeOffset(updateDto.startTime)
+              : undefined,
+            endTimeOffset: updateDto.endTime
+              ? this.calculateTimeOffset(updateDto.endTime)
+              : undefined,
             maxAssignments: updateDto.maxAssignments,
           };
 
           await this.timeBlockTemplateService.updateTemplate(
             timeBlock.template.id,
             templateUpdates,
-            true // regenerateFutureBlocks
+            true, // regenerateFutureBlocks
           );
         }
 
-        // Actualizar el bloque de tiempo actual
         if (updateDto.startTime) timeBlock.startTime = updateDto.startTime;
         if (updateDto.endTime) timeBlock.endTime = updateDto.endTime;
         if (updateDto.maxAssignments) timeBlock.maxAssignments = updateDto.maxAssignments;
 
         await transactionalEntityManager.save(timeBlock);
 
-        // Actualizar la asignación
         if (updateDto.cashierId) assignment.cashierId = updateDto.cashierId;
         if (updateDto.startTime) assignment.actualStartTime = updateDto.startTime;
         if (updateDto.endTime) assignment.actualEndTime = updateDto.endTime;
 
         const updatedAssignment = await transactionalEntityManager.save(assignment);
 
-        // Invalidar caché
         await this.cacheManager.del(`${this.CACHE_PREFIX}_${id}`);
         await this.cacheManager.del(`${this.CACHE_PREFIX}_list`);
 
@@ -476,20 +441,17 @@ export class CashierScheduleAssignmentService {
     } catch (error) {
       this.metrics.assignmentErrors.inc();
       this.logger.error(`Error updating assignment: ${error.message}`, error.stack);
-      
+
       if (error instanceof NotFoundException || error instanceof BadRequestException) {
         throw error;
       }
-      
+
       throw new BadRequestException(`Failed to update assignment: ${error.message}`);
     } finally {
       timer();
     }
   }
 
-  /**
-   * Elimina una asignación
-   */
   async remove(id: string): Promise<void> {
     try {
       const assignment = await this.findOne(id);
@@ -566,15 +528,12 @@ export class CashierScheduleAssignmentService {
     });
   }
 
-  /**
-   * Calcula el offset de tiempo con memoización
-   */
   private calculateTimeOffset(date: Date): number {
     const key = date.toISOString();
     if (this.timeOffsetCache.has(key)) {
       return this.timeOffsetCache.get(key);
     }
-    
+
     const offset = date.getHours() * 60 + date.getMinutes();
     this.timeOffsetCache.set(key, offset);
     return offset;

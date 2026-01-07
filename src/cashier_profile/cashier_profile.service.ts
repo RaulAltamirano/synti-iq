@@ -1,26 +1,28 @@
-import { Injectable } from '@nestjs/common';
-import { CreateCashierProfileInput } from './dto/create-cashier_profile.input';
-import { UpdateCashierProfileInput } from './dto/update-cashier_profile.input';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { CashierProfile } from './entities/cashier_profile.entity';
 
 @Injectable()
 export class CashierProfileService {
-  create(createCashierProfileInput: CreateCashierProfileInput) {
-    return 'This action adds a new cashierProfile';
-  }
+  constructor(
+    @InjectRepository(CashierProfile)
+    private readonly cashierRepo: Repository<CashierProfile>,
+  ) {}
 
-  findAll() {
-    return `This action returns all cashierProfile`;
-  }
+  public async validateCashier(cashierId: string): Promise<CashierProfile> {
+    if (!cashierId) {
+      throw new BadRequestException('Cashier ID is required');
+    }
 
-  findOne(id: number) {
-    return `This action returns a #${id} cashierProfile`;
-  }
+    const cashier = await this.cashierRepo.findOne({
+      where: { id: cashierId },
+    });
 
-  update(id: number, updateCashierProfileInput: UpdateCashierProfileInput) {
-    return `This action updates a #${id} cashierProfile`;
-  }
+    if (!cashier) {
+      throw new NotFoundException(`Cashier with ID ${cashierId} not found`);
+    }
 
-  remove(id: number) {
-    return `This action removes a #${id} cashierProfile`;
+    return cashier;
   }
 }

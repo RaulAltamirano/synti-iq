@@ -1,9 +1,5 @@
-import {
-  Injectable,
-  Logger,
-  OnModuleDestroy,
-  OnModuleInit,
-} from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit, Inject } from '@nestjs/common';
+import { InjectRedis } from '@nestjs-modules/ioredis';
 import Redis from 'ioredis';
 import { ConfigService } from '@nestjs/config';
 import { RedisConfig } from '../interfaces/RedisConfig';
@@ -11,12 +7,14 @@ import { RedisConfig } from '../interfaces/RedisConfig';
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RedisService.name);
-  private redisClient: Redis;
   private readonly DEFAULT_TTL = 3600;
   private readonly MAX_RETRY_ATTEMPTS = 3;
   private readonly RETRY_DELAY = 1000;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    @InjectRedis() private readonly redis: Redis,
+    private readonly configService: ConfigService,
+  ) {
     const redisConfig: RedisConfig = {
       host: this.configService.get<string>('REDIS_HOST', 'localhost'),
       port: this.configService.get<number>('REDIS_PORT', 6379),
@@ -42,24 +40,22 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   private initializeRedisClient(config: RedisConfig): void {
-    this.redisClient = new Redis(config);
-
-    this.redisClient.on('error', (err) => {
+    this.redis.on('error', err => {
       this.logger.error('Redis Client Error:', err);
     });
 
-    this.redisClient.on('connect', () => {
+    this.redis.on('connect', () => {
       this.logger.log('Successfully connected to Redis');
     });
 
-    this.redisClient.on('ready', () => {
+    this.redis.on('ready', () => {
       this.logger.log('Redis Client Ready');
     });
   }
 
   async onModuleInit(): Promise<void> {
     try {
-      await this.redisClient.ping();
+      await this.redis.ping();
       this.logger.log('Redis connection verified');
     } catch (error) {
       this.logger.error('Failed to connect to Redis:', error);
@@ -68,21 +64,14 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleDestroy(): Promise<void> {
-    await this.redisClient.quit();
+    await this.redis.quit();
     this.logger.log('Redis connection closed');
   }
 
-  /**
-   * Guarda un valor en Redis con TTL opcional
-   */
-  async set(
-    key: string,
-    value: any,
-    ttl: number = this.DEFAULT_TTL,
-  ): Promise<void> {
+  async set(key: string, value: any, ttl: number = this.DEFAULT_TTL): Promise<void> {
     try {
       const stringValue = this.serialize(value);
-      await this.redisClient.set(key, stringValue, 'EX', ttl);
+      await this.redis.set(key, stringValue, 'EX', ttl);
       this.logger.debug(`Valor guardado para la clave: ${key}`);
     } catch (error) {
       this.logger.error(`Error al guardar la clave ${key} en Redis:`, error);
@@ -90,12 +79,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /**
-   * Obtiene un valor de Redis con tipado genérico
-   */
   async get<T>(key: string): Promise<T | null> {
     try {
-      const result = await this.redisClient.get(key);
+      const result = await this.redis.get(key);
       if (!result) return null;
       return this.deserialize<T>(result);
     } catch (error) {
@@ -104,80 +90,56 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /**
-   * Elimina una o varias claves de Redis
-   */
   async del(...keys: string[]): Promise<void> {
     try {
-      await this.redisClient.del(...keys);
+      await this.redis.del(...keys);
       this.logger.debug(`Claves eliminadas: ${keys.join(', ')}`);
     } catch (error) {
-      this.logger.error(
-        `Error al eliminar las claves ${keys.join(', ')} de Redis:`,
-        error,
-      );
+      this.logger.error(`Error al eliminar las claves ${keys.join(', ')} de Redis:`, error);
       throw new Error(`Error al eliminar de Redis: ${error.message}`);
     }
   }
 
-  /**
-   * Incrementa un contador
-   */
   async incr(key: string): Promise<number> {
     try {
-      return await this.redisClient.incr(key);
+      return await this.redis.incr(key);
     } catch (error) {
       this.logger.error(`Error al incrementar la clave ${key}:`, error);
       throw new Error(`Error al incrementar contador: ${error.message}`);
     }
   }
 
-  /**
-   * Establece un tiempo de expiración para una clave
-   */
   async expire(key: string, seconds: number): Promise<boolean> {
     try {
-      return (await this.redisClient.expire(key, seconds)) === 1;
+      return (await this.redis.expire(key, seconds)) === 1;
     } catch (error) {
       this.logger.error(`Error al establecer expiración para ${key}:`, error);
       throw new Error(`Error al establecer expiración: ${error.message}`);
     }
   }
 
-  /**
-   * Inicia una transacción multi
-   */
   multi(): any {
-    return this.redisClient.pipeline();
+    return this.redis.pipeline();
   }
 
-  /**
-   * Verifica si una clave existe
-   */
   async exists(key: string): Promise<boolean> {
     try {
-      return (await this.redisClient.exists(key)) === 1;
+      return (await this.redis.exists(key)) === 1;
     } catch (error) {
       this.logger.error(`Error al verificar existencia de ${key}:`, error);
       throw new Error(`Error al verificar existencia: ${error.message}`);
     }
   }
 
-  /**
-   * Obtiene el TTL restante de una clave
-   */
   async ttl(key: string): Promise<number> {
     try {
-      return await this.redisClient.ttl(key);
+      return await this.redis.ttl(key);
     } catch (error) {
       this.logger.error(`Error al obtener TTL de ${key}:`, error);
       throw new Error(`Error al obtener TTL: ${error.message}`);
     }
   }
 
-  /**
-   * Serializa valores para almacenamiento
-   */
   private serialize(value: any): string {
     try {
       return JSON.stringify(value);
@@ -187,9 +149,6 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /**
-   * Deserializa valores almacenados
-   */
   private deserialize<T>(value: string): T {
     try {
       return JSON.parse(value) as T;
@@ -199,31 +158,20 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /**
-   * Limpia todas las claves que coincidan con un patrón
-   */
   async cleanPattern(pattern: string): Promise<void> {
     try {
-      const keys = await this.redisClient.keys(pattern);
+      const keys = await this.redis.keys(pattern);
       if (keys.length > 0) {
-        await this.redisClient.del(...keys);
-        this.logger.debug(
-          `Limpiadas ${keys.length} claves con patrón: ${pattern}`,
-        );
+        await this.redis.del(...keys);
+        this.logger.debug(`Limpiadas ${keys.length} claves con patrón: ${pattern}`);
       }
     } catch (error) {
-      this.logger.error(
-        `Error al limpiar claves con patrón ${pattern}:`,
-        error,
-      );
+      this.logger.error(`Error al limpiar claves con patrón ${pattern}:`, error);
       throw new Error(`Error al limpiar claves: ${error.message}`);
     }
   }
 
-  /**
-   * Obtiene el cliente Redis subyacente
-   */
   getClient(): Redis {
-    return this.redisClient;
+    return this.redis;
   }
 }

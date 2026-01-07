@@ -18,9 +18,7 @@ import { CashierScheduleAssignment } from './entities/cashier-schedule-assignmen
 
 @Controller('cashier-schedules')
 export class CashierScheduleAssignmentController {
-  constructor(
-    private readonly assignmentService: CashierScheduleAssignmentService,
-  ) {}
+  constructor(private readonly assignmentService: CashierScheduleAssignmentService) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -29,7 +27,9 @@ export class CashierScheduleAssignmentController {
   }
 
   @Get()
-  async findAll(@Query() filters: AssignmentFilterDto): Promise<PaginatedResponse<CashierScheduleAssignment>> {
+  async findAll(
+    @Query() filters: AssignmentFilterDto,
+  ): Promise<PaginatedResponse<CashierScheduleAssignment>> {
     return this.assignmentService.findAll(filters);
   }
 

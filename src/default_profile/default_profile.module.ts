@@ -12,4 +12,4 @@ import { Location } from 'src/location/entities/location.entity';
   providers: [DefaultProfileService, DefaultProfileStrategy],
   exports: [DefaultProfileStrategy, TypeOrmModule],
 })
-export class DefaultProfileModule { }
+export class DefaultProfileModule {}

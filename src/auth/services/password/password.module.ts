@@ -7,12 +7,7 @@ import { PepperStrategy } from './strategies/pepper.strategy';
 
 @Module({
   imports: [RedisModule],
-  providers: [
-    PasswordService,
-    HashingStrategy,
-    LockoutStrategy,
-    PepperStrategy,
-  ],
+  providers: [PasswordService, HashingStrategy, LockoutStrategy, PepperStrategy],
   exports: [PasswordService],
 })
 export class PasswordModule {}
