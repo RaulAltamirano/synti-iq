@@ -7,6 +7,8 @@ import { AuthService } from '../auth.service';
 import { TokenFormatValidator } from './token-format.validator';
 import { TokenExtractorChain } from './token-extractor-chain';
 import { Request } from 'express';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
@@ -18,15 +20,38 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     private readonly tokenValidator: TokenFormatValidator,
     private readonly tokenExtractorChain: TokenExtractorChain,
   ) {
+    const publicKey = JwtStrategy.loadPublicKey(configService);
     super({
-      secretOrKey: configService.get<string>('JWT_ACCESS_SECRET'),
+      secretOrKey: publicKey,
+      algorithms: ['RS256'],
       jwtFromRequest: req => tokenExtractorChain.extract(req),
       ignoreExpiration: false,
       passReqToCallback: true,
     });
   }
 
-  async validate(req: Request, payload: JwtPayload): Promise<any> {
+  private static loadPublicKey(configService: ConfigService): string {
+    const keyPath = configService.get<string>('JWT_PUBLIC_KEY_PATH');
+    const keyContent = configService.get<string>('JWT_PUBLIC_KEY');
+
+    if (keyContent) {
+      return keyContent.replace(/\\n/g, '\n');
+    }
+
+    if (keyPath) {
+      const fullPath = path.isAbsolute(keyPath) ? keyPath : path.join(process.cwd(), keyPath);
+
+      if (!fs.existsSync(fullPath)) {
+        throw new Error(`Public key file not found: ${fullPath}`);
+      }
+
+      return fs.readFileSync(fullPath, 'utf8');
+    }
+
+    throw new Error('JWT_PUBLIC_KEY_PATH or JWT_PUBLIC_KEY must be configured');
+  }
+
+  async validate(req: Request, payload: JwtPayload): Promise<unknown> {
     try {
       this.logger.debug(`Validating token for user: ${payload.sub}, session: ${payload.sid}`);
 

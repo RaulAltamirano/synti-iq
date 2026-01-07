@@ -47,4 +47,24 @@ pids
 *.pid.lock
 
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
- .env
+
+# Security - Private keys and certificates
+keys/
+*.pem
+*.key
+*.crt
+*.cert
+*.p12
+*.pfx
+
+# Cache directories
+.cache
+.parcel-cache
+.eslintcache
+*.tsbuildinfo
+
+# OS files
+Thumbs.db
+*.swp
+*.swo
+*~

@@ -18,6 +18,7 @@ import { TokenExtractorChain } from './strategies/token-extractor-chain';
 import { TokenFormatValidator } from './strategies/token-format.validator';
 import { CookieTokenExtractor } from './strategies/cookie-token-extractor';
 import { BearerTokenExtractor } from './strategies/bearer-token-xtractor';
+import { AnomalyDetectionService } from './services/anomaly-detection.service';
 
 @Module({
   controllers: [AuthController],
@@ -38,6 +39,7 @@ import { BearerTokenExtractor } from './strategies/bearer-token-xtractor';
       inject: [CookieTokenExtractor, BearerTokenExtractor],
     },
     TokenFormatValidator,
+    AnomalyDetectionService,
   ],
   imports: [
     UserModule,

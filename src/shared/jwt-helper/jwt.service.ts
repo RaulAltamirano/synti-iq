@@ -23,40 +23,32 @@ export class JwtService {
   }
 
   async generateAccessToken(payload: JwtPayload): Promise<TokenDto> {
-    return this.jwtStrategy.generate(
-      payload,
-      this.options.accessSecret,
-      this.options.accessExpiresIn,
-    );
+    return this.jwtStrategy.generate(payload, this.options.accessExpiresIn);
   }
 
   async generateRefreshToken(payload: JwtPayload): Promise<TokenDto> {
-    return this.jwtStrategy.generate(
-      payload,
-      this.options.refreshSecret,
-      this.options.refreshExpiresIn,
-    );
+    return this.jwtStrategy.generate(payload, this.options.refreshExpiresIn);
   }
 
   async verifyAccessToken(token: string): Promise<JwtPayload> {
-    return this.verifyToken(token, this.options.accessSecret);
+    return this.verifyToken(token);
   }
 
   async verifyRefreshToken(token: string): Promise<JwtPayload> {
-    return this.verifyToken(token, this.options.refreshSecret);
+    return this.verifyToken(token);
   }
 
   decodeToken(token: string): JwtPayload | null {
     return this.jwtStrategy.decode(token);
   }
 
-  private async verifyToken(token: string, secret: string): Promise<JwtPayload> {
+  private async verifyToken(token: string): Promise<JwtPayload> {
     if (!token) {
       throw new BadRequestException('Token is required');
     }
 
     try {
-      return await this.jwtStrategy.verify(token, secret);
+      return await this.jwtStrategy.verify(token);
     } catch (error) {
       if (error.name === 'TokenExpiredError') {
         throw new UnauthorizedException('Token expired', 'token_expired');
@@ -75,16 +67,9 @@ export class JwtService {
   }
 
   private validateConfig(): TokenOptions {
-    const accessSecret = this.configService.get<string>('JWT_ACCESS_SECRET');
-    const refreshSecret = this.configService.get<string>('JWT_REFRESH_SECRET');
-
-    if (!accessSecret || !refreshSecret) {
-      throw new Error('JWT secrets must be configured');
-    }
-
     return {
-      accessSecret,
-      refreshSecret,
+      accessSecret: '',
+      refreshSecret: '',
       accessExpiresIn:
         this.configService.get<string>('JWT_ACCESS_EXPIRATION_TIME') || DEFAULT_ACCESS_EXPIRES_IN,
       refreshExpiresIn:

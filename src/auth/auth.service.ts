@@ -25,6 +25,7 @@ import { FilterUserSessionDto } from 'src/user-session/dto/filter-user-session.d
 import { PaginatedResponse } from 'src/pagination/interfaces/PaginatedResponse';
 import { UserSessionResponseDto } from 'src/user-session/dto/user-session-response.dto';
 import { UAParser } from 'ua-parser-js';
+import { AnomalyDetectionService } from './services/anomaly-detection.service';
 
 @Injectable()
 export class AuthService {
@@ -38,6 +39,7 @@ export class AuthService {
     private readonly tokenFactory: TokenFactory,
     private readonly passwordService: PasswordService,
     private readonly redisService: RedisService,
+    private readonly anomalyDetectionService: AnomalyDetectionService,
   ) {}
 
   async signUp(dto: SignUpDto, request?: Request): Promise<AuthResponseDto> {
@@ -148,7 +150,7 @@ export class AuthService {
     await this.tokenFactory.deleteRefreshToken(userId, sessionId);
   }
 
-  async refreshTokens(dto: RefreshTokenDto): Promise<TokensUserDto> {
+  async refreshTokens(dto: RefreshTokenDto, request?: Request): Promise<TokensUserDto> {
     const { userId, sessionId } = await this.tokenFactory.verifyRefreshToken(dto.refreshToken);
 
     const isValidSession = await this.sessionService.validateSessionOwnership(userId, sessionId);
@@ -171,6 +173,27 @@ export class AuthService {
 
     await this.sessionService.updateSessionLastUsed(userId, sessionId);
 
+    // Detectar anomalías
+    const metadata = this.extractSessionMetadata(request);
+    const anomaly = await this.anomalyDetectionService.detectTokenReuse(userId, sessionId, {
+      ipAddress: metadata.deviceInfo?.ipAddress,
+      userAgent: metadata.deviceInfo?.userAgent,
+      deviceInfo: metadata.deviceInfo,
+    });
+
+    if (anomaly.isAnomaly) {
+      this.logger.warn(`Anomaly detected during token refresh: ${anomaly.reason}`, {
+        userId,
+        sessionId,
+        severity: anomaly.severity,
+      });
+
+      if (anomaly.severity === 'high') {
+        throw new UnauthorizedException('Security anomaly detected. Please login again.');
+      }
+    }
+
+    await this.tokenFactory.invalidateRefreshToken(userId, sessionId, dto.refreshToken);
     const { tokens, refreshTokenHash } = await this.tokenFactory.generateTokens(user.id, sessionId);
 
     const sessionKey = `session:${userId}:${sessionId}`;
@@ -179,6 +202,7 @@ export class AuthService {
       isValid: boolean;
       lastUsed?: string;
       deviceInfo?: any;
+      usedTokens?: string[];
     }>(sessionKey);
 
     if (currentSession) {
@@ -187,6 +211,7 @@ export class AuthService {
         isValid: currentSession.isValid,
         lastUsed: new Date().toISOString(),
         deviceInfo: currentSession.deviceInfo,
+        usedTokens: currentSession.usedTokens,
       });
     } else {
       const activeSessions = await this.sessionService.findActiveByUserId(userId);
@@ -199,6 +224,12 @@ export class AuthService {
         deviceInfo: dbSession?.deviceInfo ?? null,
       });
     }
+
+    await this.anomalyDetectionService.recordTokenUsage(userId, sessionId, {
+      ipAddress: metadata.deviceInfo?.ipAddress,
+      userAgent: metadata.deviceInfo?.userAgent,
+      deviceInfo: metadata.deviceInfo,
+    });
 
     return tokens;
   }
@@ -233,8 +264,6 @@ export class AuthService {
 
   async validateUserAndSession(userId: string, sessionId?: string, tokenId?: string): Promise<any> {
     try {
-      this.logger.debug(`Validating user and session: userId=${userId}, sessionId=${sessionId}`);
-
       if (!userId) {
         throw new UnauthorizedException('User ID is required');
       }
@@ -248,7 +277,6 @@ export class AuthService {
 
       await this.validateSession(userId, sessionId);
 
-      this.logger.debug(`User and session validated successfully: userId=${userId}`);
       return user;
     } catch (error) {
       if (error instanceof UnauthorizedException || error instanceof ForbiddenException) {
@@ -305,15 +333,12 @@ export class AuthService {
   }
 
   private async validateSession(userId: string, sessionId: string): Promise<void> {
-    this.logger.debug(`Validating session: userId=${userId}, sessionId=${sessionId}`);
-
     const isValid = await this.sessionService.validateSessionOwnership(userId, sessionId);
     if (!isValid) {
       this.logger.warn(`Session validation failed: userId=${userId}, sessionId=${sessionId}`);
       throw new UnauthorizedException('Invalid session');
     }
 
-    this.logger.debug(`Session validated successfully: userId=${userId}, sessionId=${sessionId}`);
     await this.sessionService.updateSessionLastUsed(userId, sessionId);
   }
 

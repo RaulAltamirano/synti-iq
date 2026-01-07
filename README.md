@@ -71,18 +71,38 @@ DB_NAME=syntiiq
 REDIS_HOST=localhost
 REDIS_PORT=6379
 
-# JWT
-JWT_SECRET=your-secret-key
-JWT_REFRESH_SECRET=your-refresh-secret-key
-JWT_EXPIRATION=1h
-JWT_REFRESH_EXPIRATION=7d
+# JWT (RS256 - Asymmetric)
+# Option 1: Use file paths (recommended)
+JWT_PRIVATE_KEY_PATH=./keys/private_key_pkcs8.pem
+JWT_PUBLIC_KEY_PATH=./keys/public_key.pem
+
+# Option 2: Use environment variables (for Docker/containers)
+# JWT_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n..."
+# JWT_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\n..."
+
+# Token expiration
+JWT_ACCESS_EXPIRATION_TIME=15m
+JWT_REFRESH_EXPIRATION_TIME=7d
+
+# Frontend URL (for CORS and cookies)
+FRONTEND_URL=http://localhost:5173
 ```
 
-### 5. Generate JWT keys (if needed)
+### 5. Generate RSA keys for JWT
+
+The application uses RS256 (asymmetric) algorithm for JWT signing. Generate RSA keys:
 
 ```bash
-./scripts/generate-jwt-keys.sh
+./scripts/generate-keys.sh
 ```
+
+This will create:
+
+- `keys/private_key.pem` - Private key (keep secure!)
+- `keys/public_key.pem` - Public key
+- `keys/private_key_pkcs8.pem` - Private key in PKCS#8 format (recommended)
+
+**Important**: Never commit these keys to version control. They are automatically excluded via `.gitignore`.
 
 ### 6. Run database migrations
 
@@ -164,19 +184,22 @@ src/
 
 Required environment variables:
 
-| Variable             | Description            | Default       |
-| -------------------- | ---------------------- | ------------- |
-| `NODE_ENV`           | Environment mode       | `development` |
-| `PORT`               | Application port       | `3000`        |
-| `DB_HOST`            | Database host          | `localhost`   |
-| `DB_PORT`            | Database port          | `5434`        |
-| `DB_USERNAME`        | Database username      | `postgres`    |
-| `DB_PASSWORD`        | Database password      | -             |
-| `DB_NAME`            | Database name          | `syntiiq`     |
-| `REDIS_HOST`         | Redis host             | `localhost`   |
-| `REDIS_PORT`         | Redis port             | `6379`        |
-| `JWT_SECRET`         | JWT secret key         | -             |
-| `JWT_REFRESH_SECRET` | JWT refresh secret key | -             |
+| Variable                      | Description              | Default                        |
+| ----------------------------- | ------------------------ | ------------------------------ |
+| `NODE_ENV`                    | Environment mode         | `development`                  |
+| `PORT`                        | Application port         | `3000`                         |
+| `DB_HOST`                     | Database host            | `localhost`                    |
+| `DB_PORT`                     | Database port            | `5434`                         |
+| `DB_USERNAME`                 | Database username        | `postgres`                     |
+| `DB_PASSWORD`                 | Database password        | -                              |
+| `DB_NAME`                     | Database name            | `syntiiq`                      |
+| `REDIS_HOST`                  | Redis host               | `localhost`                    |
+| `REDIS_PORT`                  | Redis port               | `6379`                         |
+| `JWT_PRIVATE_KEY_PATH`        | Path to RSA private key  | `./keys/private_key_pkcs8.pem` |
+| `JWT_PUBLIC_KEY_PATH`         | Path to RSA public key   | `./keys/public_key.pem`        |
+| `JWT_ACCESS_EXPIRATION_TIME`  | Access token expiration  | `15m`                          |
+| `JWT_REFRESH_EXPIRATION_TIME` | Refresh token expiration | `7d`                           |
+| `FRONTEND_URL`                | Frontend URL for CORS    | `http://localhost:5173`        |
 
 ## Docker Commands
 

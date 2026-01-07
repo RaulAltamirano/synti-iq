@@ -312,6 +312,7 @@ export class UserSessionService {
       isValid: boolean;
       lastUsed?: string;
       deviceInfo?: any;
+      usedTokens?: string[];
     },
   ): Promise<void> {
     const sessionKey = this.getSessionKey(userId, sessionId);

@@ -1,5 +1,4 @@
 import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { JwtService } from 'src/shared/jwt-helper/jwt.service';
 import { RedisService } from 'src/shared/redis/redis.service';
 import { v4 as uuidv4 } from 'uuid';
@@ -10,10 +9,11 @@ import { TokenDto } from 'src/shared/jwt-helper/interfaces/token-dto.interface';
 @Injectable()
 export class TokenFactory {
   private readonly logger = new Logger(TokenFactory.name);
+  private readonly SESSION_TTL = 7 * 24 * 60 * 60;
+  private readonly MAX_STORED_USED_TOKENS = 10;
 
   constructor(
     private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
     private readonly redisService: RedisService,
     private readonly passwordService: PasswordService,
   ) {}
@@ -37,12 +37,15 @@ export class TokenFactory {
     try {
       const payload = await this.jwtService.verifyRefreshToken(token);
       const isValid = await this.validateStoredRefreshToken(payload.sub, payload.sid, token);
+
       if (!isValid) {
-        throw new Error('Refresh token not found in storage');
+        await this.handleTokenReuse(payload.sub, payload.sid);
+        throw new Error('Refresh token already used or invalid');
       }
 
       return { userId: payload.sub, sessionId: payload.sid };
     } catch (error) {
+      this.logger.error(`Refresh token verification failed: ${error.message}`);
       throw new UnauthorizedException('Invalid refresh token');
     }
   }
@@ -84,20 +87,80 @@ export class TokenFactory {
     sessionId: string,
     token: string,
   ): Promise<boolean> {
+    const sessionKey = `session:${userId}:${sessionId}`;
     const sessionData = await this.redisService.get<{
       refreshTokenHash?: string;
       isValid?: boolean;
-    }>(`session:${userId}:${sessionId}`);
+      usedTokens?: string[];
+    }>(sessionKey);
 
     if (!sessionData || !sessionData.refreshTokenHash) {
+      this.logger.warn(`No session data found for user ${userId}, session ${sessionId}`);
       return false;
     }
 
     if (sessionData.isValid === false) {
+      this.logger.warn(`Session invalidated for user ${userId}, session ${sessionId}`);
       return false;
     }
 
-    return this.passwordService.compare(token, sessionData.refreshTokenHash);
+    const isCurrentToken = await this.passwordService.compare(token, sessionData.refreshTokenHash);
+    if (isCurrentToken) {
+      return true;
+    }
+
+    if (sessionData.usedTokens && sessionData.usedTokens.length > 0) {
+      for (const usedTokenHash of sessionData.usedTokens) {
+        const isUsedToken = await this.passwordService.compare(token, usedTokenHash);
+        if (isUsedToken) {
+          this.logger.warn(`Token reuse detected for user ${userId}, session ${sessionId}`);
+          return false;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  async invalidateRefreshToken(userId: string, sessionId: string, token: string): Promise<void> {
+    const sessionKey = `session:${userId}:${sessionId}`;
+    const sessionData = await this.redisService.get<{
+      refreshTokenHash: string;
+      isValid: boolean;
+      usedTokens?: string[];
+      lastUsed?: string;
+      deviceInfo?: any;
+    }>(sessionKey);
+
+    if (!sessionData) {
+      this.logger.warn(
+        `Cannot invalidate token: session not found for user ${userId}, session ${sessionId}`,
+      );
+      return;
+    }
+
+    const tokenHash = await this.passwordService.hash(token);
+    const usedTokens = sessionData.usedTokens || [];
+    usedTokens.push(tokenHash);
+
+    if (usedTokens.length > this.MAX_STORED_USED_TOKENS) {
+      usedTokens.shift();
+    }
+
+    await this.redisService.set(
+      sessionKey,
+      {
+        ...sessionData,
+        usedTokens,
+      },
+      this.SESSION_TTL,
+    );
+  }
+
+  private async handleTokenReuse(userId: string, sessionId: string): Promise<void> {
+    this.logger.warn(
+      `Security alert: Token reuse detected for user ${userId}, session ${sessionId}`,
+    );
   }
 
   async deleteRefreshToken(userId: string, sessionId: string): Promise<void> {
