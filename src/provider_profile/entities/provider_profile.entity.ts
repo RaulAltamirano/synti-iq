@@ -8,31 +8,35 @@ import {
 } from 'typeorm';
 
 @ObjectType()
-@Entity('delivery_profiles')
-export class DeliveryProfile {
+@Entity('provider_profiles')
+export class ProviderProfile {
   @Field(() => ID)
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Field()
   @Column('text')
-  vehicleType: string;
+  companyName: string;
 
   @Field()
   @Column('text')
-  licensePlate: string;
+  taxId: string;
 
   @Field()
   @Column('text')
-  zone: string;
+  contactPhone: string;
 
-  @Field(() => Boolean)
-  @Column('boolean', { default: false })
-  isAvailable: boolean;
+  @Field(() => String, { nullable: true })
+  @Column('text', { nullable: true })
+  address?: string;
 
   @Field(() => [String], { nullable: true })
   @Column('text', { array: true, nullable: true })
-  preferredZones: string[];
+  specialties?: string[];
+
+  @Field(() => Boolean)
+  @Column('boolean', { default: false })
+  isVerified: boolean;
 
   @CreateDateColumn()
   createdAt: Date;

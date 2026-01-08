@@ -7,7 +7,7 @@ export class AppController {
   constructor(private readonly appService: AppService) {}
 
   @Get('test-endpoint-auth')
-  @Auth([], [])
+  @Auth('', [])
   getAuth(): string {
     return this.appService.getMethodAuth();
   }

@@ -14,7 +14,7 @@
       "item": [
         {
           "name": "📝 Sign Up",
-          "description": "## 📝 Register New User\n\nRegister a new user account in the system.\n\n### 📥 Request Body\n\n```json\n{\n  \"email\": \"user@example.com\",\n  \"password\": \"Password123\",\n  \"fullName\": \"John Doe\",\n  \"profileType\": \"CASHIER\"\n}\n```\n\n### ✅ Success Response (200/201)\n\n```json\n{\n  \"user\": {\n    \"id\": \"uuid\",\n    \"email\": \"user@example.com\"\n  }\n}\n```\n\n**Note**: Authentication tokens are sent as HttpOnly cookies (`access_token` and `refresh_token`) for security.\n\n### 🔄 Auto-Actions\n\n- ✅ Automatically extracts `access_token` from cookies and saves to environment\n- ✅ Automatically extracts `refresh_token` from cookies and saves to environment\n- ✅ Automatically saves `user_id` to environment\n- ✅ Automatically saves `user_email` to environment",
+          "description": "## 📝 Register New User\n\nRegister a new user account in the system.\n\n### 📥 Request Body\n\n```json\n{\n  \"email\": \"user@example.com\",\n  \"password\": \"Password123\",\n  \"fullName\": \"John Doe\",\n  \"role\": \"customer\"\n}\n```\n\n### ✅ Success Response (200/201)\n\n```json\n{\n  \"user\": {\n    \"id\": \"uuid\",\n    \"email\": \"user@example.com\"\n  }\n}\n```\n\n**Note**: Authentication tokens are sent as HttpOnly cookies (`access_token` and `refresh_token`) for security.\n\n### 🔄 Auto-Actions\n\n- ✅ Automatically extracts `access_token` from cookies and saves to environment\n- ✅ Automatically extracts `refresh_token` from cookies and saves to environment\n- ✅ Automatically saves `user_id` to environment\n- ✅ Automatically saves `user_email` to environment",
           "event": [
             {
               "listen": "test",
@@ -91,7 +91,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"email\": \"user@example.com\",\n    \"password\": \"Password123\",\n    \"fullName\": \"John Doe\",\n    \"profileType\": \"CASHIER\"\n}",
+              "raw": "{\n    \"email\": \"user@example.com\",\n    \"password\": \"Password123\",\n    \"fullName\": \"John Doe\",\n    \"role\": \"customer\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1978,6 +1978,282 @@
         }
       ],
       "description": "Product category management endpoints"
+    },
+    {
+      "name": "🔐 Roles & Permissions",
+      "description": "## 🔐 Roles & Permissions Management\n\nComplete RBAC (Role-Based Access Control) system for managing roles, permissions, and permission groups.\n\n### 📋 Available Endpoints\n\n#### Roles\n- **Get All Roles**: List all roles\n- **Get Role by ID**: Get role details\n- **Update Role**: Update role and permission groups\n\n**Note**: Roles are created via database seeds (`npm run seed:roles`), not through API endpoints. This ensures consistency with SystemRole enum values. Roles cannot be deleted as they are defined in the SystemRole enum and are essential for the system's RBAC architecture.\n\n#### Permissions\n- **Get All Permissions**: List all permissions\n- **Get Permission by ID**: Get permission details\n- **Update Permission**: Update permission\n\n**Note**: Permissions are created via database seeds (`npm run seed:permissions`), not through API endpoints. This ensures consistency with Permission enum values. Permissions cannot be deleted as they are defined in the Permission enum and are essential for the system's RBAC architecture.\n\n#### Permission Groups\n- **Get All Permission Groups**: List all permission groups\n- **Get Permission Group by ID**: Get group details\n- **Update Permission Group**: Update group and permissions\n\n**Note**: Permission groups are created via database seeds (`npm run seed:groups`), not through API endpoints. This ensures consistency with the system configuration. Permission groups cannot be deleted as they are essential for the system's RBAC architecture.\n\n### 👤 User Role Assignment\n\nUser roles are assigned directly through the User entity (one role per user). Role assignment is handled through user management endpoints, not through separate user-role endpoints.\n\n### 🔒 Authentication\n\nAll endpoints require:\n- Valid Bearer token in Authorization header\n- Role: `admin`\n- Permission: `manage_users`",
+      "item": [
+        {
+          "name": "Roles",
+          "item": [
+            {
+              "name": "Get All Roles",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/roles",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "roles"]
+                },
+                "description": "Get all roles in the system. Requires admin role and manage_users permission."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Role by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/roles/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "roles", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "1",
+                      "description": "Role ID (number)"
+                    }
+                  ]
+                },
+                "description": "Get role details by ID. Requires admin role and manage_users permission."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Role",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"name\": \"updated-manager\",\n    \"description\": \"Updated description\",\n    \"permissionGroupIds\": [1, 2, 3]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/roles/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "roles", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "1",
+                      "description": "Role ID (number)"
+                    }
+                  ]
+                },
+                "description": "Update role details and permission groups. All fields are optional. Requires admin role and manage_users permission."
+              },
+              "response": []
+            }
+          ],
+          "description": "Role management endpoints"
+        },
+        {
+          "name": "Permissions",
+          "item": [
+            {
+              "name": "Get All Permissions",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/permissions",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "permissions"]
+                },
+                "description": "Get all permissions in the system. Requires admin role and manage_users permission."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Permission by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/permissions/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "permissions", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "1",
+                      "description": "Permission ID (number)"
+                    }
+                  ]
+                },
+                "description": "Get permission details by ID. Requires admin role and manage_users permission."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Permission",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"name\": \"updated_permission\",\n    \"description\": \"Updated description\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/permissions/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "permissions", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "1",
+                      "description": "Permission ID (number)"
+                    }
+                  ]
+                },
+                "description": "Update permission details. All fields are optional. Requires admin role and manage_users permission."
+              },
+              "response": []
+            }
+          ],
+          "description": "Permission management endpoints"
+        },
+        {
+          "name": "Permission Groups",
+          "item": [
+            {
+              "name": "Get All Permission Groups",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/permission-groups",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "permission-groups"]
+                },
+                "description": "Get all permission groups in the system. Requires admin role and manage_users permission."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Permission Group by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/permission-groups/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "permission-groups", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "1",
+                      "description": "Permission Group ID (number)"
+                    }
+                  ]
+                },
+                "description": "Get permission group details by ID. Requires admin role and manage_users permission."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Permission Group",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{access_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"name\": \"Updated Group Name\",\n    \"description\": \"Updated description\",\n    \"permissionIds\": [1, 2, 3, 4]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/permission-groups/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "permission-groups", ":id"],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "1",
+                      "description": "Permission Group ID (number)"
+                    }
+                  ]
+                },
+                "description": "Update permission group details and permissions. All fields are optional. Requires admin role and manage_users permission."
+              },
+              "response": []
+            }
+          ],
+          "description": "Permission group management endpoints"
+        }
+      ]
     },
     {
       "name": "GraphQL",

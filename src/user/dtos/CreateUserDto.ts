@@ -4,12 +4,12 @@ import {
   MinLength,
   IsEnum,
   IsObject,
-  ValidateNested,
   IsOptional,
   IsUUID,
+  ValidateIf,
+  IsNotEmpty,
 } from 'class-validator';
-import { UserProfileType } from '../types/user-profile.type';
-import { Type } from 'class-transformer';
+import { SystemRole } from 'src/shared/enums/roles.enum';
 
 export class CreateUserDto {
   @IsEmail()
@@ -22,10 +22,11 @@ export class CreateUserDto {
   @IsString()
   fullName: string;
 
-  @IsEnum(UserProfileType)
-  profileType: UserProfileType;
+  @IsEnum(SystemRole)
+  role: SystemRole;
 
-  @IsOptional()
+  @ValidateIf(o => [SystemRole.CASHIER, SystemRole.DELIVERY, SystemRole.PROVIDER].includes(o.role))
+  @IsNotEmpty({ message: 'profileData is required for CASHIER, DELIVERY, or PROVIDER roles' })
   @IsObject()
   profileData?: any;
 

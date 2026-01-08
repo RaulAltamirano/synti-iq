@@ -15,6 +15,8 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { Product } from './entities/product.entity';
 import { ProductFilterDto } from './dto/product-filter-dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBody } from '@nestjs/swagger';
+import { Auth } from 'src/auth/decorator';
+import { Permission } from 'src/shared/enums/permissions.enum';
 
 @ApiTags('Product')
 @Controller('product')
@@ -22,6 +24,7 @@ export class ProductController {
   constructor(private readonly productService: ProductService) {}
 
   @Get()
+  @Auth('', [Permission.VIEW_PRODUCTS])
   @ApiOperation({ summary: 'Get all products with filters' })
   @ApiResponse({
     status: 200,
@@ -33,6 +36,7 @@ export class ProductController {
   }
 
   @Get(':id')
+  @Auth('', [Permission.VIEW_PRODUCTS])
   @ApiOperation({ summary: 'Get a product by ID' })
   @ApiParam({ name: 'id', description: 'Product ID' })
   @ApiResponse({
@@ -53,6 +57,7 @@ export class ProductController {
   }
 
   @Post()
+  @Auth('', [Permission.CREATE_PRODUCTS])
   @ApiOperation({ summary: 'Create a new product' })
   @ApiBody({ type: CreateProductDto })
   @ApiResponse({
@@ -77,6 +82,7 @@ export class ProductController {
   }
 
   @Patch(':id')
+  @Auth('', [Permission.UPDATE_PRODUCTS])
   @ApiOperation({ summary: 'Update a product' })
   @ApiParam({ name: 'id', description: 'Product ID' })
   @ApiBody({ type: CreateProductDto })
@@ -106,6 +112,7 @@ export class ProductController {
   }
 
   @Delete(':id')
+  @Auth('', [Permission.DELETE_PRODUCTS])
   @ApiOperation({ summary: 'Delete a product permanently' })
   @ApiParam({ name: 'id', description: 'Product ID' })
   @ApiResponse({
@@ -125,6 +132,7 @@ export class ProductController {
   }
 
   @Delete(':id/soft')
+  @Auth('', [Permission.DELETE_PRODUCTS])
   @ApiOperation({ summary: 'Soft delete a product (deactivate)' })
   @ApiParam({ name: 'id', description: 'Product ID' })
   @ApiResponse({
@@ -145,6 +153,7 @@ export class ProductController {
   }
 
   @Get('search/sku-barcode')
+  @Auth('', [Permission.VIEW_PRODUCTS])
   @ApiOperation({ summary: 'Search products by SKU or barcode' })
   @ApiQuery({ name: 'sku', required: true, description: 'Product SKU' })
   @ApiQuery({

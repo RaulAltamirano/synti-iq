@@ -1,15 +1,15 @@
 import { PermissionGroup } from 'src/permission-group/entities/permission-group.entity';
-import { UserRole } from 'src/user-role/entities/user-role.entity';
 import { User } from 'src/user/entities/user.entity';
 import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, JoinTable, OneToMany } from 'typeorm';
+import { SystemRole } from 'src/shared/enums/roles.enum';
 
 @Entity('roles')
 export class Role {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ unique: true })
-  name: string;
+  @Column({ type: 'enum', enum: SystemRole, unique: true })
+  name: SystemRole;
 
   @Column({ nullable: true })
   description: string;
@@ -22,6 +22,6 @@ export class Role {
   })
   permissionGroups: PermissionGroup[];
 
-  @OneToMany(() => UserRole, userRole => userRole.role)
+  @OneToMany(() => User, user => user.role)
   users: User[];
 }

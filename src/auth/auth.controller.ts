@@ -60,7 +60,7 @@ export class AuthController {
       user: result.user,
     };
   }
-  @Auth()
+  @Auth('', [])
   @Post('logout')
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const userId = req.user['sub'];
@@ -90,29 +90,29 @@ export class AuthController {
     return null;
   }
   @Get('logout')
-  @Auth([], [])
+  @Auth('', [])
   async logoutWithoutGuard(@GetToken() accessToken: string, @GetUser() user: User) {
     return this.authService.logout(user.id, accessToken);
   }
-  @Auth()
+  @Auth('', [])
   @Get('profile')
   async getProfile(@Req() req: Request) {
     const token = req.headers.authorization?.split(' ')[1];
     return this.authService.getProfile(token);
   }
-  @Auth()
+  @Auth('', [])
   @Get('sessions')
   async getActiveSessions(@Req() req: Request, @Query() filters: SessionFilterDto) {
     const userId = req.user['sub'];
     return this.authService.getActiveSessions(userId, filters);
   }
-  @Auth()
+  @Auth('', [])
   @Delete('sessions/:sessionId')
   async deleteDeviceSession(@Req() req: Request, @Param('sessionId') sessionId: string) {
     const userId = req.user['sub'];
     return this.authService.deleteDeviceSession(userId, sessionId);
   }
-  @Auth()
+  @Auth('', [])
   @Delete('sessions')
   async closeAllSessions(@Req() req: Request) {
     const userId = req.user['sub'];

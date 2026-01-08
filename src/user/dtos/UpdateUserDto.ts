@@ -1,20 +1,20 @@
-import { Type } from 'class-transformer';
-import { IsEmail, IsString, IsEnum, IsOptional, IsObject, ValidateNested } from 'class-validator';
-import { UserProfileType } from '../types/user-profile.type';
+import { IsEmail, IsString, IsEnum, IsOptional, IsObject } from 'class-validator';
+import { SystemRole } from 'src/shared/enums/roles.enum';
 
 export class UpdateUserDto {
+  @IsOptional()
   @IsEmail()
-  email: string;
+  email?: string;
 
+  @IsOptional()
   @IsString()
-  fullName: string;
+  fullName?: string;
 
-  @IsEnum(UserProfileType)
-  profileType: UserProfileType;
+  @IsOptional()
+  @IsEnum(SystemRole)
+  role?: SystemRole;
 
   @IsOptional()
   @IsObject()
-  @ValidateNested()
-  @Type(() => Object)
   profileData?: any;
 }

@@ -3,24 +3,23 @@ import { UserProfileService } from './user_profile.service';
 import { UserProfileController } from './user_profile.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CashierProfile } from 'src/cashier_profile/entities/cashier_profile.entity';
-import { DefaultProfile } from 'src/default_profile/entities/default_profile.entity';
-import { CashierProfileStrategy } from 'src/cashier_profile/strategy/CashierProfileStrategy';
-import { DefaultProfileStrategy } from 'src/default_profile/strategy/DefaultProfileStrategy.strategy';
-import { IProfileStrategy } from 'src/user/strategy/IProfileStrategy';
+import { DeliveryProfile } from 'src/delivery_profiles/entities/delivery_profile.entity';
+import { ProviderProfile } from 'src/provider_profile/entities/provider_profile.entity';
+import { UserProfile } from './entities/user_profile.entity';
+import { Store } from 'src/store/entities/store.entity';
 
 @Module({
   controllers: [UserProfileController],
-  providers: [
-    UserProfileService,
-    CashierProfileStrategy,
-    DefaultProfileStrategy,
-    {
-      provide: 'PROFILE_STRATEGIES',
-      useFactory: (...strategies: IProfileStrategy[]) => strategies,
-      inject: [CashierProfileStrategy, DefaultProfileStrategy],
-    },
+  providers: [UserProfileService],
+  imports: [
+    TypeOrmModule.forFeature([
+      UserProfile,
+      CashierProfile,
+      DeliveryProfile,
+      ProviderProfile,
+      Store,
+    ]),
   ],
-  imports: [TypeOrmModule.forFeature([DefaultProfile, CashierProfile])],
   exports: [UserProfileService],
 })
 export class UserProfileModule {}

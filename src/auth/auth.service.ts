@@ -26,6 +26,12 @@ import { PaginatedResponse } from 'src/pagination/interfaces/PaginatedResponse';
 import { UserSessionResponseDto } from 'src/user-session/dto/user-session-response.dto';
 import { UAParser } from 'ua-parser-js';
 import { AnomalyDetectionService } from './services/anomaly-detection.service';
+import { SystemRole } from 'src/shared/enums/roles.enum';
+import { UserProfileService } from 'src/user_profile/user_profile.service';
+import { DataSource, Repository } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import { User } from 'src/user/entities/user.entity';
+import { Role } from 'src/role/entities/role.entity';
 
 @Injectable()
 export class AuthService {
@@ -40,34 +46,95 @@ export class AuthService {
     private readonly passwordService: PasswordService,
     private readonly redisService: RedisService,
     private readonly anomalyDetectionService: AnomalyDetectionService,
+    private readonly userProfileService: UserProfileService,
+    private readonly dataSource: DataSource,
+    @InjectRepository(User)
+    private readonly userEntityRepository: Repository<User>,
+    @InjectRepository(Role)
+    private readonly roleRepository: Repository<Role>,
   ) {}
 
   async signUp(dto: SignUpDto, request?: Request): Promise<AuthResponseDto> {
+    if (dto.role !== SystemRole.CUSTOMER) {
+      throw new BadRequestException(
+        'Public registration is only allowed for CUSTOMER role. Please contact an administrator for other roles.',
+      );
+    }
+
     const existingUser = await this.userRepository.findByEmail(dto.email);
     if (existingUser) {
       throw new UnauthorizedException('Email already in use');
     }
 
-    const hashedPassword = await this.passwordService.hash(dto.password);
-    const user = await this.userRepository.create({
-      ...dto,
-      password: hashedPassword,
-    });
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    if (!user) {
-      throw new InternalServerErrorException('User creation failed');
+    try {
+      const role = await this.roleRepository.findOne({
+        where: { name: SystemRole.CUSTOMER },
+      });
+
+      if (!role) {
+        throw new InternalServerErrorException('CUSTOMER role not found');
+      }
+
+      const hashedPassword = await this.passwordService.hash(dto.password);
+      const user = this.userEntityRepository.create({
+        email: dto.email,
+        password: hashedPassword,
+        fullName: dto.fullName,
+        roleId: role.id,
+        isActive: true,
+        createdAt: new Date(),
+      });
+
+      const savedUser = await queryRunner.manager.save(user);
+
+      if (!savedUser) {
+        throw new InternalServerErrorException('User creation failed');
+      }
+
+      const userProfile = await this.userProfileService.createProfileForUser(
+        savedUser.id,
+        SystemRole.CUSTOMER,
+        {},
+        queryRunner,
+      );
+
+      if (!userProfile) {
+        throw new InternalServerErrorException('UserProfile creation failed');
+      }
+
+      const validation = await this.userProfileService.validateProfileCoherence(savedUser.id);
+      if (!validation.isValid) {
+        this.logger.error(
+          `Profile coherence validation failed after signUp for user ${savedUser.id}: ${validation.errors.join(', ')}`,
+        );
+        throw new BadRequestException(
+          `Profile coherence validation failed: ${validation.errors.join(', ')}`,
+        );
+      }
+
+      await queryRunner.commitTransaction();
+
+      const metadata = this.extractSessionMetadata(request);
+      const tokens = await this.createUserSession({
+        userId: savedUser.id,
+        ...metadata,
+      });
+
+      return {
+        user: { id: savedUser.id, email: savedUser.email },
+        tokens,
+      };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      this.logger.error(`Error during signUp: ${error.message}`, error.stack);
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
-
-    const metadata = this.extractSessionMetadata(request);
-    const tokens = await this.createUserSession({
-      userId: user.id,
-      ...metadata,
-    });
-
-    return {
-      user: { id: user.id, email: user.email },
-      tokens,
-    };
   }
 
   async login(dto: LoginUserDto, request?: Request): Promise<AuthResponseDto> {
@@ -98,10 +165,34 @@ export class AuthService {
     await this.redisService.del(key);
 
     await this.userRepository.updateLastLogin(user.id);
+    try {
+      if (metadata.deviceInfo?.userAgent) {
+        const invalidatedCount = await this.sessionService.invalidateSessionsByDeviceInfo(user.id, {
+          userAgent: metadata.deviceInfo.userAgent,
+        });
+
+        if (invalidatedCount > 0) {
+          this.logger.log(
+            `Invalidated ${invalidatedCount} previous session(s) for user ${user.id} with userAgent: ${metadata.deviceInfo.userAgent}`,
+          );
+        }
+      } else {
+        this.logger.warn(
+          `Cannot invalidate previous sessions for user ${user.id}: userAgent is not available`,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to invalidate previous sessions for user ${user.id}: ${error.message}`,
+        error.stack,
+      );
+    }
 
     const tokens = await this.createUserSession({
       userId: user.id,
       deviceInfo: metadata.deviceInfo,
+      userAgent: metadata.deviceInfo?.userAgent,
+      ipAddress: metadata.deviceInfo?.ipAddress,
       lastUsed: metadata.lastUsed,
       sessionId: undefined,
       refreshToken: undefined,
@@ -129,7 +220,7 @@ export class AuthService {
         id: user.id,
         email: user.email,
         name: user.fullName,
-        roles: user.roles,
+        role: user.role?.name,
       };
     } catch (error) {
       if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
@@ -431,6 +522,8 @@ export class AuthService {
         refreshToken: refreshTokenHash,
         sessionId,
         deviceInfo: dto.deviceInfo,
+        userAgent: dto.deviceInfo?.userAgent || dto.userAgent,
+        ipAddress: dto.deviceInfo?.ipAddress || dto.ipAddress,
         lastUsed: dto.lastUsed || new Date(),
       };
 

@@ -166,4 +166,81 @@ export class UserSessionRepository {
     );
     return result.affected || 0;
   }
+
+  async findByUserAgent(userId: string, userAgent: string): Promise<UserSession[]> {
+    return this.sessionRepository.find({
+      where: {
+        userId,
+        isValid: true,
+        userAgent,
+      },
+    });
+  }
+
+  async findByDeviceInfo(
+    userId: string,
+    deviceInfo: Partial<{ userAgent: string; ipAddress: string; deviceType: string }>,
+  ): Promise<UserSession[]> {
+    const query = this.sessionRepository
+      .createQueryBuilder('session')
+      .where('session.userId = :userId', { userId })
+      .andWhere('session.isValid = :isValid', { isValid: true });
+
+    if (deviceInfo.userAgent) {
+      query.andWhere('session.userAgent = :userAgent', { userAgent: deviceInfo.userAgent });
+    }
+
+    if (deviceInfo.ipAddress) {
+      query.andWhere('session.ipAddress = :ipAddress', { ipAddress: deviceInfo.ipAddress });
+    }
+
+    if (deviceInfo.deviceType) {
+      query.andWhere('session.deviceInfo @> :deviceInfo', {
+        deviceInfo: JSON.stringify({ deviceType: deviceInfo.deviceType }),
+      });
+    }
+
+    return query.getMany();
+  }
+
+  async invalidateByUserAgent(userId: string, userAgent: string): Promise<number> {
+    const result = await this.sessionRepository.update(
+      {
+        userId,
+        isValid: true,
+        userAgent,
+      },
+      { isValid: false },
+    );
+    return result.affected || 0;
+  }
+
+  async invalidateByDeviceInfo(
+    userId: string,
+    deviceInfo: Partial<{ userAgent: string; ipAddress: string; deviceType: string }>,
+  ): Promise<number> {
+    const query = this.sessionRepository
+      .createQueryBuilder()
+      .update(UserSession)
+      .set({ isValid: false })
+      .where('userId = :userId', { userId })
+      .andWhere('isValid = :isValid', { isValid: true });
+
+    if (deviceInfo.userAgent) {
+      query.andWhere('userAgent = :userAgent', { userAgent: deviceInfo.userAgent });
+    }
+
+    if (deviceInfo.ipAddress) {
+      query.andWhere('ipAddress = :ipAddress', { ipAddress: deviceInfo.ipAddress });
+    }
+
+    if (deviceInfo.deviceType) {
+      query.andWhere('deviceInfo @> :deviceInfo', {
+        deviceInfo: JSON.stringify({ deviceType: deviceInfo.deviceType }),
+      });
+    }
+
+    const result = await query.execute();
+    return result.affected || 0;
+  }
 }

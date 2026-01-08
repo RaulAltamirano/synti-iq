@@ -1,12 +1,13 @@
 import { Field, ID, ObjectType } from '@nestjs/graphql';
-import { UserRole } from 'src/user-role/entities/user-role.entity';
+import { Role } from 'src/role/entities/role.entity';
 import {
   AfterLoad,
   BeforeUpdate,
   Column,
   CreateDateColumn,
   Entity,
-  OneToMany,
+  JoinColumn,
+  ManyToOne,
   OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -59,9 +60,14 @@ export class User {
   @Column('timestamp with time zone', { nullable: true })
   lastActivityAt: Date;
 
-  @Field(() => [UserRole], { nullable: true })
-  @OneToMany(() => UserRole, userRole => userRole.user)
-  roles: UserRole[];
+  @Field(() => String, { nullable: false })
+  @Column('int', { nullable: false })
+  roleId: number;
+
+  @Field(() => Role, { nullable: false })
+  @ManyToOne(() => Role, { nullable: false })
+  @JoinColumn({ name: 'roleId' })
+  role: Role;
 
   @Column({ nullable: true, select: false })
   twoFactorSecret?: string;
@@ -78,8 +84,9 @@ export class User {
   @Column('uuid', { nullable: true })
   approvedBy: string;
 
-  @OneToOne(() => UserProfile, profile => profile.user)
-  profile: UserProfile;
+  @Field(() => UserProfile, { nullable: true })
+  @OneToOne(() => UserProfile, profile => profile.user, { nullable: true })
+  profile?: UserProfile;
 
   @BeforeUpdate()
   updateLastActivity() {

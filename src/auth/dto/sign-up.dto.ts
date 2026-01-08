@@ -1,5 +1,5 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
-import { UserProfileType } from 'src/user/types/user-profile.type';
+import { IsEmail, IsNotEmpty, IsString, MinLength, IsEnum } from 'class-validator';
+import { SystemRole } from 'src/shared/enums/roles.enum';
 
 export class SignUpDto {
   @IsEmail()
@@ -15,5 +15,8 @@ export class SignUpDto {
   fullName: string;
 
   @IsNotEmpty()
-  profileType: UserProfileType;
+  @IsEnum(SystemRole, {
+    message: 'Role must be a valid system role',
+  })
+  role: SystemRole;
 }

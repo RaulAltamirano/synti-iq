@@ -19,6 +19,11 @@ import { TokenFormatValidator } from './strategies/token-format.validator';
 import { CookieTokenExtractor } from './strategies/cookie-token-extractor';
 import { BearerTokenExtractor } from './strategies/bearer-token-xtractor';
 import { AnomalyDetectionService } from './services/anomaly-detection.service';
+import { GuardsModule } from './guards/guards.module';
+import { UserProfileModule } from 'src/user_profile/user_profile.module';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { User } from 'src/user/entities/user.entity';
+import { Role } from 'src/role/entities/role.entity';
 
 @Module({
   controllers: [AuthController],
@@ -51,7 +56,10 @@ import { AnomalyDetectionService } from './services/anomaly-detection.service';
     RedisModule,
     CacheModule.register(),
     PassportModule.register({ defaultStrategy: 'jwt' }),
+    GuardsModule,
+    UserProfileModule,
+    TypeOrmModule.forFeature([User, Role]),
   ],
-  exports: [AuthService, PassportModule],
+  exports: [AuthService, PassportModule, GuardsModule],
 })
 export class AuthModule {}

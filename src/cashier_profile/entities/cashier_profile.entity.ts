@@ -3,25 +3,12 @@ import { CashierScheduleAssignment } from 'src/cashier-schedule-assignment/entit
 import { RecurringScheduleTemplate } from 'src/recurring-schedule-template/entities/recurring-schedule-template.entity';
 import { StoreSchedule } from 'src/store-schedule/entities/store-schedule.entity';
 import { Store } from 'src/store/entities/store.entity';
-import { User } from 'src/user/entities/user.entity';
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  OneToOne,
-  JoinColumn,
-  Column,
-  ManyToOne,
-  OneToMany,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
 @Entity('cashier_profiles')
 export class CashierProfile {
   @Field(() => ID)
   @PrimaryGeneratedColumn('uuid')
   id: string;
-
-  @OneToOne(() => User)
-  @JoinColumn()
-  user: User;
 
   @ManyToOne(() => Store, store => store.cashiers, { nullable: false })
   @JoinColumn({ name: 'store_id' })

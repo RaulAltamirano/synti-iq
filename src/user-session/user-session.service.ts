@@ -245,6 +245,46 @@ export class UserSessionService {
     }
   }
 
+  async invalidateSessionsByDeviceInfo(
+    userId: string,
+    deviceInfo: Partial<{ userAgent: string; ipAddress: string; deviceType: string }>,
+  ): Promise<number> {
+    this.ensureUserId(userId);
+
+    try {
+      const sessions = await this.userSessionRepository.findByDeviceInfo(userId, deviceInfo);
+
+      if (sessions.length === 0) {
+        return 0;
+      }
+
+      const sessionKeys = sessions.map(session => this.getSessionKey(userId, session.sessionId));
+      if (sessionKeys.length > 0) {
+        await this.redisService.del(...sessionKeys);
+        this.logger.debug(
+          `Deleted ${sessionKeys.length} session key(s) from Redis for user ${userId}`,
+        );
+      }
+
+      const invalidatedCount = await this.userSessionRepository.invalidateByDeviceInfo(
+        userId,
+        deviceInfo,
+      );
+
+      return invalidatedCount;
+    } catch (error) {
+      throw this.handleError(error, 'invalidating sessions by device info');
+    }
+  }
+
+  async findSessionsByDeviceInfo(
+    userId: string,
+    deviceInfo: Partial<{ userAgent: string; ipAddress: string; deviceType: string }>,
+  ): Promise<UserSession[]> {
+    this.ensureUserId(userId);
+    return this.userSessionRepository.findByDeviceInfo(userId, deviceInfo);
+  }
+
   async updateSessionLastUsed(userId: string, sessionId: string): Promise<void> {
     this.validateParams(userId, sessionId);
 

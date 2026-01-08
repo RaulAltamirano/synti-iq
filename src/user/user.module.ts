@@ -9,19 +9,22 @@ import { PassportModule } from '@nestjs/passport';
 import { RedisModule } from 'src/shared/redis/redis.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import { UserProfileModule } from 'src/user_profile/user_profile.module';
+import { RoleModule } from 'src/role/role.module';
 import { Location } from 'src/location/entities/location.entity';
 import { UserProfile } from 'src/user_profile/entities/user_profile.entity';
+import { Role } from 'src/role/entities/role.entity';
 
 @Module({
   controllers: [UserController],
   providers: [UserService],
   imports: [
     UserProfileModule,
+    RoleModule,
     CacheModule.register(),
     RedisModule,
     PasswordModule,
     DatabaseModule,
-    TypeOrmModule.forFeature([User, Location, UserProfile]),
+    TypeOrmModule.forFeature([User, Location, UserProfile, Role]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
   ],
   exports: [UserService, TypeOrmModule],

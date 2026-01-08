@@ -11,7 +11,6 @@ import { databaseConfig } from 'src/database/database.config';
 import { PermissionModule } from 'src/permission/permission.module';
 import { RoleModule } from 'src/role/role.module';
 import { PermissionGroupModule } from 'src/permission-group/permission-group.module';
-import { UserRoleModule } from 'src/user-role/user-role.module';
 import { LocationModule } from 'src/location/location.module';
 import { StoreModule } from 'src/store/store.module';
 import { ProductModule } from 'src/product/product.module';
@@ -26,14 +25,17 @@ import { TimeBlockModule } from 'src/time-block/time-block.module';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { ProductCategorieModule } from 'src/product-categorie/product-categorie.module';
+import { CacheModule } from '@nestjs/cache-manager';
 import { ResponseModule } from 'src/shared/response/response.module';
-import { ObservabilityModule } from 'src/shared/observability/observability.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env'],
+    }),
+    CacheModule.register({
+      isGlobal: true,
     }),
     ThrottlerModule.forRoot([
       {
@@ -51,7 +53,6 @@ import { ObservabilityModule } from 'src/shared/observability/observability.modu
     PermissionModule,
     RoleModule,
     PermissionGroupModule,
-    UserRoleModule,
     DatabaseModule,
     RedisModule,
     ProductModule,
@@ -66,7 +67,6 @@ import { ObservabilityModule } from 'src/shared/observability/observability.modu
     LocationModule,
     TimeBlockModule,
     ProductCategorieModule,
-    ObservabilityModule,
     ResponseModule,
   ],
   controllers: [AppController],

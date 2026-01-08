@@ -5,6 +5,7 @@ import {
   InternalServerErrorException,
   Logger,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
@@ -20,8 +21,9 @@ import { FilterUserDto } from 'src/auth/dto/filter-user.dto';
 import { UserPaginatedResponse } from './interfaces/user-paginated-response.graphql';
 import { createHash } from 'crypto';
 import { CreateUserDto } from './dtos/CreateUserDto';
-
 import { UserProfileService } from 'src/user_profile/user_profile.service';
+import { Role } from 'src/role/entities/role.entity';
+import { SystemRole } from 'src/shared/enums/roles.enum';
 @Injectable()
 export class UserService {
   private readonly logger = new Logger(UserService.name);
@@ -32,6 +34,8 @@ export class UserService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Role)
+    private readonly roleRepository: Repository<Role>,
     private databaseService: DatabaseService,
     private passwordService: PasswordService,
     private readonly dataSource: DataSource,
@@ -56,7 +60,7 @@ export class UserService {
 
   private buildQuery(query: SelectQueryBuilder<User>, filters: FilterUserDto) {
     query
-      .leftJoinAndSelect('user.roles', 'roles')
+      .leftJoinAndSelect('user.role', 'role')
       .where('user.isDelete = :isDelete', { isDelete: false });
 
     if (filters.fullName) {
@@ -89,7 +93,7 @@ export class UserService {
     }
 
     if (filters.roles?.length) {
-      query.andWhere('roles.name IN (:...roleNames)', {
+      query.andWhere('role.name IN (:...roleNames)', {
         roleNames: filters.roles,
       });
     }
@@ -147,11 +151,66 @@ export class UserService {
 
       if (existingUser) throw new ConflictException('User already exists');
 
-      const user = await this.createUserEntity(createUserDto, createdBy, queryRunner);
+      const role = await this.roleRepository.findOne({
+        where: { name: createUserDto.role },
+      });
+
+      if (!role) {
+        throw new BadRequestException(`Role '${createUserDto.role}' not found`);
+      }
+
+      const requiresProfileData = [
+        SystemRole.CASHIER,
+        SystemRole.DELIVERY,
+        SystemRole.PROVIDER,
+      ].includes(createUserDto.role);
+
+      if (requiresProfileData && !createUserDto.profileData) {
+        throw new BadRequestException(`profileData is required for role: ${createUserDto.role}`);
+      }
+
+      const user = await this.createUserEntity(createUserDto, role.id, createdBy, queryRunner);
 
       if (!user) throw new InternalServerErrorException('User creation failed');
 
-      await this.userProfileService.createUserProfile(createUserDto, user.id, queryRunner);
+      const userProfile = await this.userProfileService.createProfileForUser(
+        user.id,
+        createUserDto.role,
+        createUserDto.profileData,
+        queryRunner,
+      );
+
+      // Validar coherencia: profileType debe coincidir con role.name
+      if (userProfile && userProfile.profileType !== createUserDto.role) {
+        throw new BadRequestException(
+          `Profile type ${userProfile.profileType} does not match role ${createUserDto.role}`,
+        );
+      }
+
+      // Validar coherencia completa después de crear UserProfile
+      const validation = await this.userProfileService.validateProfileCoherence(user.id);
+      if (!validation.isValid) {
+        this.logger.error(
+          `Profile coherence validation failed after user creation for user ${user.id}: ${validation.errors.join(', ')}`,
+        );
+        throw new BadRequestException(
+          `Profile coherence validation failed: ${validation.errors.join(', ')}`,
+        );
+      }
+
+      // Validar que role.name coincide con profileType antes de commit
+      const userWithRole = await queryRunner.manager.findOne(User, {
+        where: { id: user.id },
+        relations: ['role'],
+      });
+
+      if (userWithRole && userProfile) {
+        if (userWithRole.role.name !== userProfile.profileType) {
+          throw new BadRequestException(
+            `Role name ${userWithRole.role.name} does not match profileType ${userProfile.profileType}`,
+          );
+        }
+      }
 
       await queryRunner.commitTransaction();
 
@@ -168,14 +227,17 @@ export class UserService {
 
   private async createUserEntity(
     dto: CreateUserDto,
+    roleId: number,
     createdBy: string | undefined,
     queryRunner: QueryRunner,
   ): Promise<User | null> {
     try {
       const hashedPassword = await this.passwordService.hash(dto.password);
       const user = this.userRepository.create({
-        ...dto,
+        email: dto.email,
         password: hashedPassword,
+        fullName: dto.fullName,
+        roleId,
         isActive: true,
         approvedBy: createdBy ?? null,
         createdAt: new Date(),
@@ -221,7 +283,7 @@ export class UserService {
     if (!user) {
       user = await this.userRepository.findOne({
         where: { id, isDelete: false },
-        relations: ['roles'],
+        relations: ['role', 'profile'],
       });
       if (!user) throw new NotFoundException('User not found');
       await this.redisService.set(cacheKey, user, 3600);
@@ -247,21 +309,209 @@ export class UserService {
     email: string,
     options: {
       selectPassword?: boolean;
-      includeRoles?: boolean;
+      includeRole?: boolean;
     } = {},
   ): Promise<User | null> {
-    const { selectPassword = false, includeRoles = true } = options;
+    const { selectPassword = false, includeRole = true } = options;
 
     const queryOptions: FindOneOptions<User> = {
       where: { email, isDelete: false },
     };
     if (selectPassword) queryOptions.select = ['id', 'email', 'password', 'isActive', 'isDelete'];
 
-    if (includeRoles) {
-      queryOptions.relations = ['roles'];
+    if (includeRole) {
+      queryOptions.relations = ['role'];
     }
 
     return this.userRepository.findOne(queryOptions);
+  }
+
+  async getUserRole(userId: string): Promise<SystemRole | null> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['role'],
+    });
+
+    if (!user || !user.role) {
+      return null;
+    }
+
+    return user.role.name;
+  }
+
+  async assignRole(userId: string, roleId: number, profileData?: any): Promise<void> {
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const user = await this.userRepository.findOne({
+        where: { id: userId },
+        relations: ['role', 'profile'],
+      });
+
+      if (!user) {
+        throw new NotFoundException(`User with ID ${userId} not found`);
+      }
+
+      if (!user.isActive || user.isDelete) {
+        throw new BadRequestException(`User ${userId} is not active`);
+      }
+
+      const newRole = await this.roleRepository.findOne({
+        where: { id: roleId },
+      });
+
+      if (!newRole) {
+        throw new NotFoundException(`Role with ID ${roleId} not found`);
+      }
+
+      const newRoleName = newRole.name;
+
+      // Validar que se proporcione profileData si el rol lo requiere
+      const requiresProfileData = [
+        SystemRole.CASHIER,
+        SystemRole.DELIVERY,
+        SystemRole.PROVIDER,
+      ].includes(newRoleName);
+
+      if (requiresProfileData && !profileData) {
+        throw new BadRequestException(`profileData is required for role: ${newRoleName}`);
+      }
+
+      // Si el usuario ya tiene un perfil con profileId, eliminarlo
+      if (user.profile) {
+        const hasSpecificProfile = [
+          SystemRole.CASHIER,
+          SystemRole.DELIVERY,
+          SystemRole.PROVIDER,
+        ].includes(user.profile.profileType);
+
+        if (hasSpecificProfile && user.profile.profileId) {
+          await this.userProfileService.deleteProfile(userId, queryRunner);
+        }
+      }
+
+      // Actualizar el rol del usuario
+      user.roleId = roleId;
+      await queryRunner.manager.save(user);
+
+      // Crear o actualizar el UserProfile correspondiente
+      await this.userProfileService.createProfileForUser(
+        userId,
+        newRoleName,
+        profileData,
+        queryRunner,
+      );
+
+      // Validar coherencia después de asignar el rol
+      const validation = await this.userProfileService.validateProfileCoherence(userId);
+      if (!validation.isValid) {
+        this.logger.error(
+          `Profile coherence validation failed after role assignment for user ${userId}: ${validation.errors.join(', ')}`,
+        );
+        throw new BadRequestException(
+          `Profile coherence validation failed: ${validation.errors.join(', ')}`,
+        );
+      }
+
+      await queryRunner.commitTransaction();
+      await this.cacheManager.del(`user:role:${userId}`);
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async updateRole(userId: string, roleId: number, profileData?: any): Promise<void> {
+    const queryRunner = this.dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const user = await this.userRepository.findOne({
+        where: { id: userId },
+        relations: ['role', 'profile'],
+      });
+
+      if (!user) {
+        throw new NotFoundException(`User with ID ${userId} not found`);
+      }
+
+      if (!user.isActive || user.isDelete) {
+        throw new BadRequestException(`User ${userId} is not active`);
+      }
+
+      const newRole = await this.roleRepository.findOne({
+        where: { id: roleId },
+      });
+
+      if (!newRole) {
+        throw new NotFoundException(`Role with ID ${roleId} not found`);
+      }
+
+      const currentRole = user.role?.name;
+      const newRoleName = newRole.name;
+
+      if (currentRole === newRoleName) {
+        return;
+      }
+
+      const requiresProfileData = [
+        SystemRole.CASHIER,
+        SystemRole.DELIVERY,
+        SystemRole.PROVIDER,
+      ].includes(newRoleName);
+
+      if (requiresProfileData && !profileData) {
+        throw new BadRequestException(`profileData is required for role: ${newRoleName}`);
+      }
+
+      if (user.profile) {
+        const hasSpecificProfile = [
+          SystemRole.CASHIER,
+          SystemRole.DELIVERY,
+          SystemRole.PROVIDER,
+        ].includes(user.profile.profileType);
+
+        if (hasSpecificProfile && user.profile.profileId) {
+          await this.userProfileService.deleteProfile(userId, queryRunner);
+        }
+      }
+
+      user.roleId = roleId;
+      await queryRunner.manager.save(user);
+
+      await this.userProfileService.createProfileForUser(
+        userId,
+        newRoleName,
+        profileData,
+        queryRunner,
+      );
+
+      // Validar coherencia después de actualizar el rol
+      const validation = await this.userProfileService.validateProfileCoherence(userId);
+      if (!validation.isValid) {
+        this.logger.error(
+          `Profile coherence validation failed after role update for user ${userId}: ${validation.errors.join(', ')}`,
+        );
+        throw new BadRequestException(
+          `Profile coherence validation failed: ${validation.errors.join(', ')}`,
+        );
+      }
+
+      await queryRunner.commitTransaction();
+      await this.cacheManager.del(`user:role:${userId}`);
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async updateLastLogin(userId: string): Promise<void> {
