@@ -9,7 +9,7 @@ import { TimeBlockFactory } from 'src/time-block/factory/time-block-factory';
 import { UpdateRecurringScheduleTemplateDto } from './dto/update-recurring-schedule-template.dto';
 import {
   ErrorHandlingService,
-  ResourceNotFoundError,
+  DomainError,
 } from 'src/shared/error-handling/error-handling.service';
 
 @Injectable()
@@ -76,7 +76,7 @@ export class RecurringScheduleTemplateService {
         });
 
         if (!template) {
-          throw new ResourceNotFoundError('Plantilla de horario recurrente', id);
+          throw DomainError.notFound('Recurring schedule template', id);
         }
 
         if (dto.name !== undefined) template.name = dto.name;
@@ -123,7 +123,7 @@ export class RecurringScheduleTemplateService {
       });
 
       if (!template) {
-        throw new ResourceNotFoundError('Plantilla de horario recurrente', id);
+        throw DomainError.notFound('Recurring schedule template', id);
       }
 
       return template;
@@ -147,7 +147,7 @@ export class RecurringScheduleTemplateService {
         });
 
         if (!template) {
-          throw new ResourceNotFoundError('Plantilla de horario recurrente', id);
+          throw DomainError.notFound('Recurring schedule template', id);
         }
 
         await transactionalEntityManager.delete(TimeBlock, {
