@@ -18,7 +18,7 @@ import { PasswordService } from 'src/auth/services/password/password.service';
 import { RedisService } from 'src/shared/redis/redis.service';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { FilterUserDto } from 'src/auth/dto/filter-user.dto';
-import { UserPaginatedResponse } from './interfaces/user-paginated-response.graphql';
+import { PaginatedResponse } from 'src/pagination/interfaces/PaginatedResponse';
 import { createHash } from 'crypto';
 import { CreateUserDto } from './dtos/CreateUserDto';
 import { UserProfileService } from 'src/user_profile/user_profile.service';
@@ -105,10 +105,10 @@ export class UserService {
     return value.replace(/[%_\\]/g, '\\$&');
   }
 
-  async filterUsers(filters: FilterUserDto): Promise<UserPaginatedResponse> {
+  async filterUsers(filters: FilterUserDto): Promise<PaginatedResponse<User>> {
     try {
       const cacheKey = this.buildCacheKey(filters);
-      const cachedData = await this.cacheManager.get<UserPaginatedResponse>(cacheKey);
+      const cachedData = await this.cacheManager.get<PaginatedResponse<User>>(cacheKey);
 
       if (cachedData) {
         return cachedData;
@@ -123,11 +123,15 @@ export class UserService {
         .take(filters.limit)
         .getManyAndCount();
 
-      const response: UserPaginatedResponse = {
+      const totalPages = Math.ceil(total / filters.limit);
+      const response: PaginatedResponse<User> = {
         data: users,
         total,
         page: filters.page,
-        totalPages: Math.ceil(total / filters.limit),
+        totalPages,
+        limit: filters.limit,
+        hasNextPage: filters.page < totalPages,
+        hasPreviousPage: filters.page > 1,
       };
 
       await this.cacheManager.set(cacheKey, response, this.CACHE_TTL);
@@ -303,6 +307,42 @@ export class UserService {
     }
 
     return user;
+  }
+
+  async getMyProfile(userId: string): Promise<any> {
+    const user = await this.findById(userId);
+
+    if (!user.isActive) {
+      throw new NotFoundException('User account is inactive');
+    }
+
+    const userProfile = await this.userProfileService.getUserProfile(userId);
+
+    return {
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      role: {
+        id: user.role.id,
+        name: user.role.name,
+      },
+      isActive: user.isActive,
+      isApproved: user.isApproved,
+      isOnline: user.isOnline,
+      createdAt: user.createdAt,
+      lastLogin: user.lastLogin,
+      lastActivityAt: user.lastActivityAt,
+      profile: userProfile
+        ? {
+            id: userProfile.id,
+            profileType: userProfile.profileType,
+            profileId: userProfile.profileId,
+            metadata: userProfile.metadata,
+            createdAt: userProfile.createdAt,
+            updatedAt: userProfile.updatedAt,
+          }
+        : null,
+    };
   }
 
   async findByEmail(

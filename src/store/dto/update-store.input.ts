@@ -1,7 +1,8 @@
-import { InputType, Field, ID, PartialType } from '@nestjs/graphql';
+import { PartialType } from '@nestjs/mapped-types';
+import { IsUUID } from 'class-validator';
 import { CreateStoreInput } from './create-store.input.ts';
 
-@InputType()
 export class UpdateStoreInput extends PartialType(CreateStoreInput) {
-  @Field(() => ID) id: string;
+  @IsUUID()
+  id: string;
 }

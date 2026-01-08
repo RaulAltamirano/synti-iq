@@ -17,7 +17,7 @@ Enterprise-grade multi-channel e-commerce platform built with NestJS for managin
 - **Framework**: NestJS, TypeScript
 - **Database**: PostgreSQL (PostGIS), Redis
 - **Authentication**: JWT, Two-Factor Authentication
-- **API**: REST, GraphQL
+- **API**: REST
 - **Documentation**: Swagger/OpenAPI
 - **Testing**: Jest
 

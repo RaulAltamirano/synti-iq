@@ -1,4 +1,4 @@
-import { InputType, Field, PartialType } from '@nestjs/graphql';
+import { PartialType } from '@nestjs/mapped-types';
 import { IsOptional, IsIn, IsString } from 'class-validator';
 import { CreateStoreScheduleDto } from './create-store-schedule.dto';
 import { ApiProperty } from '@nestjs/swagger';
@@ -15,7 +15,6 @@ const daysOfWeek = [
 
 type DayOfWeek = (typeof daysOfWeek)[number];
 
-@InputType()
 export class UpdateStoreScheduleDto extends PartialType(CreateStoreScheduleDto) {
   @ApiProperty({
     description: 'Nombre del horario',
@@ -23,7 +22,6 @@ export class UpdateStoreScheduleDto extends PartialType(CreateStoreScheduleDto) 
     minLength: 3,
     required: false,
   })
-  @Field({ nullable: true })
   @IsOptional()
   name?: string;
 
@@ -32,7 +30,6 @@ export class UpdateStoreScheduleDto extends PartialType(CreateStoreScheduleDto) 
     example: 'Horario especial para días festivos',
     required: false,
   })
-  @Field(() => String, { nullable: true })
   @IsOptional()
   @IsString()
   description?: string;
@@ -43,7 +40,6 @@ export class UpdateStoreScheduleDto extends PartialType(CreateStoreScheduleDto) 
     example: 'monday',
     required: false,
   })
-  @Field({ nullable: true })
   @IsOptional()
   @IsIn(daysOfWeek, { message: 'Invalid day of week' })
   dayOfWeek?: DayOfWeek;
@@ -53,7 +49,6 @@ export class UpdateStoreScheduleDto extends PartialType(CreateStoreScheduleDto) 
     example: '09:00:00-05:00',
     required: false,
   })
-  @Field(() => String, { nullable: true })
   @IsOptional()
   openTime?: string;
 
@@ -62,7 +57,6 @@ export class UpdateStoreScheduleDto extends PartialType(CreateStoreScheduleDto) 
     example: '18:00:00-05:00',
     required: false,
   })
-  @Field(() => String, { nullable: true })
   @IsOptional()
   closeTime?: string;
 
@@ -71,7 +65,6 @@ export class UpdateStoreScheduleDto extends PartialType(CreateStoreScheduleDto) 
     example: true,
     required: false,
   })
-  @Field({ nullable: true })
   @IsOptional()
   isActive?: boolean;
 }

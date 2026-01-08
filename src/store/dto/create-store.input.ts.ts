@@ -1,12 +1,31 @@
-import { InputType, Field, Float } from '@nestjs/graphql';
+import { IsString, IsOptional, IsNumber, Min } from 'class-validator';
 
-@InputType()
 export class CreateStoreInput {
-  @Field() name: string;
-  @Field() address: string;
-  @Field({ nullable: true }) phoneNumber?: string;
-  @Field({ nullable: true }) email?: string;
-  @Field(() => Float, { defaultValue: 0 }) dailySalesTarget?: number;
-  @Field(() => Float, { defaultValue: 0 }) monthlySalesTarget?: number;
-  @Field({ nullable: true }) storeType?: string;
+  @IsString()
+  name: string;
+
+  @IsString()
+  address: string;
+
+  @IsOptional()
+  @IsString()
+  phoneNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  email?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  dailySalesTarget?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  monthlySalesTarget?: number;
+
+  @IsOptional()
+  @IsString()
+  storeType?: string;
 }

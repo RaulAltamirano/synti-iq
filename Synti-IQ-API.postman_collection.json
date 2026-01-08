@@ -10,11 +10,11 @@
   "item": [
     {
       "name": "🔐 Authentication",
-      "description": "## 🔐 Authentication Endpoints\n\nManage user authentication, registration, login, logout, and session management.\n\n### 📋 Available Endpoints\n\n- **Sign Up**: Register a new user account\n- **Login**: Authenticate and get access/refresh tokens\n- **Logout**: End current session\n- **Refresh Token**: Get new access token using refresh token\n- **Get Profile**: Get current user profile\n- **Get Sessions**: List all active sessions\n- **Delete Session**: Remove a specific session\n- **Close All Sessions**: End all user sessions",
+      "description": "## 🔐 Authentication Endpoints\n\nManage user authentication, registration, login, logout, and token refresh.\n\n### 📋 Available Endpoints\n\n- **Sign Up**: Register a new user account\n- **Login**: Authenticate and get access/refresh tokens\n- **Logout**: End current session\n- **Refresh Token**: Get new access token using refresh token\n\n**Note**: For session management endpoints (list sessions, delete sessions, etc.), see the \"📱 User Sessions\" section.\n**Note**: For user profile endpoints, see the \"👥 Users\" section.",
       "item": [
         {
           "name": "📝 Sign Up",
-          "description": "## 📝 Register New User\n\nRegister a new user account in the system.\n\n### 📥 Request Body\n\n```json\n{\n  \"email\": \"user@example.com\",\n  \"password\": \"Password123\",\n  \"fullName\": \"John Doe\",\n  \"role\": \"customer\"\n}\n```\n\n### ✅ Success Response (200/201)\n\n```json\n{\n  \"user\": {\n    \"id\": \"uuid\",\n    \"email\": \"user@example.com\"\n  }\n}\n```\n\n**Note**: Authentication tokens are sent as HttpOnly cookies (`access_token` and `refresh_token`) for security.\n\n### 🔄 Auto-Actions\n\n- ✅ Automatically extracts `access_token` from cookies and saves to environment\n- ✅ Automatically extracts `refresh_token` from cookies and saves to environment\n- ✅ Automatically saves `user_id` to environment\n- ✅ Automatically saves `user_email` to environment",
+          "description": "## 📝 Register New User\n\nRegister a new user account in the system.\n\n### 📥 Request Body\n\n```json\n{\n  \"email\": \"user@example.com\",\n  \"password\": \"Password123\",\n  \"fullName\": \"John Doe\",\n  \"role\": \"customer\"\n}\n```\n\n### ✅ Success Response (201 Created)\n\n```json\n{\n  \"message\": \"User registered successfully\",\n  \"user\": {\n    \"id\": \"uuid\",\n    \"email\": \"user@example.com\"\n  },\n  \"token_type\": \"Bearer\",\n  \"expires_in\": 900,\n  \"refresh_expires_in\": 604800\n}\n```\n\n**Note**: Authentication tokens are sent as HttpOnly cookies (`access_token` and `refresh_token`) for security.\n\n**Response Fields:**\n- `message`: Confirmation message\n- `user`: Newly created user information (id, email)\n- `token_type`: Type of token (always \"Bearer\")\n- `expires_in`: Access token expiration time in seconds (900 = 15 minutes)\n- `refresh_expires_in`: Refresh token expiration time in seconds (604800 = 7 days)\n\n**HTTP Headers:**\n- `Location`: URI of the created resource (e.g., `/api/user/me`)\n\n**HTTP Status Code**: `201 Created` - Sign up creates a new user resource, so it returns 201 Created.\n\n### 🔄 Auto-Actions\n\n- ✅ Automatically extracts `access_token` from cookies and saves to environment\n- ✅ Automatically extracts `refresh_token` from cookies and saves to environment\n- ✅ Automatically saves `user_id` to environment\n- ✅ Automatically saves `user_email` to environment",
           "event": [
             {
               "listen": "test",
@@ -109,7 +109,7 @@
         },
         {
           "name": "🔑 Login",
-          "description": "## 🔑 User Login\n\nAuthenticate user and receive access/refresh tokens.\n\n### 📥 Request Body\n\n```json\n{\n  \"email\": \"{{user_email}}\",\n  \"password\": \"{{user_password}}\"\n}\n```\n\n### ✅ Success Response (201 Created)\n\n```json\n{\n  \"user\": {\n    \"id\": \"uuid\",\n    \"email\": \"user@example.com\"\n  }\n}\n```\n\n**Note**: Authentication tokens are sent as HttpOnly cookies (`access_token` and `refresh_token`) for security.\n\n### ⚠️ Error Responses\n\n- **401 Unauthorized**: Invalid credentials\n- **429 Too Many Requests**: Too many login attempts\n\n### 🔄 Auto-Actions\n\n- ✅ Automatically extracts `access_token` from cookies and saves to environment\n- ✅ Automatically extracts `refresh_token` from cookies and saves to environment\n- ✅ Automatically saves `user_id` to environment\n- ✅ Automatically saves `user_email` to environment\n\n### 💡 Usage\n\nUse the environment variables `{{user_email}}` and `{{user_password}}` for quick login.",
+          "description": "## 🔑 User Login\n\nAuthenticate user and receive access/refresh tokens.\n\n### 📥 Request Body\n\n```json\n{\n  \"email\": \"{{user_email}}\",\n  \"password\": \"{{user_password}}\"\n}\n```\n\n### ✅ Success Response (200 OK)\n\n```json\n{\n  \"user\": {\n    \"id\": \"uuid\",\n    \"email\": \"user@example.com\"\n  },\n  \"token_type\": \"Bearer\",\n  \"expires_in\": 900,\n  \"refresh_expires_in\": 604800\n}\n```\n\n**Note**: Authentication tokens are sent as HttpOnly cookies (`access_token` and `refresh_token`) for security.\n\n**Response Fields:**\n- `user`: User information (id, email)\n- `token_type`: Type of token (always \"Bearer\")\n- `expires_in`: Access token expiration time in seconds (900 = 15 minutes)\n- `refresh_expires_in`: Refresh token expiration time in seconds (604800 = 7 days)\n\n**HTTP Status Code**: `200 OK` - Login is an authentication operation, not a resource creation, so it returns 200 OK instead of 201 Created.\n\n### ⚠️ Error Responses\n\n- **401 Unauthorized**: Invalid credentials\n- **429 Too Many Requests**: Too many login attempts\n\n### 🔄 Auto-Actions\n\n- ✅ Automatically extracts `access_token` from cookies and saves to environment\n- ✅ Automatically extracts `refresh_token` from cookies and saves to environment\n- ✅ Automatically saves `user_id` to environment\n- ✅ Automatically saves `user_email` to environment\n\n### 💡 Usage\n\nUse the environment variables `{{user_email}}` and `{{user_password}}` for quick login.",
           "event": [
             {
               "listen": "test",
@@ -204,7 +204,7 @@
         },
         {
           "name": "🔄 Refresh Token",
-          "description": "## 🔄 Refresh Access Token\n\nGet a new access token using a valid refresh token.\n\n### 📥 Request Body\n\n```json\n{\n  \"refreshToken\": \"{{refresh_token}}\"\n}\n```\n\n**Note**: The refresh token can also be sent via cookie `refresh_token`. The endpoint accepts both.\n\n### ✅ Success Response (200)\n\n```json\n{\n  \"success\": true\n}\n```\n\n**Note**: New authentication tokens are sent as HttpOnly cookies (`access_token` and `refresh_token`).\n\n### 🔄 Auto-Actions\n\n- ✅ Automatically extracts `access_token` from cookies and updates environment\n- ✅ Automatically extracts `refresh_token` from cookies and updates environment",
+          "description": "## 🔄 Refresh Access Token\n\nGet a new access token using a valid refresh token.\n\n### 📥 Request Body\n\n```json\n{\n  \"refreshToken\": \"{{refresh_token}}\"\n}\n```\n\n**Note**: The refresh token can also be sent via cookie `refresh_token`. The endpoint accepts both.\n\n### ✅ Success Response (200 OK)\n\n```json\n{\n  \"token_type\": \"Bearer\",\n  \"expires_in\": 900,\n  \"refresh_expires_in\": 604800\n}\n```\n\n**Note**: New authentication tokens are sent as HttpOnly cookies (`access_token` and `refresh_token`).\n\n**Response Fields:**\n- `token_type`: Type of token (always \"Bearer\")\n- `expires_in`: New access token expiration time in seconds (900 = 15 minutes)\n- `refresh_expires_in`: Refresh token expiration time in seconds (604800 = 7 days)\n\n### 🔄 Auto-Actions\n\n- ✅ Automatically extracts `access_token` from cookies and updates environment\n- ✅ Automatically extracts `refresh_token` from cookies and updates environment",
           "event": [
             {
               "listen": "test",
@@ -276,138 +276,13 @@
               "host": ["{{base_url}}"],
               "path": ["api", "auth", "refresh"]
             },
-            "description": "Refresh the access token using a valid refresh token. The refresh token can be sent in the request body or as a cookie. Returns { success: true } and sets new tokens as HttpOnly cookies."
-          },
-          "response": []
-        },
-        {
-          "name": "👤 Get Profile",
-          "description": "## 👤 Get User Profile\n\nGet the profile information of the currently authenticated user.\n\n### 🔒 Authentication\n\nRequires valid Bearer token in Authorization header.\n\n### ✅ Success Response (200)\n\n```json\n{\n  \"id\": \"user-uuid\",\n  \"email\": \"user@example.com\",\n  \"name\": \"John Doe\",\n  \"roles\": [...]\n}\n```\n\n### ⚠️ Error Responses\n\n- **401 Unauthorized**: Invalid or expired token\n\n### 🔄 Auto-Actions\n\n- ✅ Automatically refreshes token if expired (pre-request script)",
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "exec": [
-                  "// Auto-refresh token if needed",
-                  "if (!pm.environment.get('access_token')) {",
-                  "    pm.sendRequest({",
-                  "        url: pm.environment.get('base_url') + '/api/auth/refresh',",
-                  "        method: 'POST',",
-                  "        header: {",
-                  "            'Content-Type': 'application/json'",
-                  "        },",
-                  "        body: {",
-                  "            mode: 'raw',",
-                  "            raw: JSON.stringify({ refreshToken: pm.environment.get('refresh_token') })",
-                  "        }",
-                  "    }, function (err, res) {",
-                  "        if (res && res.cookies) {",
-                  "            const accessTokenCookie = res.cookies.get('access_token');",
-                  "            if (accessTokenCookie) {",
-                  "                pm.environment.set('access_token', accessTokenCookie.value);",
-                  "            }",
-                  "        }",
-                  "    });",
-                  "}"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/auth/profile",
-              "host": ["{{base_url}}"],
-              "path": ["api", "auth", "profile"]
-            },
-            "description": "Get the profile information of the currently authenticated user. Requires valid access token."
-          },
-          "response": []
-        },
-        {
-          "name": "📋 Get Active Sessions",
-          "description": "## 📋 Get Active Sessions\n\nGet all active sessions for the current authenticated user.\n\n### 🔒 Authentication\n\nRequires valid Bearer token in Authorization header.\n\n### 📥 Query Parameters\n\n- `page` (optional): Page number (default: 1)\n- `limit` (optional): Items per page (default: 10)\n- `isValid` (optional): Filter by validity status\n- `lastUsedAfter` (optional): Filter sessions used after this date\n- `lastUsedBefore` (optional): Filter sessions used before this date\n\n### ✅ Success Response (200)\n\n```json\n{\n  \"data\": [...],\n  \"total\": 5,\n  \"page\": 1,\n  \"limit\": 10,\n  \"totalPages\": 1\n}\n```",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/auth/sessions?page=1&limit=10",
-              "host": ["{{base_url}}"],
-              "path": ["api", "auth", "sessions"],
-              "query": [
-                {
-                  "key": "page",
-                  "value": "1"
-                },
-                {
-                  "key": "limit",
-                  "value": "10"
-                }
-              ]
-            },
-            "description": "Get all active sessions for the current authenticated user with pagination support."
-          },
-          "response": []
-        },
-        {
-          "name": "🗑️ Delete Session",
-          "description": "## 🗑️ Delete Session\n\nDelete a specific session by session ID.\n\n### 🔒 Authentication\n\nRequires valid Bearer token in Authorization header.\n\n### 📥 Path Parameters\n\n- `sessionId`: UUID of the session to delete\n\n### ✅ Success Response (200/204)\n\nSession deleted successfully.",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/auth/sessions/:sessionId",
-              "host": ["{{base_url}}"],
-              "path": ["api", "auth", "sessions", ":sessionId"],
-              "variable": [
-                {
-                  "key": "sessionId",
-                  "value": ""
-                }
-              ]
-            },
-            "description": "Delete a specific session by session ID. Requires valid access token."
-          },
-          "response": []
-        },
-        {
-          "name": "Close All Sessions",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/auth/sessions",
-              "host": ["{{base_url}}"],
-              "path": ["api", "auth", "sessions"]
-            },
-            "description": "Close all active sessions for the current authenticated user. This will log you out from all devices."
+            "description": "Refresh the access token using a valid refresh token. The refresh token can be sent in the request body or as a cookie. Returns token metadata and sets new tokens as HttpOnly cookies."
           },
           "response": []
         },
         {
           "name": "Logout",
+          "description": "## 🚪 User Logout\n\nEnd the current session and invalidate the access token.\n\n### 🔒 Authentication\n\nRequires valid Bearer token in Authorization header.\n\n### ✅ Success Response (200 OK)\n\n```json\n{\n  \"message\": \"Successfully logged out\"\n}\n```\n\n**Note**: Authentication cookies (`access_token` and `refresh_token`) are cleared.\n\n**HTTP Status Code**: `200 OK` - Logout is a state-changing operation that returns a confirmation message.",
           "request": {
             "method": "POST",
             "header": [
@@ -421,7 +296,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "auth", "logout"]
             },
-            "description": "Logout from the current session. Invalidates the current access token."
+            "description": "Logout from the current session. Invalidates the current access token and clears authentication cookies."
           },
           "response": []
         }
@@ -430,7 +305,7 @@
     },
     {
       "name": "📱 User Sessions",
-      "description": "## 📱 User Session Management\n\nManage user sessions, device tracking, and session invalidation.\n\n### 📋 Available Endpoints\n\n- **Get Active Sessions**: List all active sessions\n- **Invalidate Device Sessions**: End all sessions for a specific device type\n- **Invalidate Other Sessions**: End all sessions except current\n- **Invalidate All Sessions**: End all user sessions",
+      "description": "## 📱 User Session Management\n\nManage user sessions, device tracking, and session invalidation.\n\n### 📋 Available Endpoints\n\n- **Get Active Sessions**: List all active sessions with pagination and filters\n- **Get Active Devices**: Get summary of active devices with session counts\n- **Invalidate Session**: Invalidate a specific session by ID\n- **Invalidate Device Sessions**: End all sessions for a specific device type\n- **Invalidate Other Sessions**: End all sessions except the current one\n- **Invalidate All Sessions**: End all user sessions\n- **Validate Session**: Validate session ownership\n- **Update Session Last Used**: Update session last used timestamp",
       "item": [
         {
           "name": "Get Active Sessions",
@@ -630,7 +505,28 @@
     },
     {
       "name": "Users",
+      "description": "## 👥 User Management\n\nManage users and user profiles.\n\n### 📋 Available Endpoints\n\n- **Get My Profile**: Get current authenticated user profile\n- **Filter Users**: Get paginated list of users with filters",
       "item": [
+        {
+          "name": "👤 Get My Profile",
+          "description": "## 👤 Get Current User Profile\n\nGet the complete profile information of the currently authenticated user.\n\n### 🔒 Authentication\n\nRequires valid Bearer token in Authorization header.\n\n### ✅ Success Response (200 OK)\n\n```json\n{\n  \"id\": \"user-uuid\",\n  \"email\": \"user@example.com\",\n  \"fullName\": \"John Doe\",\n  \"role\": {\n    \"id\": 1,\n    \"name\": \"customer\"\n  },\n  \"isActive\": true,\n  \"isApproved\": true,\n  \"isOnline\": false,\n  \"createdAt\": \"2024-01-01T00:00:00.000Z\",\n  \"lastLogin\": \"2024-01-08T20:00:00.000Z\",\n  \"lastActivityAt\": \"2024-01-08T21:00:00.000Z\",\n  \"profile\": {\n    \"id\": \"profile-uuid\",\n    \"profileType\": \"customer\",\n    \"profileId\": null,\n    \"metadata\": {},\n    \"createdAt\": \"2024-01-01T00:00:00.000Z\",\n    \"updatedAt\": \"2024-01-01T00:00:00.000Z\"\n  }\n}\n```\n\n**Response Fields:**\n- `id`: User unique identifier\n- `email`: User email address\n- `fullName`: User full name\n- `role`: User role information (id, name)\n- `isActive`: Whether the user account is active\n- `isApproved`: Whether the user account is approved\n- `isOnline`: Whether the user is currently online\n- `createdAt`: Account creation timestamp\n- `lastLogin`: Last login timestamp (optional)\n- `lastActivityAt`: Last activity timestamp (optional)\n- `profile`: User profile information (optional, null if no profile exists)\n\n### ⚠️ Error Responses\n\n- **401 Unauthorized**: Invalid or expired token\n- **404 Not Found**: User not found or inactive\n\n**Note**: This is the endpoint for getting user profile information.",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/user/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "user", "me"]
+            },
+            "description": "Get the complete profile information of the currently authenticated user. This is the recommended endpoint for getting user profile."
+          },
+          "response": []
+        },
         {
           "name": "Filter Users",
           "request": {
@@ -2254,108 +2150,6 @@
           "description": "Permission group management endpoints"
         }
       ]
-    },
-    {
-      "name": "GraphQL",
-      "item": [
-        {
-          "name": "User Queries",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"query\": \"query { getUserById(id: \\\"{{user_id}}\\\") { id email fullName } }\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{base_url}}/graphql",
-              "host": ["{{base_url}}"],
-              "path": ["graphql"]
-            },
-            "description": "GraphQL query for user data"
-          },
-          "response": []
-        },
-        {
-          "name": "Store Queries",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"query\": \"query { store(id: \\\"{{store_id}}\\\") { id name isActive } }\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{base_url}}/graphql",
-              "host": ["{{base_url}}"],
-              "path": ["graphql"]
-            },
-            "description": "GraphQL query for store data"
-          },
-          "response": []
-        },
-        {
-          "name": "Transaction Mutations",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"query\": \"mutation { createTransaction(createTransactionInput: { amount: 100.0, type: SALE }) { id amount type } }\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{base_url}}/graphql",
-              "host": ["{{base_url}}"],
-              "path": ["graphql"]
-            },
-            "description": "GraphQL mutation for creating transactions"
-          },
-          "response": []
-        }
-      ],
-      "description": "GraphQL endpoints"
     }
   ],
   "event": [

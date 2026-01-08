@@ -1,4 +1,3 @@
-import { ObjectType, Field } from '@nestjs/graphql';
 import { CashierScheduleAssignment } from 'src/cashier-schedule-assignment/entities/cashier-schedule-assignment.entity';
 import { StoreSchedule } from 'src/store-schedule/entities/store-schedule.entity';
 import { TimeBlockTemplate } from 'src/time-block-template/entities/time-block-template.entity';
@@ -13,30 +12,23 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-@ObjectType()
 @Entity('time_block')
 export class TimeBlock {
-  @Field()
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Field()
   @Column('timestamp with time zone')
   startTime: Date;
 
-  @Field()
   @Column('timestamp with time zone')
   endTime: Date;
 
-  @Field()
   @Column({ type: 'boolean', default: true })
   isAvailable: boolean;
 
-  @Field(() => Number, { nullable: true })
   @Column('integer', { nullable: true, default: 1 })
   maxAssignments?: number; // Número máximo de cajeros que pueden asignarse
 
-  @Field(() => StoreSchedule)
   @ManyToOne(() => StoreSchedule, storeSchedule => storeSchedule.timeBlocks, {
     nullable: false,
     onDelete: 'CASCADE',
@@ -44,22 +36,18 @@ export class TimeBlock {
   @JoinColumn({ name: 'store_schedule_id' })
   storeSchedule: StoreSchedule;
 
-  @Field()
   @Column('uuid', { name: 'store_schedule_id' })
   storeScheduleId: string;
 
-  @Field(() => TimeBlockTemplate, { nullable: true })
   @ManyToOne(() => TimeBlockTemplate, template => template.timeBlocks, {
     nullable: true,
   })
   @JoinColumn({ name: 'template_id' })
   template?: TimeBlockTemplate;
 
-  @Field({ nullable: true })
   @Column('uuid', { name: 'template_id', nullable: true })
   templateId?: string;
 
-  @Field(() => [CashierScheduleAssignment], { nullable: true })
   @OneToMany(() => CashierScheduleAssignment, assignment => assignment.timeBlock, {
     cascade: true,
   })

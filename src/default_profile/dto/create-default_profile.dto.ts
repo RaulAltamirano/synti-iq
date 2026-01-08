@@ -1,19 +1,24 @@
-import { Field, ID } from '@nestjs/graphql';
+import { IsUUID, IsOptional, IsObject, IsArray } from 'class-validator';
 
 export class CreateDefaultProfileDto {
-  @Field(() => ID)
+  @IsUUID()
   userId: string;
 
-  @Field(() => JSON, { nullable: true })
+  @IsOptional()
+  @IsObject()
   preferences?: {
     language?: string;
     theme?: string;
     notifications?: boolean;
   };
 
-  @Field(() => [ID], { nullable: true })
+  @IsOptional()
+  @IsArray()
+  @IsUUID(undefined, { each: true })
   wishlist?: string[];
 
-  @Field(() => [ID], { nullable: true })
+  @IsOptional()
+  @IsArray()
+  @IsUUID(undefined, { each: true })
   viewedProducts?: string[];
 }

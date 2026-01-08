@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './core/app.module';
-import { Logger, ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe, ConsoleLogger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as cookieParser from 'cookie-parser';
 import { initializeOpenTelemetry } from './shared/observability/opentelemetry.config';
@@ -8,8 +8,23 @@ import { RequestIdMiddleware } from './shared/interceptors/request-id.middleware
 
 initializeOpenTelemetry();
 
+class CustomLogger extends ConsoleLogger {
+  log(message: string, context?: string) {
+    if (
+      context === 'InstanceLoader' ||
+      context === 'RouterExplorer' ||
+      context === 'RoutesResolver'
+    ) {
+      return;
+    }
+    super.log(message, context);
+  }
+}
+
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    logger: new CustomLogger(),
+  });
 
   app.use(cookieParser());
 
@@ -69,6 +84,8 @@ async function bootstrap() {
   });
 
   await app.listen(3000);
-  Logger.log(`Swagger documentation is available at: ${await app.getUrl()}/api/docs`);
+  const logger = new Logger('Bootstrap');
+  logger.log(`🚀 Application is running on: ${await app.getUrl()}`);
+  logger.log(`📚 Swagger documentation: ${await app.getUrl()}/api/docs`);
 }
 bootstrap();

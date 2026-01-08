@@ -1,4 +1,3 @@
-import { Field, ObjectType } from '@nestjs/graphql';
 import { Location } from 'src/location/entities/location.entity';
 import {
   ChildEntity,
@@ -12,7 +11,6 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-@ObjectType()
 @Entity('default_profile')
 export class DefaultProfile {
   @PrimaryGeneratedColumn('uuid')
@@ -29,7 +27,6 @@ export class DefaultProfile {
     notifications?: boolean;
   };
 
-  @Field(() => Location, { nullable: true })
   @ManyToOne(() => Location, { nullable: true })
   @JoinColumn()
   defaultAddress: Location;

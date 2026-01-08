@@ -65,11 +65,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
 
       await this.tokenValidator.validate(payload);
 
-      const user = await this.authService.validateUserAndSession(
-        payload.sub,
-        payload.sid,
-        payload.jti,
-      );
+      const user = await this.authService.validateUserAndSession(payload.sub, payload.sid);
 
       if (!user) {
         this.logger.error(`User validation returned null for user: ${payload.sub}`);

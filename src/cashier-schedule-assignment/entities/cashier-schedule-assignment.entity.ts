@@ -1,4 +1,3 @@
-import { ObjectType, Field } from '@nestjs/graphql';
 import { CashierProfile } from 'src/cashier_profile/entities/cashier_profile.entity';
 import { TimeBlock } from 'src/time-block/entities/time-block.entity';
 import {
@@ -12,14 +11,11 @@ import {
 } from 'typeorm';
 import { AssignmentStatus } from '../enums/assignment-status.dto';
 
-@ObjectType()
 @Entity('cashier_schedule_assignment')
 export class CashierScheduleAssignment {
-  @Field()
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Field(() => TimeBlock)
   @ManyToOne(() => TimeBlock, timeBlock => timeBlock.storeSchedule, {
     nullable: false,
     onDelete: 'CASCADE',
@@ -27,11 +23,9 @@ export class CashierScheduleAssignment {
   @JoinColumn({ name: 'time_block_id' })
   timeBlock: TimeBlock;
 
-  @Field()
   @Column('uuid', { name: 'time_block_id' })
   timeBlockId: string;
 
-  @Field(() => CashierProfile)
   @ManyToOne(() => CashierProfile, cashier => cashier.scheduleAssignments, {
     nullable: false,
     onDelete: 'CASCADE',
@@ -39,15 +33,12 @@ export class CashierScheduleAssignment {
   @JoinColumn({ name: 'cashier_id' })
   cashier: CashierProfile;
 
-  @Field()
   @Column('uuid', { name: 'cashier_id' })
   cashierId: string;
 
-  @Field({ nullable: true })
   @Column('uuid', { name: 'recurring_template_id', nullable: true })
   recurringTemplateId?: string;
 
-  @Field(() => AssignmentStatus)
   @Column({
     type: 'enum',
     enum: AssignmentStatus,
@@ -55,24 +46,19 @@ export class CashierScheduleAssignment {
   })
   status: AssignmentStatus;
 
-  @Field(() => Date, { nullable: true })
   @Column('timestamp with time zone', { nullable: true })
   actualStartTime?: Date;
 
-  @Field(() => Date, { nullable: true })
   @Column('timestamp with time zone', { nullable: true })
   actualEndTime?: Date;
 
-  @Field(() => CashierProfile, { nullable: true })
   @ManyToOne(() => CashierProfile, { nullable: true })
   @JoinColumn({ name: 'swap_requested_with_id' })
   swapRequestedWith?: CashierProfile;
 
-  @Field({ nullable: true })
   @Column('uuid', { name: 'swap_requested_with_id', nullable: true })
   swapRequestedWithId?: string;
 
-  @Field({ nullable: true })
   @Column('text', { nullable: true })
   reason?: string;
 

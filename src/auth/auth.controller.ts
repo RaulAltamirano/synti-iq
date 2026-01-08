@@ -5,10 +5,7 @@ import {
   Get,
   Req,
   Res,
-  Delete,
-  Param,
   UnauthorizedException,
-  Query,
   HttpCode,
 } from '@nestjs/common';
 
@@ -20,7 +17,7 @@ import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { SignUpDto } from './dto/sign-up.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
-import { SessionFilterDto } from './dto/session-filter.dto';
+import { TokenResponseHelper } from './helpers/token-response.helper';
 
 @Controller('auth')
 export class AuthController {
@@ -35,6 +32,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('signup')
+  @HttpCode(201)
   async signUp(
     @Body() dto: SignUpDto,
     @Req() req: Request,
@@ -42,13 +40,16 @@ export class AuthController {
   ) {
     const result = await this.authService.signUp(dto, req);
     this.setAuthCookies(res, result.tokens);
+    res.setHeader('Location', `/api/user/me`);
     return {
+      message: 'User registered successfully',
       user: result.user,
+      ...TokenResponseHelper.build(result.tokens),
     };
   }
 
   @Post('login')
-  @HttpCode(201)
+  @HttpCode(200)
   async login(
     @Body() dto: LoginUserDto,
     @Req() req: Request,
@@ -58,10 +59,12 @@ export class AuthController {
     this.setAuthCookies(res, result.tokens);
     return {
       user: result.user,
+      ...TokenResponseHelper.build(result.tokens),
     };
   }
   @Auth('', [])
   @Post('logout')
+  @HttpCode(200)
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const userId = req.user['sub'];
     const token = req.headers.authorization?.split(' ')[1] || req.cookies?.access_token;
@@ -69,9 +72,12 @@ export class AuthController {
     await this.authService.logout(userId, token);
     this.clearAuthCookies(res);
 
-    return null;
+    return {
+      message: 'Successfully logged out',
+    };
   }
   @Post('refresh')
+  @HttpCode(200)
   async refreshTokens(
     @Body() dto: RefreshTokenDto,
     @Req() req: Request,
@@ -84,39 +90,13 @@ export class AuthController {
     }
 
     const tokens = await this.authService.refreshTokens({ refreshToken }, req);
-
     this.setAuthCookies(res, tokens);
-
-    return null;
+    return TokenResponseHelper.build(tokens);
   }
   @Get('logout')
   @Auth('', [])
   async logoutWithoutGuard(@GetToken() accessToken: string, @GetUser() user: User) {
     return this.authService.logout(user.id, accessToken);
-  }
-  @Auth('', [])
-  @Get('profile')
-  async getProfile(@Req() req: Request) {
-    const token = req.headers.authorization?.split(' ')[1];
-    return this.authService.getProfile(token);
-  }
-  @Auth('', [])
-  @Get('sessions')
-  async getActiveSessions(@Req() req: Request, @Query() filters: SessionFilterDto) {
-    const userId = req.user['sub'];
-    return this.authService.getActiveSessions(userId, filters);
-  }
-  @Auth('', [])
-  @Delete('sessions/:sessionId')
-  async deleteDeviceSession(@Req() req: Request, @Param('sessionId') sessionId: string) {
-    const userId = req.user['sub'];
-    return this.authService.deleteDeviceSession(userId, sessionId);
-  }
-  @Auth('', [])
-  @Delete('sessions')
-  async closeAllSessions(@Req() req: Request) {
-    const userId = req.user['sub'];
-    return this.authService.closeAllSessions(userId);
   }
 
   private setAuthCookies(res: Response, tokens: TokensUserDto): void {

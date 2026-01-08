@@ -24,6 +24,9 @@ import { UserProfileModule } from 'src/user_profile/user_profile.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from 'src/user/entities/user.entity';
 import { Role } from 'src/role/entities/role.entity';
+import { AuthSessionManager } from './services/auth-session-manager.service';
+import { AuthMetadataService } from './services/auth-metadata.service';
+import { RateLimitService } from './services/rate-limit.service';
 
 @Module({
   controllers: [AuthController],
@@ -45,6 +48,9 @@ import { Role } from 'src/role/entities/role.entity';
     },
     TokenFormatValidator,
     AnomalyDetectionService,
+    AuthSessionManager,
+    AuthMetadataService,
+    RateLimitService,
   ],
   imports: [
     UserModule,

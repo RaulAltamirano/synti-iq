@@ -1,7 +1,9 @@
-import { InputType, Field, ID } from '@nestjs/graphql';
+import { IsUUID } from 'class-validator';
 
-@InputType()
 export class AssignCashierInput {
-  @Field(() => ID) storeId: string;
-  @Field(() => ID) cashierId: string;
+  @IsUUID()
+  storeId: string;
+
+  @IsUUID()
+  cashierId: string;
 }
