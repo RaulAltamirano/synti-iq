@@ -69,7 +69,7 @@ export class AuthController {
     await this.authService.logout(userId, token);
     this.clearAuthCookies(res);
 
-    return null;
+    return { success: true };
   }
   @Post('refresh')
   async refreshTokens(
@@ -87,7 +87,7 @@ export class AuthController {
 
     this.setAuthCookies(res, tokens);
 
-    return null;
+    return { success: true };
   }
   @Get('logout')
   @Auth([], [])
