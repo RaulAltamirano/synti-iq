@@ -21,9 +21,11 @@ import { BearerTokenExtractor } from './strategies/bearer-token-xtractor';
 import { AnomalyDetectionService } from './services/anomaly-detection.service';
 import { GuardsModule } from './guards/guards.module';
 import { UserProfileModule } from 'src/user_profile/user_profile.module';
+import { SubscriptionModule } from 'src/subscription/subscription.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from 'src/user/entities/user.entity';
 import { Role } from 'src/role/entities/role.entity';
+import { Subscription } from 'src/subscription/entities/subscription.entity';
 import { AuthSessionManager } from './services/auth-session-manager.service';
 import { AuthMetadataService } from './services/auth-metadata.service';
 import { RateLimitService } from './services/rate-limit.service';
@@ -64,7 +66,8 @@ import { RateLimitService } from './services/rate-limit.service';
     PassportModule.register({ defaultStrategy: 'jwt' }),
     GuardsModule,
     UserProfileModule,
-    TypeOrmModule.forFeature([User, Role]),
+    SubscriptionModule,
+    TypeOrmModule.forFeature([User, Role, Subscription]),
   ],
   exports: [AuthService, PassportModule, GuardsModule],
 })

@@ -243,7 +243,6 @@ export class UserService {
         fullName: dto.fullName,
         roleId,
         isActive: true,
-        approvedBy: createdBy ?? null,
         createdAt: new Date(),
       });
 
@@ -317,6 +316,9 @@ export class UserService {
     }
 
     const userProfile = await this.userProfileService.getUserProfile(userId);
+    const approvalStatus = await this.userProfileService.getApprovalStatus(userId, user.role.name);
+    const isOnline = await this.userProfileService.getOnlineStatus(userId, user.role.name);
+    const lastActivityAt = await this.userProfileService.getLastActivityAt(userId, user.role.name);
 
     return {
       id: user.id,
@@ -327,11 +329,13 @@ export class UserService {
         name: user.role.name,
       },
       isActive: user.isActive,
-      isApproved: user.isApproved,
-      isOnline: user.isOnline,
+      isApproved: approvalStatus.isApproved,
+      approvedAt: approvalStatus.approvedAt,
+      approvedBy: approvalStatus.approvedBy,
+      isOnline,
       createdAt: user.createdAt,
       lastLogin: user.lastLogin,
-      lastActivityAt: user.lastActivityAt,
+      lastActivityAt,
       profile: userProfile
         ? {
             id: userProfile.id,
@@ -555,7 +559,28 @@ export class UserService {
   }
 
   async updateLastLogin(userId: string): Promise<void> {
-    await this.userRepository.update(userId, { lastLogin: new Date() });
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['role'],
+    });
+    if (!user) return;
+
+    const now = new Date();
+    user.lastLogin = now;
+    await this.userRepository.save(user);
+
+    await this.userProfileService.updateLastActivity(userId, user.role.name);
+    await this.redisService.del(`user:${userId}`);
+  }
+
+  async updateLastActivity(userId: string): Promise<void> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['role'],
+    });
+    if (!user) return;
+
+    await this.userProfileService.updateLastActivity(userId, user.role.name);
     await this.redisService.del(`user:${userId}`);
   }
 }

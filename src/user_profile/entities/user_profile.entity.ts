@@ -14,7 +14,7 @@ import { SystemRole } from 'src/shared/enums/roles.enum';
 
 @Entity('user_profiles')
 @Check(
-  `(profile_type IN ('cashier', 'delivery', 'provider') AND profile_id IS NOT NULL) OR (profile_type IN ('admin', 'manager', 'customer') AND profile_id IS NULL)`,
+  `(profile_type IN ('cashier', 'delivery', 'provider', 'customer') AND profile_id IS NOT NULL) OR (profile_type IN ('admin', 'manager') AND profile_id IS NULL)`,
 )
 @Index(['profileType', 'profileId'])
 @Index(['profileType'])

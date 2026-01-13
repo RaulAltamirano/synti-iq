@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength, IsEnum } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, MinLength, IsEnum, IsOptional } from 'class-validator';
 import { SystemRole } from 'src/shared/enums/roles.enum';
 
 export class SignUpDto {
@@ -14,9 +14,9 @@ export class SignUpDto {
   @IsString()
   fullName: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsEnum(SystemRole, {
     message: 'Role must be a valid system role',
   })
-  role: SystemRole;
+  role?: SystemRole; // Optional - will always be forced to CUSTOMER by AuthService
 }

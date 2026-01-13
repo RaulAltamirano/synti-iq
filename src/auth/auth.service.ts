@@ -17,6 +17,8 @@ import { RefreshTokenDto } from 'src/auth/dto/refresh-token.dto';
 import { SystemRole } from 'src/shared/enums/roles.enum';
 import { UserProfileService } from 'src/user_profile/user_profile.service';
 import { DataSource, Repository } from 'typeorm';
+import { Subscription } from 'src/subscription/entities/subscription.entity';
+import { SubscriptionStatus } from 'src/subscription/enums/subscription-status.enum';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from 'src/user/entities/user.entity';
 import { Role } from 'src/role/entities/role.entity';
@@ -44,11 +46,7 @@ export class AuthService {
   ) {}
 
   async signUp(dto: SignUpDto, request?: Request): Promise<AuthResponseDto> {
-    if (dto.role !== SystemRole.CUSTOMER) {
-      throw new BadRequestException(
-        'Public registration is only allowed for CUSTOMER role. Please contact an administrator for other roles.',
-      );
-    }
+    const forcedRole = SystemRole.CUSTOMER;
 
     const existingUser = await this.userRepository.findByEmail(dto.email);
     if (existingUser) {
@@ -61,7 +59,7 @@ export class AuthService {
 
     try {
       const role = await this.roleRepository.findOne({
-        where: { name: SystemRole.CUSTOMER },
+        where: { name: forcedRole },
       });
 
       if (!role) {
@@ -82,12 +80,37 @@ export class AuthService {
 
       const userProfile = await this.userProfileService.createProfileForUser(
         savedUser.id,
-        SystemRole.CUSTOMER,
+        forcedRole,
         {},
         queryRunner,
       );
 
-      const validation = await this.userProfileService.validateProfileCoherence(savedUser.id);
+      // Get the CustomerProfile that was created
+      if (!userProfile.profileId) {
+        throw new InternalServerErrorException('CustomerProfile was not created during signup');
+      }
+
+      const days = 14;
+      const now = new Date();
+      const trialEnd = new Date(now);
+      trialEnd.setDate(trialEnd.getDate() + days);
+
+      const subscription = queryRunner.manager.create(Subscription, {
+        customerId: userProfile.profileId,
+        status: SubscriptionStatus.TRIALING,
+        trialStart: now,
+        trialEnd: trialEnd,
+        currentPeriodStart: now,
+        currentPeriodEnd: trialEnd,
+        cancelAtPeriodEnd: false,
+      });
+
+      await queryRunner.manager.save(Subscription, subscription);
+
+      const validation = await this.userProfileService.validateProfileCoherence(
+        savedUser.id,
+        queryRunner,
+      );
       if (!validation.isValid) {
         this.logger.error(
           `Profile coherence validation failed after signUp for user ${savedUser.id}: ${validation.errors.join(', ')}`,
@@ -98,6 +121,8 @@ export class AuthService {
       }
 
       await queryRunner.commitTransaction();
+
+      await this.userRepository.updateLastActivity(savedUser.id);
 
       const metadata = this.metadataService.extractSessionMetadata(request);
       const tokens = await this.sessionManager.createSession(savedUser.id, metadata);
@@ -200,6 +225,7 @@ export class AuthService {
 
     this.validateUserStatus(user);
     await this.sessionService.updateSessionLastUsed(userId, sessionId);
+    await this.userRepository.updateLastActivity(userId);
 
     const metadata = this.metadataService.extractSessionMetadata(request);
     return this.sessionManager.refreshSession(userId, sessionId, dto.refreshToken, metadata);
@@ -258,5 +284,6 @@ export class AuthService {
     }
 
     await this.sessionService.updateSessionLastUsed(userId, sessionId);
+    await this.userRepository.updateLastActivity(userId);
   }
 }

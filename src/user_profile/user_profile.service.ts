@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, QueryRunner } from 'typeorm';
-import { SystemRole, isSystemRole } from 'src/shared/enums/roles.enum';
+import { SystemRole } from 'src/shared/enums/roles.enum';
 import { UserProfile } from './entities/user_profile.entity';
 import { CashierProfile } from 'src/cashier_profile/entities/cashier_profile.entity';
 import { DeliveryProfile } from 'src/delivery_profiles/entities/delivery_profile.entity';
@@ -15,7 +15,12 @@ import { ProviderProfile } from 'src/provider_profile/entities/provider_profile.
 import { CreateCashierProfileDto } from 'src/cashier_profile/dto/create-cashier-profile.dto';
 import { CreateDeliveryProfileDto } from 'src/delivery_profiles/dto/create-delivery-profile.dto';
 import { CreateProviderProfileDto } from 'src/provider_profile/dto/create-provider-profile.dto';
-import { Store } from 'src/store/entities/store.entity';
+import { CustomerProfile } from 'src/customer_profile/entities/customer_profile.entity';
+import { ProfileFactoryService } from './services/profile-factory.service';
+import { ProfileValidationService } from './services/profile-validation.service';
+import { ProfileActivityService } from './services/profile-activity.service';
+import { ProfileApprovalService } from './services/profile-approval.service';
+import { ProfileRepositoryHelper } from './helpers/profile-repository.helper';
 
 @Injectable()
 export class UserProfileService {
@@ -30,113 +35,13 @@ export class UserProfileService {
     private readonly deliveryProfileRepository: Repository<DeliveryProfile>,
     @InjectRepository(ProviderProfile)
     private readonly providerProfileRepository: Repository<ProviderProfile>,
-    @InjectRepository(Store)
-    private readonly storeRepository: Repository<Store>,
+    @InjectRepository(CustomerProfile)
+    private readonly customerProfileRepository: Repository<CustomerProfile>,
+    private readonly profileFactoryService: ProfileFactoryService,
+    private readonly profileValidationService: ProfileValidationService,
+    private readonly profileActivityService: ProfileActivityService,
+    private readonly profileApprovalService: ProfileApprovalService,
   ) {}
-
-  private async createProfileFactory(
-    role: SystemRole,
-    data:
-      | CreateCashierProfileDto
-      | CreateDeliveryProfileDto
-      | CreateProviderProfileDto
-      | Record<string, unknown>,
-    queryRunner: QueryRunner,
-  ): Promise<string | null> {
-    if (!queryRunner) {
-      throw new BadRequestException(
-        `QueryRunner is required when creating specific profiles (CASHIER, DELIVERY, PROVIDER) for role: ${role}`,
-      );
-    }
-
-    let profileId: string | null = null;
-
-    try {
-      switch (role) {
-        case SystemRole.CASHIER:
-          const cashierData = data as CreateCashierProfileDto;
-          const store = await queryRunner.manager.findOne(Store, {
-            where: { id: cashierData.storeId },
-          });
-          if (!store) {
-            throw new NotFoundException(
-              `Failed to create cashier profile: Store with ID ${cashierData.storeId} not found for role ${role}`,
-            );
-          }
-          const cashierProfile = this.cashierProfileRepository.create({
-            ...cashierData,
-            store,
-          });
-          const savedCashier = await queryRunner.manager.save(cashierProfile);
-          profileId = savedCashier.id;
-
-          // Validar que el perfil se creó correctamente
-          const verifyCashier = await queryRunner.manager.findOne(CashierProfile, {
-            where: { id: profileId },
-          });
-          if (!verifyCashier) {
-            throw new InternalServerErrorException(
-              `Failed to create cashier profile for role ${role}: profile with ID ${profileId} not found after creation`,
-            );
-          }
-          return profileId;
-
-        case SystemRole.DELIVERY:
-          const deliveryData = data as CreateDeliveryProfileDto;
-          const deliveryProfile = this.deliveryProfileRepository.create({
-            ...deliveryData,
-          });
-          const savedDelivery = await queryRunner.manager.save(deliveryProfile);
-          profileId = savedDelivery.id;
-
-          // Validar que el perfil se creó correctamente
-          const verifyDelivery = await queryRunner.manager.findOne(DeliveryProfile, {
-            where: { id: profileId },
-          });
-          if (!verifyDelivery) {
-            throw new InternalServerErrorException(
-              `Failed to create delivery profile for role ${role}: profile with ID ${profileId} not found after creation`,
-            );
-          }
-          return profileId;
-
-        case SystemRole.PROVIDER:
-          const providerData = data as CreateProviderProfileDto;
-          const providerProfile = this.providerProfileRepository.create({
-            ...providerData,
-          });
-          const savedProvider = await queryRunner.manager.save(providerProfile);
-          profileId = savedProvider.id;
-
-          // Validar que el perfil se creó correctamente
-          const verifyProvider = await queryRunner.manager.findOne(ProviderProfile, {
-            where: { id: profileId },
-          });
-          if (!verifyProvider) {
-            throw new InternalServerErrorException(
-              `Failed to create provider profile for role ${role}: profile with ID ${profileId} not found after creation`,
-            );
-          }
-          return profileId;
-
-        case SystemRole.ADMIN:
-        case SystemRole.MANAGER:
-        case SystemRole.CUSTOMER:
-          return null;
-
-        default:
-          throw new BadRequestException(
-            `Unsupported role for profile creation: ${role}. Supported roles are CASHIER, DELIVERY, PROVIDER, ADMIN, MANAGER, CUSTOMER`,
-          );
-      }
-    } catch (error) {
-      this.logger.error(
-        `Error creating profile for role ${role}: ${error.message}. Data: ${JSON.stringify(data)}`,
-        error.stack,
-      );
-      throw error;
-    }
-  }
 
   async createProfileForUser(
     userId: string,
@@ -154,13 +59,14 @@ export class UserProfileService {
       SystemRole.CASHIER,
       SystemRole.DELIVERY,
       SystemRole.PROVIDER,
+      SystemRole.CUSTOMER,
     ].includes(role);
 
     let profileId: string | null = null;
     let metadata: Record<string, unknown> | null = null;
 
     if (requiresSpecificProfile) {
-      if (!data) {
+      if (role !== SystemRole.CUSTOMER && !data) {
         throw new BadRequestException(
           `profileData is required for role ${role} (userId: ${userId}). Roles CASHIER, DELIVERY, and PROVIDER require specific profile data.`,
         );
@@ -170,7 +76,7 @@ export class UserProfileService {
           `QueryRunner is required when creating profile for role ${role} (userId: ${userId}). This ensures transaction safety.`,
         );
       }
-      profileId = await this.createProfileFactory(role, data, queryRunner);
+      profileId = await this.profileFactoryService.createProfile(role, data, queryRunner);
     } else {
       metadata = (data as Record<string, unknown>) || {};
     }
@@ -203,148 +109,14 @@ export class UserProfileService {
     }
   }
 
-  async validateProfileCoherence(userId: string): Promise<{
+  async validateProfileCoherence(
+    userId: string,
+    queryRunner?: QueryRunner,
+  ): Promise<{
     isValid: boolean;
     errors: string[];
   }> {
-    const errors: string[] = [];
-
-    try {
-      const user = await this.userProfileRepository.manager
-        .createQueryBuilder()
-        .select('u.id', 'userId')
-        .addSelect('u.roleId', 'roleId')
-        .addSelect('r.name', 'roleName')
-        .addSelect('up.id', 'profileId')
-        .addSelect('up.profile_type', 'profileType')
-        .addSelect('up.profile_id', 'specificProfileId')
-        .from('users', 'u')
-        .leftJoin('roles', 'r', 'r.id = u.roleId')
-        .leftJoin('user_profiles', 'up', 'up.userId = u.id')
-        .where('u.id = :userId', { userId })
-        .andWhere('u.isDelete = false')
-        .getRawOne();
-
-      if (!user) {
-        errors.push(`User with ID ${userId} not found`);
-        return { isValid: false, errors };
-      }
-
-      const roleName = user.roleName;
-      const profileType = user.profileType;
-      const specificProfileId = user.specificProfileId;
-
-      // Validar que roleName no sea null y sea un SystemRole válido
-      if (!roleName) {
-        errors.push(`User with ID ${userId} does not have a role assigned`);
-        return { isValid: false, errors };
-      }
-
-      if (!isSystemRole(roleName)) {
-        errors.push(`Invalid role name: ${roleName}. Must be a valid SystemRole`);
-        return { isValid: false, errors };
-      }
-
-      // Validar que roles que requieren perfiles tengan UserProfile y specificProfileId
-      const requiresProfile = [
-        SystemRole.CASHIER,
-        SystemRole.DELIVERY,
-        SystemRole.PROVIDER,
-      ].includes(roleName);
-
-      if (requiresProfile) {
-        if (!user.profileId) {
-          errors.push(`User with role ${roleName} requires a UserProfile but none exists`);
-        } else if (!specificProfileId) {
-          errors.push(
-            `User with role ${roleName} requires a specific profile (cashier/delivery/provider) but profileId is null`,
-          );
-        } else if (profileType && profileType !== roleName) {
-          errors.push(`Profile type ${profileType} does not match user role ${roleName}`);
-        }
-      }
-
-      // Validar coherencia entre role.name y profileType (solo si existe UserProfile)
-      if (user.profileId) {
-        if (!profileType) {
-          errors.push(`UserProfile exists but profileType is null`);
-        } else if (profileType !== roleName) {
-          errors.push(`Profile type ${profileType} does not match user role ${roleName}`);
-        }
-      }
-
-      // Validar que profileId exista en la tabla correspondiente
-      if (specificProfileId) {
-        // Validar que profileType no sea null antes del switch
-        if (!profileType) {
-          errors.push(
-            `Profile ID ${specificProfileId} exists but profileType is null, cannot validate existence`,
-          );
-        } else if (!isSystemRole(profileType)) {
-          errors.push(`Invalid profileType: ${profileType}. Cannot validate profileId existence`);
-        } else {
-          let exists = false;
-          switch (profileType) {
-            case SystemRole.CASHIER:
-              const cashier = await this.cashierProfileRepository.findOne({
-                where: { id: specificProfileId },
-              });
-              exists = !!cashier;
-              break;
-            case SystemRole.DELIVERY:
-              const delivery = await this.deliveryProfileRepository.findOne({
-                where: { id: specificProfileId },
-              });
-              exists = !!delivery;
-              break;
-            case SystemRole.PROVIDER:
-              const provider = await this.providerProfileRepository.findOne({
-                where: { id: specificProfileId },
-              });
-              exists = !!provider;
-              break;
-            default:
-              // Para roles que no requieren specificProfileId, no validamos existencia
-              exists = true;
-              break;
-          }
-
-          if (!exists) {
-            errors.push(
-              `Profile ID ${specificProfileId} for type ${profileType} does not exist in the corresponding table`,
-            );
-          }
-        }
-      }
-
-      const isValid = errors.length === 0;
-
-      if (!isValid) {
-        this.logger.warn(
-          `Profile coherence validation failed for user ${userId}. Errors: ${errors.join('; ')}`,
-          {
-            userId,
-            roleName,
-            profileType,
-            hasProfile: !!user.profileId,
-            specificProfileId,
-          },
-        );
-      }
-
-      return {
-        isValid,
-        errors,
-      };
-    } catch (error) {
-      this.logger.error(
-        `Error validating profile coherence for user ${userId}: ${error.message}`,
-        error.stack,
-        { userId },
-      );
-      errors.push(`Validation error: ${error.message}`);
-      return { isValid: false, errors };
-    }
+    return this.profileValidationService.validate(userId, queryRunner);
   }
 
   async getUserProfile(userId: string): Promise<UserProfile | null> {
@@ -356,7 +128,6 @@ export class UserProfileService {
       return null;
     }
 
-    // Validar coherencia al obtener el perfil
     const validation = await this.validateProfileCoherence(userId);
     if (!validation.isValid) {
       this.logger.warn(
@@ -364,41 +135,55 @@ export class UserProfileService {
       );
     }
 
-    if (profile.profileId) {
-      switch (profile.profileType) {
-        case SystemRole.CASHIER:
-          const cashier = await this.cashierProfileRepository.findOne({
-            where: { id: profile.profileId },
-          });
-          if (cashier) {
-            (profile as UserProfile & { specificProfile: CashierProfile }).specificProfile =
-              cashier;
-          }
-          break;
-
-        case SystemRole.DELIVERY:
-          const delivery = await this.deliveryProfileRepository.findOne({
-            where: { id: profile.profileId },
-          });
-          if (delivery) {
-            (profile as UserProfile & { specificProfile: DeliveryProfile }).specificProfile =
-              delivery;
-          }
-          break;
-
-        case SystemRole.PROVIDER:
-          const provider = await this.providerProfileRepository.findOne({
-            where: { id: profile.profileId },
-          });
-          if (provider) {
-            (profile as UserProfile & { specificProfile: ProviderProfile }).specificProfile =
-              provider;
-          }
-          break;
-      }
+    if (profile.profileId && profile.profileType) {
+      await this.loadSpecificProfile(profile);
     }
 
     return profile;
+  }
+
+  private async loadSpecificProfile(profile: UserProfile): Promise<void> {
+    switch (profile.profileType) {
+      case SystemRole.CASHIER:
+        const cashier = await this.cashierProfileRepository.findOne({
+          where: { id: profile.profileId },
+        });
+        if (cashier) {
+          (profile as UserProfile & { specificProfile: CashierProfile }).specificProfile = cashier;
+        }
+        break;
+
+      case SystemRole.DELIVERY:
+        const delivery = await this.deliveryProfileRepository.findOne({
+          where: { id: profile.profileId },
+        });
+        if (delivery) {
+          (profile as UserProfile & { specificProfile: DeliveryProfile }).specificProfile =
+            delivery;
+        }
+        break;
+
+      case SystemRole.PROVIDER:
+        const provider = await this.providerProfileRepository.findOne({
+          where: { id: profile.profileId },
+        });
+        if (provider) {
+          (profile as UserProfile & { specificProfile: ProviderProfile }).specificProfile =
+            provider;
+        }
+        break;
+
+      case SystemRole.CUSTOMER:
+        const customer = await this.customerProfileRepository.findOne({
+          where: { id: profile.profileId },
+          relations: ['subscriptions'],
+        });
+        if (customer) {
+          (profile as UserProfile & { specificProfile: CustomerProfile }).specificProfile =
+            customer;
+        }
+        break;
+    }
   }
 
   async updateProfile(userId: string, data: Record<string, unknown>): Promise<UserProfile> {
@@ -410,19 +195,16 @@ export class UserProfileService {
       throw new NotFoundException(`Profile not found for user: ${userId}`);
     }
 
-    if (profile.profileId) {
-      switch (profile.profileType) {
-        case SystemRole.CASHIER:
-          await this.cashierProfileRepository.update(profile.profileId, data);
-          break;
+    if (profile.profileId && profile.profileType) {
+      const repository = ProfileRepositoryHelper.getRepositoryForProfileType(profile.profileType, {
+        cashier: this.cashierProfileRepository,
+        delivery: this.deliveryProfileRepository,
+        provider: this.providerProfileRepository,
+        customer: this.customerProfileRepository,
+      });
 
-        case SystemRole.DELIVERY:
-          await this.deliveryProfileRepository.update(profile.profileId, data);
-          break;
-
-        case SystemRole.PROVIDER:
-          await this.providerProfileRepository.update(profile.profileId, data);
-          break;
+      if (repository) {
+        await repository.update(profile.profileId, data);
       }
     } else {
       profile.metadata = { ...profile.metadata, ...data };
@@ -443,7 +225,7 @@ export class UserProfileService {
       return;
     }
 
-    if (profile.profileId) {
+    if (profile.profileId && profile.profileType) {
       switch (profile.profileType) {
         case SystemRole.CASHIER:
           await manager.delete(CashierProfile, { id: profile.profileId });
@@ -456,9 +238,36 @@ export class UserProfileService {
         case SystemRole.PROVIDER:
           await manager.delete(ProviderProfile, { id: profile.profileId });
           break;
+
+        case SystemRole.CUSTOMER:
+          await manager.delete(CustomerProfile, { id: profile.profileId });
+          break;
       }
     }
 
     await manager.delete(UserProfile, { userId });
+  }
+
+  async getApprovalStatus(
+    userId: string,
+    roleName: SystemRole,
+  ): Promise<{
+    isApproved: boolean;
+    approvedAt: Date | null;
+    approvedBy: string | null;
+  }> {
+    return this.profileApprovalService.getApprovalStatus(userId, roleName);
+  }
+
+  async getOnlineStatus(userId: string, roleName: SystemRole): Promise<boolean> {
+    return this.profileActivityService.getOnlineStatus(userId, roleName);
+  }
+
+  async updateLastActivity(userId: string, roleName: SystemRole): Promise<void> {
+    return this.profileActivityService.updateLastActivity(userId, roleName);
+  }
+
+  async getLastActivityAt(userId: string, roleName: SystemRole): Promise<Date | null> {
+    return this.profileActivityService.getLastActivityAt(userId, roleName);
   }
 }

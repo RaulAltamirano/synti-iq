@@ -12,6 +12,7 @@ import {
   UpdateDateColumn,
   OneToMany,
 } from 'typeorm';
+import { AddressType } from '../enums/address-type.enum';
 
 @Entity('locations')
 export class Location {
@@ -22,21 +23,21 @@ export class Location {
   name: string;
 
   @Column('text')
-  fullAddress: string; // Nombre más descriptivo que 'address'
+  fullAddress: string;
 
   @Column('text', { nullable: true })
-  addressReference: string; // Nombre más claro para la referencia
+  addressReference: string;
 
   @Index({ spatial: true })
   @Column({
     type: 'geometry',
     spatialFeatureType: 'Point',
     srid: 4326,
-    nullable: true, // Permite valores nulos
+    nullable: true,
   })
   coordinates: Point;
   @ManyToOne(() => User, { nullable: true })
-  @JoinColumn()
+  @JoinColumn({ name: 'userId' })
   user: User;
 
   @OneToMany(() => Store, store => store.location)
@@ -45,6 +46,20 @@ export class Location {
   @Column('boolean', { default: false })
   isDefault: boolean;
 
+  @Column({
+    type: 'enum',
+    enum: AddressType,
+    nullable: true,
+  })
+  addressType: AddressType | null;
+
+  @Column('boolean', { default: false })
+  isDefaultShipping: boolean;
+
+  @Column('boolean', { default: false })
+  isDefaultBilling: boolean;
+
+  @Index('IDX_locations_user_addressType', ['userId', 'addressType'])
   @CreateDateColumn()
   createdAt: Date;
 

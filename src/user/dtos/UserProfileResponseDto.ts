@@ -8,6 +8,8 @@ export class UserProfileResponseDto {
   };
   isActive: boolean;
   isApproved: boolean;
+  approvedAt?: Date | null;
+  approvedBy?: string | null;
   isOnline: boolean;
   createdAt: Date;
   lastLogin?: Date;

@@ -53,26 +53,26 @@ export class UsersSeed {
     try {
       const hashedPassword = await this.passwordService.hash(adminPassword);
 
-      const user = this.userRepository.create({
+      const userData = {
         email: adminEmail,
         password: hashedPassword,
         fullName: adminFullName,
         roleId: adminRole.id,
         isActive: true,
-        isApproved: true,
-      });
+      };
 
-      const savedUser = await queryRunner.manager.save(user);
+      const user = queryRunner.manager.create(User, userData);
+      const savedUser = await queryRunner.manager.save(User, user);
       this.logger.log(`Created admin user: ${savedUser.email} (ID: ${savedUser.id})`);
 
-      const userProfile = this.userProfileRepository.create({
+      const userProfile = queryRunner.manager.create(UserProfile, {
         userId: savedUser.id,
         profileType: SystemRole.ADMIN,
         profileId: null,
         metadata: {},
       });
 
-      await queryRunner.manager.save(userProfile);
+      await queryRunner.manager.save(UserProfile, userProfile);
       this.logger.log(`Created admin user profile for user: ${savedUser.id}`);
 
       await queryRunner.commitTransaction();
