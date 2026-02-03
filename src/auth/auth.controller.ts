@@ -8,7 +8,7 @@ import {
   UnauthorizedException,
   HttpCode,
 } from '@nestjs/common';
-
+import { ApiTags } from '@nestjs/swagger';
 import { User } from 'src/user/entities/user.entity';
 import { Auth, GetUser } from './decorator';
 import { GetToken } from 'src/auth/decorator/token.decorator';
@@ -18,7 +18,10 @@ import { AuthService } from './auth.service';
 import { SignUpDto } from './dto/sign-up.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { TokenResponseHelper } from './helpers/token-response.helper';
+import { ApiDoc } from 'src/shared/decorators';
+import { authEndpoints } from 'src/docs/auth.endpoints';
 
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   private readonly isProduction = process.env.NODE_ENV === 'production';
@@ -31,6 +34,7 @@ export class AuthController {
 
   constructor(private readonly authService: AuthService) {}
 
+  @ApiDoc(authEndpoints, 'signup')
   @Post('signup')
   @HttpCode(201)
   async signUp(
@@ -48,6 +52,7 @@ export class AuthController {
     };
   }
 
+  @ApiDoc(authEndpoints, 'login')
   @Post('login')
   @HttpCode(200)
   async login(
@@ -62,6 +67,7 @@ export class AuthController {
       ...TokenResponseHelper.build(result.tokens, result.sessionId),
     };
   }
+  @ApiDoc(authEndpoints, 'logout')
   @Auth('', [])
   @Post('logout')
   @HttpCode(200)
@@ -93,6 +99,7 @@ export class AuthController {
     this.setAuthCookies(res, result.tokens);
     return TokenResponseHelper.build(result.tokens, result.sessionId);
   }
+  @ApiDoc(authEndpoints, 'logoutWithoutGuard')
   @Get('logout')
   @Auth('', [])
   async logoutWithoutGuard(@GetToken() accessToken: string, @GetUser() user: User) {

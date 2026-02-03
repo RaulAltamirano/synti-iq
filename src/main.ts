@@ -37,6 +37,7 @@ async function bootstrap() {
       'API for managing store schedules, cashiers, products, inventory, statistics, and shipping operations',
     )
     .setVersion('1.0')
+    .addTag('Auth', 'Authentication and session management')
     .addTag('store-schedule', 'Store hours and availability management')
     .addTag('cashier-schedule', 'Cashier shift scheduling and management')
     .addTag('products', 'Product catalog and management')
