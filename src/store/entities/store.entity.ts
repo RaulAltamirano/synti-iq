@@ -1,4 +1,4 @@
-import { CashierProfile } from 'src/cashier_profile/entities/cashier_profile.entity';
+import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.entity';
 import { Inventory } from 'src/inventory/entities/inventory.entity';
 import { Location } from 'src/location/entities/location.entity';
 import { PaymentMethod } from 'src/payment-method/entities/payment-method.entity';

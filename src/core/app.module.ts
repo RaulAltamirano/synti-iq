@@ -22,7 +22,7 @@ import { StoreScheduleModule } from 'src/store-schedule/store-schedule.module';
 import { TimeBlockModule } from 'src/time-block/time-block.module';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
-import { ProductCategorieModule } from 'src/product-categorie/product-categorie.module';
+import { ProductCategorieModule } from 'src/product-category/product-categorie.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ResponseModule } from 'src/shared/response/response.module';
 

@@ -13,6 +13,11 @@ import { CreateUserSessionDto } from 'src/user-session/dto/create-user-session.d
 import { TokensUserDto } from 'src/auth/dto';
 import { SessionMetadata } from '../interfaces/session-metadata.interface';
 
+export interface CreateSessionResult {
+  tokens: TokensUserDto;
+  sessionId: string;
+}
+
 @Injectable()
 export class AuthSessionManager {
   private readonly logger = new Logger(AuthSessionManager.name);
@@ -24,7 +29,7 @@ export class AuthSessionManager {
     private readonly anomalyDetectionService: AnomalyDetectionService,
   ) {}
 
-  async createSession(userId: string, metadata: SessionMetadata): Promise<TokensUserDto> {
+  async createSession(userId: string, metadata: SessionMetadata): Promise<CreateSessionResult> {
     try {
       if (!userId) {
         throw new BadRequestException('User ID is required');
@@ -56,7 +61,7 @@ export class AuthSessionManager {
         deviceInfo: metadata.deviceInfo,
       });
 
-      return tokens;
+      return { tokens, sessionId };
     } catch (error) {
       this.logger.error(
         `Error creating user session for user ${userId}: ${error.message}`,
@@ -76,7 +81,7 @@ export class AuthSessionManager {
     sessionId: string,
     refreshToken: string,
     metadata: SessionMetadata,
-  ): Promise<TokensUserDto> {
+  ): Promise<CreateSessionResult> {
     await this.checkAnomalies(userId, sessionId, metadata);
 
     await this.tokenFactory.invalidateRefreshToken(userId, sessionId, refreshToken);
@@ -90,7 +95,7 @@ export class AuthSessionManager {
       deviceInfo: metadata.deviceInfo,
     });
 
-    return tokens;
+    return { tokens, sessionId };
   }
 
   async invalidateSession(userId: string, sessionId: string): Promise<void> {

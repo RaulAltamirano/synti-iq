@@ -10,8 +10,8 @@ import {
 } from 'typeorm';
 import { TransactionType } from '../enums/TransactionType';
 import { TransactionStatus } from '../enums/TransactionStatus';
-import { CashRegisterSession } from 'src/cash_register_session/entities/cash_register_session.entity';
-import { CashierProfile } from 'src/cashier_profile/entities/cashier_profile.entity';
+import { CashRegisterSession } from 'src/cash-register-session/entities/cash_register_session.entity';
+import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.entity';
 import { Sale } from 'src/sale/entities/sale.entity';
 
 @Entity('transactions')

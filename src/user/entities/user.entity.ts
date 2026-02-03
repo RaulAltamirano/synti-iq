@@ -9,7 +9,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { UserProfile } from 'src/user_profile/entities/user_profile.entity';
+import { UserProfile } from 'src/user-profile/entities/user_profile.entity';
 
 @Entity('users')
 export class User {

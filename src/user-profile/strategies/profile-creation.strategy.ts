@@ -7,15 +7,15 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { CashierProfile } from 'src/cashier_profile/entities/cashier_profile.entity';
-import { DeliveryProfile } from 'src/delivery_profiles/entities/delivery_profile.entity';
-import { ProviderProfile } from 'src/provider_profile/entities/provider_profile.entity';
-import { CustomerProfile } from 'src/customer_profile/entities/customer_profile.entity';
+import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.entity';
+import { DeliveryProfile } from 'src/delivery-profiles/entities/delivery_profile.entity';
+import { ProviderProfile } from 'src/provider-profile/entities/provider_profile.entity';
+import { CustomerProfile } from 'src/customer-profile/entities/customer_profile.entity';
 import { Store } from 'src/store/entities/store.entity';
-import { CreateCashierProfileDto } from 'src/cashier_profile/dto/create-cashier-profile.dto';
-import { CreateDeliveryProfileDto } from 'src/delivery_profiles/dto/create-delivery-profile.dto';
-import { CreateProviderProfileDto } from 'src/provider_profile/dto/create-provider-profile.dto';
-import { CreateCustomerProfileDto } from 'src/customer_profile/dto/create-customer-profile.dto';
+import { CreateCashierProfileDto } from 'src/cashier-profile/dto/create-cashier-profile.dto';
+import { CreateDeliveryProfileDto } from 'src/delivery-profiles/dto/create-delivery-profile.dto';
+import { CreateProviderProfileDto } from 'src/provider-profile/dto/create-provider-profile.dto';
+import { CreateCustomerProfileDto } from 'src/customer-profile/dto/create-customer-profile.dto';
 
 export interface IProfileCreationStrategy {
   create(data: unknown, queryRunner: QueryRunner): Promise<string>;

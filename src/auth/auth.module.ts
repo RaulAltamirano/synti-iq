@@ -20,7 +20,7 @@ import { CookieTokenExtractor } from './strategies/cookie-token-extractor';
 import { BearerTokenExtractor } from './strategies/bearer-token-xtractor';
 import { AnomalyDetectionService } from './services/anomaly-detection.service';
 import { GuardsModule } from './guards/guards.module';
-import { UserProfileModule } from 'src/user_profile/user_profile.module';
+import { UserProfileModule } from 'src/user-profile/user_profile.module';
 import { SubscriptionModule } from 'src/subscription/subscription.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from 'src/user/entities/user.entity';

@@ -1,10 +1,10 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { QueryRunner } from 'typeorm';
 import { SystemRole } from 'src/shared/enums/roles.enum';
-import { CreateCashierProfileDto } from 'src/cashier_profile/dto/create-cashier-profile.dto';
-import { CreateDeliveryProfileDto } from 'src/delivery_profiles/dto/create-delivery-profile.dto';
-import { CreateProviderProfileDto } from 'src/provider_profile/dto/create-provider-profile.dto';
-import { CreateCustomerProfileDto } from 'src/customer_profile/dto/create-customer-profile.dto';
+import { CreateCashierProfileDto } from 'src/cashier-profile/dto/create-cashier-profile.dto';
+import { CreateDeliveryProfileDto } from 'src/delivery-profiles/dto/create-delivery-profile.dto';
+import { CreateProviderProfileDto } from 'src/provider-profile/dto/create-provider-profile.dto';
+import { CreateCustomerProfileDto } from 'src/customer-profile/dto/create-customer-profile.dto';
 import {
   CashierProfileStrategy,
   DeliveryProfileStrategy,

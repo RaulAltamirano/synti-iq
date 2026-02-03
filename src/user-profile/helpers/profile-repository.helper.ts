@@ -1,9 +1,9 @@
 import { Repository } from 'typeorm';
 import { SystemRole } from 'src/shared/enums/roles.enum';
-import { CashierProfile } from 'src/cashier_profile/entities/cashier_profile.entity';
-import { DeliveryProfile } from 'src/delivery_profiles/entities/delivery_profile.entity';
-import { ProviderProfile } from 'src/provider_profile/entities/provider_profile.entity';
-import { CustomerProfile } from 'src/customer_profile/entities/customer_profile.entity';
+import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.entity';
+import { DeliveryProfile } from 'src/delivery-profiles/entities/delivery_profile.entity';
+import { ProviderProfile } from 'src/provider-profile/entities/provider_profile.entity';
+import { CustomerProfile } from 'src/customer-profile/entities/customer_profile.entity';
 
 export type SpecificProfileRepository =
   | Repository<CashierProfile>

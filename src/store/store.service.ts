@@ -8,7 +8,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { CashierProfile } from 'src/cashier_profile/entities/cashier_profile.entity';
+import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.entity';
 import { Repository } from 'typeorm';
 import { Store } from './entities/store.entity';
 import { CreateStoreDto } from './dto/create-store.dto';

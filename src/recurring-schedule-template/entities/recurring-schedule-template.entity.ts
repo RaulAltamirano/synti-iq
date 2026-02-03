@@ -1,5 +1,5 @@
 import { CashierScheduleAssignment } from 'src/cashier-schedule-assignment/entities/cashier-schedule-assignment.entity';
-import { CashierProfile } from 'src/cashier_profile/entities/cashier_profile.entity';
+import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.entity';
 import { Store } from 'src/store/entities/store.entity';
 import {
   Entity,

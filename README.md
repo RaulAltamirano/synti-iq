@@ -35,7 +35,7 @@ Enterprise-grade multi-channel e-commerce platform built with NestJS for managin
 
 ```bash
 git clone <repository-url>
-cd synti-iq
+cd synti-iq-api
 ```
 
 ### 2. Install dependencies
@@ -160,15 +160,19 @@ yarn build              # Build for production
 ```
 src/
 ├── auth/               # Authentication & authorization
+├── cash-register-session/  # Cash register sessions
 ├── cashier-profile/    # Cashier profile management
 ├── cashier-schedule-assignment/  # Cashier scheduling
 ├── core/               # Core application module
+├── customer-profile/   # Customer profile management
 ├── default-profile/    # Default profile management
+├── delivery-profiles/  # Delivery profile management
 ├── inventory/          # Inventory management
 ├── inventory-movement/ # Inventory movement tracking
 ├── location/           # Location management
 ├── product/            # Product catalog
-├── product-categorie/  # Product categories
+├── product-category/   # Product categories
+├── provider-profile/   # Provider profile management
 ├── recurring-schedule-template/  # Recurring schedules
 ├── sale/               # Sales management
 ├── sale-item/          # Sale items
@@ -177,8 +181,11 @@ src/
 ├── time-block/         # Time block management
 ├── transactions/       # Transaction management
 ├── user/               # User management
+├── user-profile/       # User profile management
 └── user-session/       # User session management
 ```
+
+**Conventions:** All folder names use kebab-case. Package name: `synti-iq-api`.
 
 ## Environment Variables
 
@@ -216,6 +223,10 @@ docker-compose logs -f
 # Rebuild containers
 docker-compose up -d --build
 ```
+
+## Workspace
+
+This project is part of the SyntiIQ workspace. To open both frontend and backend together in Cursor/VSCode, use `synti-iq.code-workspace` from the parent directory.
 
 ## License
 

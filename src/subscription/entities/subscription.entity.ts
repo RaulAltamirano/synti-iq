@@ -1,4 +1,4 @@
-import { CustomerProfile } from 'src/customer_profile/entities/customer_profile.entity';
+import { CustomerProfile } from 'src/customer-profile/entities/customer_profile.entity';
 import {
   Entity,
   PrimaryGeneratedColumn,

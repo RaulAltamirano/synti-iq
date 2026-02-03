@@ -3,9 +3,9 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ProfileActivityService } from './profile-activity.service';
 import { UserProfile } from '../entities/user_profile.entity';
-import { CashierProfile } from 'src/cashier_profile/entities/cashier_profile.entity';
-import { DeliveryProfile } from 'src/delivery_profiles/entities/delivery_profile.entity';
-import { ProviderProfile } from 'src/provider_profile/entities/provider_profile.entity';
+import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.entity';
+import { DeliveryProfile } from 'src/delivery-profiles/entities/delivery_profile.entity';
+import { ProviderProfile } from 'src/provider-profile/entities/provider_profile.entity';
 import { SystemRole } from 'src/shared/enums/roles.enum';
 
 describe('ProfileActivityService', () => {

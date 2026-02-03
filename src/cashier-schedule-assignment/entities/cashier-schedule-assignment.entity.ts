@@ -1,4 +1,4 @@
-import { CashierProfile } from 'src/cashier_profile/entities/cashier_profile.entity';
+import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.entity';
 import { TimeBlock } from 'src/time-block/entities/time-block.entity';
 import {
   Entity,

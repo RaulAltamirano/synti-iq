@@ -12,7 +12,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { PermissionService } from 'src/permission/permission.service';
 import { UserService } from 'src/user/user.service';
-import { UserProfileService } from 'src/user_profile/user_profile.service';
+import { UserProfileService } from 'src/user-profile/user_profile.service';
 import { SystemRole } from 'src/shared/enums/roles.enum';
 
 @Injectable()

@@ -4,6 +4,9 @@ export class AuthResponseDto {
   user: {
     id: string;
     email: string;
+    fullName?: string;
+    role?: string;
   };
   tokens: TokensUserDto;
+  sessionId: string;
 }

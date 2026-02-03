@@ -12,10 +12,10 @@ import { UserSessionService } from 'src/user-session/user-session.service';
 import { UserService } from 'src/user/user.service';
 import { SignUpDto } from 'src/auth/dto/sign-up.dto';
 import { AuthResponseDto } from 'src/auth/dto/auth-response.dto';
-import { LoginUserDto, TokensUserDto } from 'src/auth/dto';
+import { LoginUserDto, RefreshTokensResponseDto } from 'src/auth/dto';
 import { RefreshTokenDto } from 'src/auth/dto/refresh-token.dto';
 import { SystemRole } from 'src/shared/enums/roles.enum';
-import { UserProfileService } from 'src/user_profile/user_profile.service';
+import { UserProfileService } from 'src/user-profile/user_profile.service';
 import { DataSource, Repository } from 'typeorm';
 import { Subscription } from 'src/subscription/entities/subscription.entity';
 import { SubscriptionStatus } from 'src/subscription/enums/subscription-status.enum';
@@ -125,11 +125,17 @@ export class AuthService {
       await this.userRepository.updateLastActivity(savedUser.id);
 
       const metadata = this.metadataService.extractSessionMetadata(request);
-      const tokens = await this.sessionManager.createSession(savedUser.id, metadata);
+      const { tokens, sessionId } = await this.sessionManager.createSession(savedUser.id, metadata);
 
       return {
-        user: { id: savedUser.id, email: savedUser.email },
+        user: {
+          id: savedUser.id,
+          email: savedUser.email,
+          fullName: savedUser.fullName,
+          role: role.name,
+        },
         tokens,
+        sessionId,
       };
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -164,11 +170,22 @@ export class AuthService {
 
     await this.invalidatePreviousSessions(user.id, metadata);
 
-    const tokens = await this.sessionManager.createSession(user.id, metadata);
+    const { tokens, sessionId } = await this.sessionManager.createSession(user.id, metadata);
+
+    const userWithRole = await this.userEntityRepository.findOne({
+      where: { id: user.id },
+      relations: ['role'],
+    });
 
     return {
-      user: { id: user.id, email: user.email },
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: userWithRole?.fullName,
+        role: userWithRole?.role?.name,
+      },
       tokens,
+      sessionId,
     };
   }
 
@@ -210,7 +227,7 @@ export class AuthService {
     await this.sessionManager.invalidateSession(userId, sessionId);
   }
 
-  async refreshTokens(dto: RefreshTokenDto, request?: Request): Promise<TokensUserDto> {
+  async refreshTokens(dto: RefreshTokenDto, request?: Request): Promise<RefreshTokensResponseDto> {
     const { userId, sessionId } = await this.sessionManager.verifyRefreshToken(dto.refreshToken);
 
     const isValidSession = await this.sessionService.validateSessionOwnership(userId, sessionId);

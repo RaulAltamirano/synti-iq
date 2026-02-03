@@ -44,7 +44,7 @@ export class AuthController {
     return {
       message: 'User registered successfully',
       user: result.user,
-      ...TokenResponseHelper.build(result.tokens),
+      ...TokenResponseHelper.build(result.tokens, result.sessionId),
     };
   }
 
@@ -59,7 +59,7 @@ export class AuthController {
     this.setAuthCookies(res, result.tokens);
     return {
       user: result.user,
-      ...TokenResponseHelper.build(result.tokens),
+      ...TokenResponseHelper.build(result.tokens, result.sessionId),
     };
   }
   @Auth('', [])
@@ -89,9 +89,9 @@ export class AuthController {
       throw new UnauthorizedException('Refresh token is required');
     }
 
-    const tokens = await this.authService.refreshTokens({ refreshToken }, req);
-    this.setAuthCookies(res, tokens);
-    return TokenResponseHelper.build(tokens);
+    const result = await this.authService.refreshTokens({ refreshToken }, req);
+    this.setAuthCookies(res, result.tokens);
+    return TokenResponseHelper.build(result.tokens, result.sessionId);
   }
   @Get('logout')
   @Auth('', [])

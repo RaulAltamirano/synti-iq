@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { StoreService } from './store.service';
 import { StoreController } from './store.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { CashierProfile } from 'src/cashier_profile/entities/cashier_profile.entity';
+import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.entity';
 import { Store } from './entities/store.entity';
 import { Inventory } from 'src/inventory/entities/inventory.entity';
 import { Sale } from 'src/sale/entities/sale.entity';

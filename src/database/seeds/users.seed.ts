@@ -4,7 +4,7 @@ import { Repository, DataSource } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { User } from 'src/user/entities/user.entity';
 import { Role } from 'src/role/entities/role.entity';
-import { UserProfile } from 'src/user_profile/entities/user_profile.entity';
+import { UserProfile } from 'src/user-profile/entities/user_profile.entity';
 import { SystemRole } from 'src/shared/enums/roles.enum';
 import { PasswordService } from 'src/auth/services/password/password.service';
 

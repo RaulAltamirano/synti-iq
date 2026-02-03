@@ -21,7 +21,7 @@ import { FilterUserDto } from 'src/auth/dto/filter-user.dto';
 import { PaginatedResponse } from 'src/pagination/interfaces/PaginatedResponse';
 import { createHash } from 'crypto';
 import { CreateUserDto } from './dtos/CreateUserDto';
-import { UserProfileService } from 'src/user_profile/user_profile.service';
+import { UserProfileService } from 'src/user-profile/user_profile.service';
 import { Role } from 'src/role/entities/role.entity';
 import { SystemRole } from 'src/shared/enums/roles.enum';
 @Injectable()
@@ -324,10 +324,7 @@ export class UserService {
       id: user.id,
       email: user.email,
       fullName: user.fullName,
-      role: {
-        id: user.role.id,
-        name: user.role.name,
-      },
+      role: user.role?.name,
       isActive: user.isActive,
       isApproved: approvalStatus.isApproved,
       approvedAt: approvalStatus.approvedAt,

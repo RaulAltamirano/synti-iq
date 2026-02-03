@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ScheduleService } from './schedule.service';
 import { ScheduleController } from './schedule.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { CashierProfileModule } from 'src/cashier_profile/cashier_profile.module';
+import { CashierProfileModule } from 'src/cashier-profile/cashier_profile.module';
 import { RecurringScheduleTemplate } from 'src/recurring-schedule-template/entities/recurring-schedule-template.entity';
 import { StoreModule } from 'src/store/store.module';
 import { TimeBlockTemplate } from 'src/time-block-template/entities/time-block-template.entity';

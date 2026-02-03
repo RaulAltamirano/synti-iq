@@ -1,11 +1,12 @@
 import { TokensUserDto } from '../dto/token-user.dto';
 
 export class TokenResponseHelper {
-  static build(tokens: TokensUserDto) {
+  static build(tokens: TokensUserDto, sessionId?: string) {
     return {
       token_type: 'Bearer',
       expires_in: this.getExpiresInSeconds(tokens.token.expiresIn),
       refresh_expires_in: this.getExpiresInSeconds(tokens.refreshToken.expiresIn),
+      sessionId,
     };
   }
 

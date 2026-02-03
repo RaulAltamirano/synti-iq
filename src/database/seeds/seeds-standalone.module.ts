@@ -5,7 +5,7 @@ import { Permission } from 'src/permission/entities/permission.entity';
 import { PermissionGroup } from 'src/permission-group/entities/permission-group.entity';
 import { Role } from 'src/role/entities/role.entity';
 import { User } from 'src/user/entities/user.entity';
-import { UserProfile } from 'src/user_profile/entities/user_profile.entity';
+import { UserProfile } from 'src/user-profile/entities/user_profile.entity';
 import { PermissionsSeed } from './permissions.seed';
 import { PermissionGroupsSeed } from './permission-groups.seed';
 import { RolesSeed } from './roles.seed';
