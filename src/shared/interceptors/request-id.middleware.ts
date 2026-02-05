@@ -9,6 +9,7 @@ export const requestContext = new AsyncLocalStorage<{ requestId: string }>();
 export class RequestIdMiddleware implements NestMiddleware {
   use(req: Request, res: Response, next: NextFunction) {
     const requestId = (req.headers['x-request-id'] as string) || uuidv4();
+    (req.headers as Record<string, string>)['x-request-id'] = requestId;
 
     requestContext.run({ requestId }, () => {
       res.setHeader('X-Request-ID', requestId);

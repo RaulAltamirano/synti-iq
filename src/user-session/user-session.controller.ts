@@ -10,7 +10,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiCookieAuth } from '@nestjs/swagger';
 import { UserSessionService } from './user-session.service';
 import { CreateUserSessionDto } from './dto/create-user-session.dto';
 import { FilterUserSessionDto } from './dto/filter-user-session.dto';
@@ -22,7 +22,7 @@ import { ApiDoc } from 'src/shared/decorators';
 import { userSessionEndpoints } from 'src/docs/user-session.endpoints';
 
 @ApiTags('User Session')
-@ApiBearerAuth()
+@ApiCookieAuth('access_token')
 @UseGuards(JwtAuthGuard)
 @Controller('user-session')
 export class UserSessionController {

@@ -1,30 +1,21 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './core/app.module';
-import { Logger, ValidationPipe, ConsoleLogger } from '@nestjs/common';
+import { Logger as NestLogger, ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as cookieParser from 'cookie-parser';
+import { Logger, LoggerErrorInterceptor } from 'nestjs-pino';
 import { initializeOpenTelemetry } from './shared/observability/opentelemetry.config';
 import { RequestIdMiddleware } from './shared/interceptors/request-id.middleware';
 
 initializeOpenTelemetry();
 
-class CustomLogger extends ConsoleLogger {
-  log(message: string, context?: string) {
-    if (
-      context === 'InstanceLoader' ||
-      context === 'RouterExplorer' ||
-      context === 'RoutesResolver'
-    ) {
-      return;
-    }
-    super.log(message, context);
-  }
-}
-
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
-    logger: new CustomLogger(),
+    bufferLogs: true,
   });
+
+  app.useLogger(app.get(Logger));
+  app.useGlobalInterceptors(new LoggerErrorInterceptor());
 
   app.use(cookieParser());
 
@@ -44,7 +35,7 @@ async function bootstrap() {
     .addTag('inventory', 'Stock and inventory control')
     .addTag('statistics', 'Sales analytics and reporting')
     .addTag('shipping', 'Order fulfillment and delivery tracking')
-    .addBearerAuth()
+    .addCookieAuth('access_token')
     .addSecurity('api_key', {
       type: 'apiKey',
       name: 'x-api-key',
@@ -56,7 +47,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document, {
     swaggerOptions: {
-      persistAuthorization: true,
+      persistAuthorization: false,
       tagsSorter: 'alpha',
       operationsSorter: 'alpha',
     },
@@ -80,12 +71,12 @@ async function bootstrap() {
     origin: frontendUrl,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Request-ID'],
+    allowedHeaders: ['Content-Type', 'X-Requested-With', 'X-Request-ID'],
     exposedHeaders: ['Set-Cookie', 'X-Request-ID', 'Trace-Id', 'Span-Id'],
   });
 
   await app.listen(3000);
-  const logger = new Logger('Bootstrap');
+  const logger = new NestLogger('Bootstrap');
   logger.log(`🚀 Application is running on: ${await app.getUrl()}`);
   logger.log(`📚 Swagger documentation: ${await app.getUrl()}/api/docs`);
 }

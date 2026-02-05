@@ -1,22 +1,10 @@
-import {
-  Controller,
-  Post,
-  Body,
-  Get,
-  Req,
-  Res,
-  UnauthorizedException,
-  HttpCode,
-} from '@nestjs/common';
+import { Controller, Post, Body, Req, Res, UnauthorizedException, HttpCode } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { User } from 'src/user/entities/user.entity';
 import { Auth, GetUser } from './decorator';
-import { GetToken } from 'src/auth/decorator/token.decorator';
 import { LoginUserDto, TokensUserDto } from 'src/auth/dto';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { SignUpDto } from './dto/sign-up.dto';
-import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { TokenResponseHelper } from './helpers/token-response.helper';
 import { ApiDoc } from 'src/shared/decorators';
 import { authEndpoints } from 'src/docs/auth.endpoints';
@@ -71,25 +59,23 @@ export class AuthController {
   @Auth('', [])
   @Post('logout')
   @HttpCode(200)
-  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const userId = req.user['sub'];
-    const token = req.headers.authorization?.split(' ')[1] || req.cookies?.access_token;
-
-    await this.authService.logout(userId, token);
-    this.clearAuthCookies(res);
-
-    return {
-      message: 'Successfully logged out',
-    };
-  }
-  @Post('refresh')
-  @HttpCode(200)
-  async refreshTokens(
-    @Body() dto: RefreshTokenDto,
+  async logout(
+    @GetUser('sub') userId: string,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const refreshToken = dto.refreshToken || req.cookies?.refresh_token;
+    const accessToken = req.cookies?.access_token ?? '';
+
+    await this.authService.logout(userId, accessToken);
+    this.clearAuthCookies(res);
+
+    return { message: 'Successfully logged out' };
+  }
+
+  @Post('refresh')
+  @HttpCode(200)
+  async refreshTokens(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const refreshToken = req.cookies?.refresh_token;
 
     if (!refreshToken) {
       throw new UnauthorizedException('Refresh token is required');
@@ -98,12 +84,6 @@ export class AuthController {
     const result = await this.authService.refreshTokens({ refreshToken }, req);
     this.setAuthCookies(res, result.tokens);
     return TokenResponseHelper.build(result.tokens, result.sessionId);
-  }
-  @ApiDoc(authEndpoints, 'logoutWithoutGuard')
-  @Get('logout')
-  @Auth('', [])
-  async logoutWithoutGuard(@GetToken() accessToken: string, @GetUser() user: User) {
-    return this.authService.logout(user.id, accessToken);
   }
 
   private setAuthCookies(res: Response, tokens: TokensUserDto): void {

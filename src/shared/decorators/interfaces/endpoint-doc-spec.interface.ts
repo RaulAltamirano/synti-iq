@@ -19,5 +19,5 @@ export interface EndpointDocSpec {
   body?: Type<unknown>;
   params?: ParamSpec[];
   query?: ParamSpec[];
-  bearerAuth?: boolean;
+  cookieAuth?: boolean;
 }

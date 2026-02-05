@@ -5,7 +5,7 @@ import {
   ApiBody,
   ApiParam,
   ApiQuery,
-  ApiBearerAuth,
+  ApiCookieAuth,
 } from '@nestjs/swagger';
 import { EndpointDocSpec } from './interfaces/endpoint-doc-spec.interface';
 
@@ -64,8 +64,8 @@ export function ApiDoc(docs: Record<string, EndpointDocSpec>, endpointId: string
     }
   }
 
-  if (spec.bearerAuth) {
-    decorators.push(ApiBearerAuth() as MethodDecorator);
+  if (spec.cookieAuth) {
+    decorators.push(ApiCookieAuth('access_token') as MethodDecorator);
   }
 
   return applyDecorators(...decorators);

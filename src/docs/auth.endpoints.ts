@@ -1,7 +1,6 @@
 import { EndpointDocSpec } from 'src/shared/decorators/interfaces/endpoint-doc-spec.interface';
 import { SignUpDto } from 'src/auth/dto/sign-up.dto';
 import { LoginUserDto } from 'src/auth/dto/login-user.dto';
-import { RefreshTokenDto } from 'src/auth/dto/refresh-token.dto';
 
 export const authEndpoints: Record<string, EndpointDocSpec> = {
   signup: {
@@ -63,7 +62,7 @@ export const authEndpoints: Record<string, EndpointDocSpec> = {
   },
   logout: {
     summary: 'Logout current user and invalidate session',
-    bearerAuth: true,
+    cookieAuth: true,
     responses: [
       {
         status: 200,
@@ -82,8 +81,7 @@ export const authEndpoints: Record<string, EndpointDocSpec> = {
     ],
   },
   refresh: {
-    summary: 'Refresh access token using refresh token',
-    body: RefreshTokenDto,
+    summary: 'Refresh access token using refresh_token cookie',
     responses: [
       {
         status: 200,
@@ -99,26 +97,12 @@ export const authEndpoints: Record<string, EndpointDocSpec> = {
         },
       },
       {
-        status: 400,
-        description: 'Refresh token is required',
+        status: 401,
+        description: 'Refresh token cookie is required',
       },
       {
         status: 401,
         description: 'Invalid or expired refresh token',
-      },
-    ],
-  },
-  logoutWithoutGuard: {
-    summary: 'Logout user by access token (alternative endpoint)',
-    bearerAuth: true,
-    responses: [
-      {
-        status: 200,
-        description: 'Successfully logged out',
-      },
-      {
-        status: 401,
-        description: 'Unauthorized',
       },
     ],
   },

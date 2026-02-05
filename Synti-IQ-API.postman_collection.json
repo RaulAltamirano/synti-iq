@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "synti-iq-api-collection",
     "name": "🚀 Synti IQ API",
-    "description": "# 📚 Synti IQ E-commerce API Collection\n\nComplete API collection for Synti IQ E-commerce platform with automated token management, comprehensive documentation, and best practices.\n\n## 🎯 Features\n\n- ✅ Automated token management\n- 📖 Comprehensive documentation\n- 🧪 Automated tests\n- 🔄 Auto-refresh tokens\n- 📊 Response validation\n\n## 🚀 Getting Started\n\n1. Import this collection and environment\n2. Select the environment: **Synti IQ - Development**\n3. Run **🔐 Authentication → Login** to get your tokens\n4. All protected endpoints will automatically use your access token\n\n## 📝 Environment Variables\n\n- `base_url`: API base URL (default: http://localhost:3000)\n- `access_token`: JWT access token (auto-set after login)\n- `refresh_token`: JWT refresh token (auto-set after login)\n- `user_id`: Current user ID (auto-set after login)\n- `user_email`: User email for login\n- `user_password`: User password for login\n\n## 🔗 Swagger Documentation\n\nVisit: `{{base_url}}/api/docs` for interactive API documentation",
+    "description": "# 📚 Synti IQ E-commerce API Collection\n\nComplete API collection for Synti IQ E-commerce platform with automated token management, comprehensive documentation, and best practices.\n\n## 🎯 Features\n\n- ✅ Automated token management\n- 📖 Comprehensive documentation\n- 🧪 Automated tests\n- 🔄 Auto-refresh tokens\n- 📊 Response validation\n\n## 🚀 Getting Started\n\n1. Import this collection and environment\n2. Select the environment: **Synti IQ - Development**\n3. Run **🔐 Authentication → Login** to get your tokens\n4. All protected endpoints use cookies automatically (enable 'Send cookies' in Postman)\n\n## 📝 Environment Variables\n\n- `base_url`: API base URL (default: http://localhost:3000)\n- `access_token`: JWT access token (stored from cookie for reference; auth uses cookies)\n- `refresh_token`: JWT refresh token (auto-set after login)\n- `user_id`: Current user ID (auto-set after login)\n- `user_email`: User email for login\n- `user_password`: User password for login\n\n## 🔗 Swagger Documentation\n\nVisit: `{{base_url}}/api/docs` for interactive API documentation",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "synti-iq",
     "version": "1.0.0"
@@ -204,7 +204,7 @@
         },
         {
           "name": "🔄 Refresh Token",
-          "description": "## 🔄 Refresh Access Token\n\nGet a new access token using a valid refresh token.\n\n### 📥 Request Body\n\n```json\n{\n  \"refreshToken\": \"{{refresh_token}}\"\n}\n```\n\n**Note**: The refresh token can also be sent via cookie `refresh_token`. The endpoint accepts both.\n\n### ✅ Success Response (200 OK)\n\n```json\n{\n  \"token_type\": \"Bearer\",\n  \"expires_in\": 900,\n  \"refresh_expires_in\": 604800\n}\n```\n\n**Note**: New authentication tokens are sent as HttpOnly cookies (`access_token` and `refresh_token`).\n\n**Response Fields:**\n- `token_type`: Type of token (always \"Bearer\")\n- `expires_in`: New access token expiration time in seconds (900 = 15 minutes)\n- `refresh_expires_in`: Refresh token expiration time in seconds (604800 = 7 days)\n\n### 🔄 Auto-Actions\n\n- ✅ Automatically extracts `access_token` from cookies and updates environment\n- ✅ Automatically extracts `refresh_token` from cookies and updates environment",
+          "description": "## 🔄 Refresh Access Token\n\nGet a new access token using the refresh_token cookie.\n\n**Note**: The refresh token must be sent via cookie `refresh_token`. Login or Sign Up first to receive cookies.\n\n### ✅ Success Response (200 OK)\n\n```json\n{\n  \"token_type\": \"Bearer\",\n  \"expires_in\": 900,\n  \"refresh_expires_in\": 604800\n}\n```\n\n**Note**: New authentication tokens are sent as HttpOnly cookies (`access_token` and `refresh_token`).\n\n**Response Fields:**\n- `token_type`: Type of token (always \"Bearer\")\n- `expires_in`: New access token expiration time in seconds (900 = 15 minutes)\n- `refresh_expires_in`: Refresh token expiration time in seconds (604800 = 7 days)\n\n### 🔄 Auto-Actions\n\n- ✅ Automatically extracts `access_token` from cookies and updates environment\n- ✅ Automatically extracts `refresh_token` from cookies and updates environment",
           "event": [
             {
               "listen": "test",
@@ -262,35 +262,21 @@
                 "value": "application/json"
               }
             ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"refreshToken\": \"{{refresh_token}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
             "url": {
               "raw": "{{base_url}}/api/auth/refresh",
               "host": ["{{base_url}}"],
               "path": ["api", "auth", "refresh"]
             },
-            "description": "Refresh the access token using a valid refresh token. The refresh token can be sent in the request body or as a cookie. Returns token metadata and sets new tokens as HttpOnly cookies."
+            "description": "Refresh the access token using the refresh_token cookie. Returns token metadata and sets new tokens as HttpOnly cookies. Enable 'Send cookies' in Postman."
           },
           "response": []
         },
         {
           "name": "Logout",
-          "description": "## 🚪 User Logout\n\nEnd the current session and invalidate the access token.\n\n### 🔒 Authentication\n\nRequires valid Bearer token in Authorization header.\n\n### ✅ Success Response (200 OK)\n\n```json\n{\n  \"message\": \"Successfully logged out\"\n}\n```\n\n**Note**: Authentication cookies (`access_token` and `refresh_token`) are cleared.\n\n**HTTP Status Code**: `200 OK` - Logout is a state-changing operation that returns a confirmation message.",
+          "description": "## 🚪 User Logout\n\nEnd the current session and invalidate the access token.\n\n### 🔒 Authentication\n\nRequires access_token cookie (sent automatically after login).\n\n### ✅ Success Response (200 OK)\n\n```json\n{\n  \"message\": \"Successfully logged out\"\n}\n```\n\n**Note**: Authentication cookies (`access_token` and `refresh_token`) are cleared.\n\n**HTTP Status Code**: `200 OK` - Logout is a state-changing operation that returns a confirmation message.",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/auth/logout",
               "host": ["{{base_url}}"],
@@ -311,12 +297,7 @@
           "name": "Get Active Sessions",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/user-session?page=1&limit=10",
               "host": ["{{base_url}}"],
@@ -340,12 +321,7 @@
           "name": "Get Active Devices",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/user-session/devices",
               "host": ["{{base_url}}"],
@@ -359,12 +335,7 @@
           "name": "Invalidate Session",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/user-session/:sessionId",
               "host": ["{{base_url}}"],
@@ -384,12 +355,7 @@
           "name": "Invalidate Device Sessions",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/user-session/devices/:deviceType",
               "host": ["{{base_url}}"],
@@ -410,12 +376,7 @@
           "name": "Invalidate Other Sessions",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/user-session/current/:sessionId/others",
               "host": ["{{base_url}}"],
@@ -435,12 +396,7 @@
           "name": "Invalidate All Sessions",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/user-session/all",
               "host": ["{{base_url}}"],
@@ -454,12 +410,7 @@
           "name": "Validate Session",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/user-session/:sessionId/validate",
               "host": ["{{base_url}}"],
@@ -479,12 +430,7 @@
           "name": "Update Session Last Used",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/user-session/:sessionId/last-used",
               "host": ["{{base_url}}"],
@@ -509,15 +455,10 @@
       "item": [
         {
           "name": "👤 Get My Profile",
-          "description": "## 👤 Get Current User Profile\n\nGet the complete profile information of the currently authenticated user.\n\n### 🔒 Authentication\n\nRequires valid Bearer token in Authorization header.\n\n### ✅ Success Response (200 OK)\n\n```json\n{\n  \"id\": \"user-uuid\",\n  \"email\": \"user@example.com\",\n  \"fullName\": \"John Doe\",\n  \"role\": {\n    \"id\": 1,\n    \"name\": \"customer\"\n  },\n  \"isActive\": true,\n  \"isApproved\": true,\n  \"isOnline\": false,\n  \"createdAt\": \"2024-01-01T00:00:00.000Z\",\n  \"lastLogin\": \"2024-01-08T20:00:00.000Z\",\n  \"lastActivityAt\": \"2024-01-08T21:00:00.000Z\",\n  \"profile\": {\n    \"id\": \"profile-uuid\",\n    \"profileType\": \"customer\",\n    \"profileId\": null,\n    \"metadata\": {},\n    \"createdAt\": \"2024-01-01T00:00:00.000Z\",\n    \"updatedAt\": \"2024-01-01T00:00:00.000Z\"\n  }\n}\n```\n\n**Response Fields:**\n- `id`: User unique identifier\n- `email`: User email address\n- `fullName`: User full name\n- `role`: User role information (id, name)\n- `isActive`: Whether the user account is active\n- `isApproved`: Whether the user account is approved\n- `isOnline`: Whether the user is currently online\n- `createdAt`: Account creation timestamp\n- `lastLogin`: Last login timestamp (optional)\n- `lastActivityAt`: Last activity timestamp (optional)\n- `profile`: User profile information (optional, null if no profile exists)\n\n### ⚠️ Error Responses\n\n- **401 Unauthorized**: Invalid or expired token\n- **404 Not Found**: User not found or inactive\n\n**Note**: This is the endpoint for getting user profile information.",
+          "description": "## 👤 Get Current User Profile\n\nGet the complete profile information of the currently authenticated user.\n\n### 🔒 Authentication\n\nRequires access_token cookie (sent automatically after login).\n\n### ✅ Success Response (200 OK)\n\n```json\n{\n  \"id\": \"user-uuid\",\n  \"email\": \"user@example.com\",\n  \"fullName\": \"John Doe\",\n  \"role\": {\n    \"id\": 1,\n    \"name\": \"customer\"\n  },\n  \"isActive\": true,\n  \"isApproved\": true,\n  \"isOnline\": false,\n  \"createdAt\": \"2024-01-01T00:00:00.000Z\",\n  \"lastLogin\": \"2024-01-08T20:00:00.000Z\",\n  \"lastActivityAt\": \"2024-01-08T21:00:00.000Z\",\n  \"profile\": {\n    \"id\": \"profile-uuid\",\n    \"profileType\": \"customer\",\n    \"profileId\": null,\n    \"metadata\": {},\n    \"createdAt\": \"2024-01-01T00:00:00.000Z\",\n    \"updatedAt\": \"2024-01-01T00:00:00.000Z\"\n  }\n}\n```\n\n**Response Fields:**\n- `id`: User unique identifier\n- `email`: User email address\n- `fullName`: User full name\n- `role`: User role information (id, name)\n- `isActive`: Whether the user account is active\n- `isApproved`: Whether the user account is approved\n- `isOnline`: Whether the user is currently online\n- `createdAt`: Account creation timestamp\n- `lastLogin`: Last login timestamp (optional)\n- `lastActivityAt`: Last activity timestamp (optional)\n- `profile`: User profile information (optional, null if no profile exists)\n\n### ⚠️ Error Responses\n\n- **401 Unauthorized**: Invalid or expired token\n- **404 Not Found**: User not found or inactive\n\n**Note**: This is the endpoint for getting user profile information.",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/user/me",
               "host": ["{{base_url}}"],
@@ -531,12 +472,7 @@
           "name": "Filter Users",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/user?page=1&limit=10",
               "host": ["{{base_url}}"],
@@ -566,12 +502,7 @@
           "name": "Get All Products",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/product?page=1&limit=10",
               "host": ["{{base_url}}"],
@@ -595,12 +526,7 @@
           "name": "Get Product by ID",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/product/:id",
               "host": ["{{base_url}}"],
@@ -621,10 +547,6 @@
           "request": {
             "method": "POST",
             "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              },
               {
                 "key": "Content-Type",
                 "value": "application/json"
@@ -653,10 +575,6 @@
           "request": {
             "method": "PATCH",
             "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              },
               {
                 "key": "Content-Type",
                 "value": "application/json"
@@ -690,12 +608,7 @@
           "name": "Delete Product",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/product/:id",
               "host": ["{{base_url}}"],
@@ -715,12 +628,7 @@
           "name": "Soft Delete Product",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/product/:id/soft",
               "host": ["{{base_url}}"],
@@ -740,12 +648,7 @@
           "name": "Search by SKU or Barcode",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/product/search/sku-barcode?sku=PH-001",
               "host": ["{{base_url}}"],
@@ -778,10 +681,6 @@
             "method": "POST",
             "header": [
               {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              },
-              {
                 "key": "Content-Type",
                 "value": "application/json"
               }
@@ -808,12 +707,7 @@
           "name": "Get Product Stock",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/inventory/products/:id/stock",
               "host": ["{{base_url}}"],
@@ -833,12 +727,7 @@
           "name": "Get Product Movements",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/inventory/products/:id/movements?page=1&limit=10",
               "host": ["{{base_url}}"],
@@ -868,12 +757,7 @@
           "name": "Get Low Stock Products",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/inventory/products/low-stock?threshold=10",
               "host": ["{{base_url}}"],
@@ -899,12 +783,7 @@
           "name": "Get All Stores",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/store",
               "host": ["{{base_url}}"],
@@ -918,12 +797,7 @@
           "name": "Get Store by ID",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/store/:id",
               "host": ["{{base_url}}"],
@@ -944,10 +818,6 @@
           "request": {
             "method": "POST",
             "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              },
               {
                 "key": "Content-Type",
                 "value": "application/json"
@@ -975,12 +845,7 @@
           "name": "Delete Store",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/store/:id",
               "host": ["{{base_url}}"],
@@ -1001,10 +866,6 @@
           "request": {
             "method": "POST",
             "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              },
               {
                 "key": "Content-Type",
                 "value": "application/json"
@@ -1038,12 +899,7 @@
           "name": "Get Store Cashiers",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/store/:id/cashiers",
               "host": ["{{base_url}}"],
@@ -1071,10 +927,6 @@
             "method": "POST",
             "header": [
               {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              },
-              {
                 "key": "Content-Type",
                 "value": "application/json"
               }
@@ -1101,12 +953,7 @@
           "name": "Get Store Schedule",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/store-schedule/:id",
               "host": ["{{base_url}}"],
@@ -1127,10 +974,6 @@
           "request": {
             "method": "PATCH",
             "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              },
               {
                 "key": "Content-Type",
                 "value": "application/json"
@@ -1164,12 +1007,7 @@
           "name": "Delete Store Schedule",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/store-schedule/:id",
               "host": ["{{base_url}}"],
@@ -1189,12 +1027,7 @@
           "name": "Toggle Store Schedule Active",
           "request": {
             "method": "PATCH",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/store-schedule/:id/toggle-active",
               "host": ["{{base_url}}"],
@@ -1222,10 +1055,6 @@
             "method": "POST",
             "header": [
               {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              },
-              {
                 "key": "Content-Type",
                 "value": "application/json"
               }
@@ -1252,12 +1081,7 @@
           "name": "Get Cashier Schedules",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/cashier-schedules",
               "host": ["{{base_url}}"],
@@ -1271,12 +1095,7 @@
           "name": "Get Cashier Schedule by ID",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/cashier-schedules/:id",
               "host": ["{{base_url}}"],
@@ -1297,10 +1116,6 @@
           "request": {
             "method": "PATCH",
             "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              },
               {
                 "key": "Content-Type",
                 "value": "application/json"
@@ -1334,12 +1149,7 @@
           "name": "Delete Cashier Schedule",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/cashier-schedules/:id",
               "host": ["{{base_url}}"],
@@ -1359,12 +1169,7 @@
           "name": "Get Cashier Schedules by Cashier",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/cashier-schedules/cashiers/:cashierId/schedules",
               "host": ["{{base_url}}"],
@@ -1385,10 +1190,6 @@
           "request": {
             "method": "POST",
             "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              },
               {
                 "key": "Content-Type",
                 "value": "application/json"
@@ -1416,12 +1217,7 @@
           "name": "Confirm Shift Swap",
           "request": {
             "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/cashier-schedules/swap/:assignmentId/confirm",
               "host": ["{{base_url}}"],
@@ -1449,10 +1245,6 @@
             "method": "POST",
             "header": [
               {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              },
-              {
                 "key": "Content-Type",
                 "value": "application/json"
               }
@@ -1479,12 +1271,7 @@
           "name": "Get All Sales",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/sale",
               "host": ["{{base_url}}"],
@@ -1498,12 +1285,7 @@
           "name": "Get Sale by ID",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/sale/:id",
               "host": ["{{base_url}}"],
@@ -1524,10 +1306,6 @@
           "request": {
             "method": "PATCH",
             "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              },
               {
                 "key": "Content-Type",
                 "value": "application/json"
@@ -1561,12 +1339,7 @@
           "name": "Delete Sale",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/sale/:id",
               "host": ["{{base_url}}"],
@@ -1594,10 +1367,6 @@
             "method": "POST",
             "header": [
               {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              },
-              {
                 "key": "Content-Type",
                 "value": "application/json"
               }
@@ -1624,12 +1393,7 @@
           "name": "Get All Payment Methods",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/payment-method",
               "host": ["{{base_url}}"],
@@ -1643,12 +1407,7 @@
           "name": "Get Payment Method by ID",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/payment-method/:id",
               "host": ["{{base_url}}"],
@@ -1669,10 +1428,6 @@
           "request": {
             "method": "PATCH",
             "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              },
               {
                 "key": "Content-Type",
                 "value": "application/json"
@@ -1706,12 +1461,7 @@
           "name": "Delete Payment Method",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/payment-method/:id",
               "host": ["{{base_url}}"],
@@ -1739,10 +1489,6 @@
             "method": "POST",
             "header": [
               {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              },
-              {
                 "key": "Content-Type",
                 "value": "application/json"
               }
@@ -1769,12 +1515,7 @@
           "name": "Get All Product Categories",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/product-categorie",
               "host": ["{{base_url}}"],
@@ -1788,12 +1529,7 @@
           "name": "Get Product Category by ID",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/product-categorie/:id",
               "host": ["{{base_url}}"],
@@ -1814,10 +1550,6 @@
           "request": {
             "method": "PATCH",
             "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              },
               {
                 "key": "Content-Type",
                 "value": "application/json"
@@ -1851,12 +1583,7 @@
           "name": "Delete Product Category",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/product-categorie/:id",
               "host": ["{{base_url}}"],
@@ -1877,7 +1604,7 @@
     },
     {
       "name": "📍 Customer Addresses",
-      "description": "## 📍 Customer Address Management\n\nManage shipping and billing addresses for customers.\n\n### 📋 Available Endpoints\n\n- **Create Shipping Address**: Add a new shipping address\n- **Create Billing Address**: Add a new billing address\n- **Get Shipping Addresses**: List all shipping addresses\n- **Get Billing Addresses**: List all billing addresses\n- **Set Default Shipping**: Mark an address as default shipping\n- **Set Default Billing**: Mark an address as default billing\n- **Delete Address**: Remove an address\n\n### 🔒 Authentication\n\nAll endpoints require:\n- Valid Bearer token in Authorization header\n- Authenticated user (addresses are user-specific)\n\n### 📝 Notes\n\n- Customers can have multiple addresses of each type\n- Only one address can be marked as default per type\n- Addresses are optional during registration but required for shipping orders\n- Billing address is required after trial period expires",
+      "description": "## 📍 Customer Address Management\n\nManage shipping and billing addresses for customers.\n\n### 📋 Available Endpoints\n\n- **Create Shipping Address**: Add a new shipping address\n- **Create Billing Address**: Add a new billing address\n- **Get Shipping Addresses**: List all shipping addresses\n- **Get Billing Addresses**: List all billing addresses\n- **Set Default Shipping**: Mark an address as default shipping\n- **Set Default Billing**: Mark an address as default billing\n- **Delete Address**: Remove an address\n\n### 🔒 Authentication\n\nAll endpoints require:\n- access_token cookie (sent automatically after login)\n- Authenticated user (addresses are user-specific)\n\n### 📝 Notes\n\n- Customers can have multiple addresses of each type\n- Only one address can be marked as default per type\n- Addresses are optional during registration but required for shipping orders\n- Billing address is required after trial period expires",
       "item": [
         {
           "name": "Create Shipping Address",
@@ -1885,10 +1612,6 @@
           "request": {
             "method": "POST",
             "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              },
               {
                 "key": "Content-Type",
                 "value": "application/json"
@@ -1919,10 +1642,6 @@
             "method": "POST",
             "header": [
               {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              },
-              {
                 "key": "Content-Type",
                 "value": "application/json"
               }
@@ -1950,12 +1669,7 @@
           "description": "## 📦 Get Shipping Addresses\n\nGet all shipping addresses for the authenticated customer.\n\n### ✅ Success Response (200 OK)\n\nReturns an array of shipping addresses, ordered by default first, then by creation date.",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/locations/shipping",
               "host": ["{{base_url}}"],
@@ -1970,12 +1684,7 @@
           "description": "## 💳 Get Billing Addresses\n\nGet all billing addresses for the authenticated customer.\n\n### ✅ Success Response (200 OK)\n\nReturns an array of billing addresses, ordered by default first, then by creation date.",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/locations/billing",
               "host": ["{{base_url}}"],
@@ -1990,12 +1699,7 @@
           "description": "## 📦 Set Default Shipping Address\n\nMark an address as the default shipping address. This will unmark any previously default shipping address.\n\n### ✅ Success Response (204 No Content)",
           "request": {
             "method": "PATCH",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/locations/:id/default-shipping",
               "host": ["{{base_url}}"],
@@ -2017,12 +1721,7 @@
           "description": "## 💳 Set Default Billing Address\n\nMark an address as the default billing address. This will unmark any previously default billing address.\n\n### ✅ Success Response (204 No Content)",
           "request": {
             "method": "PATCH",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/locations/:id/default-billing",
               "host": ["{{base_url}}"],
@@ -2044,12 +1743,7 @@
           "description": "## 🗑️ Delete Address\n\nDelete an address belonging to the authenticated customer.\n\n### ✅ Success Response (204 No Content)\n\n### ⚠️ Note\n\nThe address will be permanently deleted. Make sure it's not the only required address before deleting.",
           "request": {
             "method": "DELETE",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{access_token}}"
-              }
-            ],
+            "header": [],
             "url": {
               "raw": "{{base_url}}/api/locations/:id",
               "host": ["{{base_url}}"],
@@ -2070,7 +1764,7 @@
     },
     {
       "name": "🔐 Roles & Permissions",
-      "description": "## 🔐 Roles & Permissions Management\n\nComplete RBAC (Role-Based Access Control) system for managing roles, permissions, and permission groups.\n\n### 📋 Available Endpoints\n\n#### Roles\n- **Get All Roles**: List all roles\n- **Get Role by ID**: Get role details\n- **Update Role**: Update role and permission groups\n\n**Note**: Roles are created via database seeds (`npm run seed:roles`), not through API endpoints. This ensures consistency with SystemRole enum values. Roles cannot be deleted as they are defined in the SystemRole enum and are essential for the system's RBAC architecture.\n\n#### Permissions\n- **Get All Permissions**: List all permissions\n- **Get Permission by ID**: Get permission details\n- **Update Permission**: Update permission\n\n**Note**: Permissions are created via database seeds (`npm run seed:permissions`), not through API endpoints. This ensures consistency with Permission enum values. Permissions cannot be deleted as they are defined in the Permission enum and are essential for the system's RBAC architecture.\n\n#### Permission Groups\n- **Get All Permission Groups**: List all permission groups\n- **Get Permission Group by ID**: Get group details\n- **Update Permission Group**: Update group and permissions\n\n**Note**: Permission groups are created via database seeds (`npm run seed:groups`), not through API endpoints. This ensures consistency with the system configuration. Permission groups cannot be deleted as they are essential for the system's RBAC architecture.\n\n### 👤 User Role Assignment\n\nUser roles are assigned directly through the User entity (one role per user). Role assignment is handled through user management endpoints, not through separate user-role endpoints.\n\n### 🔒 Authentication\n\nAll endpoints require:\n- Valid Bearer token in Authorization header\n- Role: `admin`\n- Permission: `manage_users`",
+      "description": "## 🔐 Roles & Permissions Management\n\nComplete RBAC (Role-Based Access Control) system for managing roles, permissions, and permission groups.\n\n### 📋 Available Endpoints\n\n#### Roles\n- **Get All Roles**: List all roles\n- **Get Role by ID**: Get role details\n- **Update Role**: Update role and permission groups\n\n**Note**: Roles are created via database seeds (`npm run seed:roles`), not through API endpoints. This ensures consistency with SystemRole enum values. Roles cannot be deleted as they are defined in the SystemRole enum and are essential for the system's RBAC architecture.\n\n#### Permissions\n- **Get All Permissions**: List all permissions\n- **Get Permission by ID**: Get permission details\n- **Update Permission**: Update permission\n\n**Note**: Permissions are created via database seeds (`npm run seed:permissions`), not through API endpoints. This ensures consistency with Permission enum values. Permissions cannot be deleted as they are defined in the Permission enum and are essential for the system's RBAC architecture.\n\n#### Permission Groups\n- **Get All Permission Groups**: List all permission groups\n- **Get Permission Group by ID**: Get group details\n- **Update Permission Group**: Update group and permissions\n\n**Note**: Permission groups are created via database seeds (`npm run seed:groups`), not through API endpoints. This ensures consistency with the system configuration. Permission groups cannot be deleted as they are essential for the system's RBAC architecture.\n\n### 👤 User Role Assignment\n\nUser roles are assigned directly through the User entity (one role per user). Role assignment is handled through user management endpoints, not through separate user-role endpoints.\n\n### 🔒 Authentication\n\nAll endpoints require:\n- access_token cookie (sent automatically after login)\n- Role: `admin`\n- Permission: `manage_users`",
       "item": [
         {
           "name": "Roles",
@@ -2079,12 +1773,7 @@
               "name": "Get All Roles",
               "request": {
                 "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{access_token}}"
-                  }
-                ],
+                "header": [],
                 "url": {
                   "raw": "{{base_url}}/api/roles",
                   "host": ["{{base_url}}"],
@@ -2098,12 +1787,7 @@
               "name": "Get Role by ID",
               "request": {
                 "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{access_token}}"
-                  }
-                ],
+                "header": [],
                 "url": {
                   "raw": "{{base_url}}/api/roles/:id",
                   "host": ["{{base_url}}"],
@@ -2125,10 +1809,6 @@
               "request": {
                 "method": "PATCH",
                 "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{access_token}}"
-                  },
                   {
                     "key": "Content-Type",
                     "value": "application/json"
@@ -2169,12 +1849,7 @@
               "name": "Get All Permissions",
               "request": {
                 "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{access_token}}"
-                  }
-                ],
+                "header": [],
                 "url": {
                   "raw": "{{base_url}}/api/permissions",
                   "host": ["{{base_url}}"],
@@ -2188,12 +1863,7 @@
               "name": "Get Permission by ID",
               "request": {
                 "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{access_token}}"
-                  }
-                ],
+                "header": [],
                 "url": {
                   "raw": "{{base_url}}/api/permissions/:id",
                   "host": ["{{base_url}}"],
@@ -2215,10 +1885,6 @@
               "request": {
                 "method": "PATCH",
                 "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{access_token}}"
-                  },
                   {
                     "key": "Content-Type",
                     "value": "application/json"
@@ -2259,12 +1925,7 @@
               "name": "Get All Permission Groups",
               "request": {
                 "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{access_token}}"
-                  }
-                ],
+                "header": [],
                 "url": {
                   "raw": "{{base_url}}/api/permission-groups",
                   "host": ["{{base_url}}"],
@@ -2278,12 +1939,7 @@
               "name": "Get Permission Group by ID",
               "request": {
                 "method": "GET",
-                "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{access_token}}"
-                  }
-                ],
+                "header": [],
                 "url": {
                   "raw": "{{base_url}}/api/permission-groups/:id",
                   "host": ["{{base_url}}"],
@@ -2305,10 +1961,6 @@
               "request": {
                 "method": "PATCH",
                 "header": [
-                  {
-                    "key": "Authorization",
-                    "value": "Bearer {{access_token}}"
-                  },
                   {
                     "key": "Content-Type",
                     "value": "application/json"
@@ -2364,7 +2016,7 @@
           "                     requestUrl.includes('/auth/refresh');",
           "",
           "// Only refresh if we have refresh token but no access token",
-          "// and this is not an auth request",
+          "// and this is not an auth request (cookies sent automatically by Postman)",
           "if (!isAuthRequest && refreshToken && !accessToken) {",
           "    console.log('🔄 Auto-refreshing access token...');",
           "    ",
@@ -2373,10 +2025,6 @@
           "        method: 'POST',",
           "        header: {",
           "            'Content-Type': 'application/json'",
-          "        },",
-          "        body: {",
-          "            mode: 'raw',",
-          "            raw: JSON.stringify({ refreshToken: refreshToken })",
           "        }",
           "    }, function (err, res) {",
           "        if (err) {",
@@ -2435,18 +2083,13 @@
           "    console.warn('Current access_token:', pm.environment.get('access_token') ? 'Set' : 'Not set');",
           "}",
           "",
-          "// Auto-refresh token on 401",
+          "// Auto-refresh token on 401 (uses refresh_token cookie)",
           "if (pm.response.code === 401 && pm.environment.get('refresh_token')) {",
-          "    const refreshToken = pm.environment.get('refresh_token');",
           "    pm.sendRequest({",
           "        url: pm.environment.get('base_url') + '/api/auth/refresh',",
           "        method: 'POST',",
           "        header: {",
           "            'Content-Type': 'application/json'",
-          "        },",
-          "        body: {",
-          "            mode: 'raw',",
-          "            raw: JSON.stringify({ refreshToken: refreshToken })",
           "        }",
           "    }, function (err, res) {",
           "        if (res && res.code === 200 && res.cookies) {",

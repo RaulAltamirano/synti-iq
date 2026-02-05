@@ -5,7 +5,7 @@ import { PaginatedResponse } from 'src/pagination/interfaces/PaginatedResponse';
 import { UpdateUserDto } from './dtos/UpdateUserDto';
 import { Auth, GetUser } from 'src/auth/decorator';
 import { User } from './entities/user.entity';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiCookieAuth } from '@nestjs/swagger';
 import { HttpStatus } from '@nestjs/common';
 
 @ApiTags('Users')
@@ -21,7 +21,7 @@ export class UserController {
 
   @Get('me')
   @Auth('', [])
-  @ApiBearerAuth()
+  @ApiCookieAuth('access_token')
   @ApiOperation({ summary: 'Get current authenticated user profile' })
   @ApiResponse({
     status: HttpStatus.OK,

@@ -25,9 +25,11 @@ import { APP_GUARD } from '@nestjs/core';
 import { ProductCategorieModule } from 'src/product-category/product-categorie.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ResponseModule } from 'src/shared/response/response.module';
+import { LoggerModule } from 'src/shared/logger';
 
 @Module({
   imports: [
+    LoggerModule,
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env'],

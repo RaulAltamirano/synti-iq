@@ -17,7 +17,6 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { TokenExtractorChain } from './strategies/token-extractor-chain';
 import { TokenFormatValidator } from './strategies/token-format.validator';
 import { CookieTokenExtractor } from './strategies/cookie-token-extractor';
-import { BearerTokenExtractor } from './strategies/bearer-token-xtractor';
 import { AnomalyDetectionService } from './services/anomaly-detection.service';
 import { GuardsModule } from './guards/guards.module';
 import { UserProfileModule } from 'src/user-profile/user_profile.module';
@@ -37,16 +36,12 @@ import { RateLimitService } from './services/rate-limit.service';
     TokenFactory,
     JwtStrategy,
     CookieTokenExtractor,
-    BearerTokenExtractor,
     {
       provide: TokenExtractorChain,
-      useFactory: (
-        cookieExtractor: CookieTokenExtractor,
-        bearerExtractor: BearerTokenExtractor,
-      ) => {
-        return new TokenExtractorChain([cookieExtractor, bearerExtractor]);
+      useFactory: (cookieExtractor: CookieTokenExtractor) => {
+        return new TokenExtractorChain([cookieExtractor]);
       },
-      inject: [CookieTokenExtractor, BearerTokenExtractor],
+      inject: [CookieTokenExtractor],
     },
     TokenFormatValidator,
     AnomalyDetectionService,
