@@ -2,8 +2,12 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { render } from '@react-email/components';
 import { createElement } from 'react';
 import { Resend } from 'resend';
+import * as fs from 'fs';
+import * as path from 'path';
 import { WelcomeBusiness } from './templates/welcome-business';
 import { WelcomeBusinessMailParams } from './interfaces/welcome-business-mail.interface';
+
+const LOGO_CID = 'logo-image';
 
 export const MAIL_OPTIONS = 'MAIL_OPTIONS';
 
@@ -48,16 +52,28 @@ export class MailService {
           firstName: params.firstName,
           businessName: params.businessName,
           appUrl: this.options.appUrl,
+          logoUrl: `cid:${LOGO_CID}`,
         }),
         { pretty: true },
       );
       const toAddress = normalizeEmailForResend(params.email);
+
+      const logoPath = path.join(__dirname, 'assets', 'logo.png');
+      const logoContent = fs.readFileSync(logoPath).toString('base64');
 
       const result = await this.options.resend.emails.send({
         from: this.options.from,
         to: toAddress,
         subject: 'Welcome to Synti-IQ - Your business account is ready',
         html,
+        attachments: [
+          {
+            content: logoContent,
+            filename: 'logo.png',
+            contentId: LOGO_CID,
+            contentType: 'image/png',
+          },
+        ],
       });
 
       if (result.error) {
