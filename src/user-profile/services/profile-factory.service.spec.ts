@@ -1,11 +1,14 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository, QueryRunner } from 'typeorm';
+import type { QueryRunner } from 'typeorm';
+import { Repository } from 'typeorm';
 import { ProfileFactoryService } from './profile-factory.service';
 import {
   CashierProfileStrategy,
   DeliveryProfileStrategy,
   ProviderProfileStrategy,
+  BusinessProfileStrategy,
   CustomerProfileStrategy,
 } from '../strategies/profile-creation.strategy';
 import { SystemRole } from 'src/shared/enums/roles.enum';
@@ -31,7 +34,7 @@ describe('ProfileFactoryService', () => {
       },
     };
 
-    queryRunner = mockQueryRunner as QueryRunner;
+    queryRunner = mockQueryRunner as unknown as QueryRunner;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -50,6 +53,12 @@ describe('ProfileFactoryService', () => {
         },
         {
           provide: ProviderProfileStrategy,
+          useValue: {
+            create: jest.fn(),
+          },
+        },
+        {
+          provide: BusinessProfileStrategy,
           useValue: {
             create: jest.fn(),
           },

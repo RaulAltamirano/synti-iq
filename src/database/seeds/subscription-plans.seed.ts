@@ -28,7 +28,7 @@ export class SubscriptionPlansSeed {
       {
         name: 'Basic',
         slug: 'basic',
-        stripePriceId: 'price_xxx',
+        stripePriceId: process.env.STRIPE_PRICE_BASIC ?? 'price_xxx',
         priceMonthly: 29.99,
         limits: {
           max_stores: 1,
@@ -46,7 +46,7 @@ export class SubscriptionPlansSeed {
       {
         name: 'Professional',
         slug: 'pro',
-        stripePriceId: 'price_yyy',
+        stripePriceId: process.env.STRIPE_PRICE_PRO ?? 'price_yyy',
         priceMonthly: 79.99,
         limits: {
           max_stores: 3,

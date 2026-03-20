@@ -108,11 +108,9 @@ This will create:
 
 **Important**: Never commit these keys to version control. They are automatically excluded via `.gitignore`.
 
-### 6. Run database migrations
+### 6. Database schema
 
-```bash
-yarn migration:run
-```
+TypeORM synchronizes the schema from entities when the application starts. Ensure the database is running and accessible.
 
 ### 7. Start the application
 

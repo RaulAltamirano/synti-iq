@@ -1,6 +1,8 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository, QueryRunner } from 'typeorm';
+import type { QueryRunner } from 'typeorm';
+import { Repository } from 'typeorm';
 import { ProfileValidationService } from './profile-validation.service';
 import { User } from 'src/user/entities/user.entity';
 import { UserProfile } from '../entities/user_profile.entity';
@@ -8,8 +10,8 @@ import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.ent
 import { DeliveryProfile } from 'src/delivery-profiles/entities/delivery_profile.entity';
 import { ProviderProfile } from 'src/provider-profile/entities/provider_profile.entity';
 import { CustomerProfile } from 'src/customer-profile/entities/customer_profile.entity';
+import { BusinessProfile } from 'src/business-profile/entities/business_profile.entity';
 import { Subscription } from 'src/subscription/entities/subscription.entity';
-import { SystemRole } from 'src/shared/enums/roles.enum';
 
 describe('ProfileValidationService', () => {
   let service: ProfileValidationService;
@@ -24,7 +26,7 @@ describe('ProfileValidationService', () => {
       },
     };
 
-    queryRunner = mockQueryRunner as QueryRunner;
+    queryRunner = mockQueryRunner as unknown as QueryRunner;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -53,6 +55,10 @@ describe('ProfileValidationService', () => {
         },
         {
           provide: getRepositoryToken(CustomerProfile),
+          useClass: Repository,
+        },
+        {
+          provide: getRepositoryToken(BusinessProfile),
           useClass: Repository,
         },
         {
@@ -90,6 +96,6 @@ describe('ProfileValidationService', () => {
     const result = await service.validate('user-id', queryRunner as QueryRunner);
 
     expect(result.isValid).toBe(false);
-    expect(result.errors).toContain('does not have a role assigned');
+    expect(result.errors).toContain('User with ID user-id does not have a role assigned');
   });
 });
