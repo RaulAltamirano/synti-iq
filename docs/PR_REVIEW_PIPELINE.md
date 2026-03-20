@@ -6,10 +6,12 @@ Pipeline de revisión automática de Pull Requests que integra SonarCloud, Gemin
 
 ## Resumen del Flujo
 
-| Evento PR                | Acciones                                                                                  |
-| ------------------------ | ----------------------------------------------------------------------------------------- |
-| `opened` / `synchronize` | Análisis SonarCloud, revisión IA (Gemini), comentario en el PR                            |
-| `closed`                 | Notificación a Discord con status (MERGED/REJECTED), roast, calificación y métricas Sonar |
+| Evento PR                | Acciones                                                                                        |
+| ------------------------ | ----------------------------------------------------------------------------------------------- |
+| `opened` / `synchronize` | Análisis SonarCloud, revisión IA (Gemini), comentario en el PR, notificación Discord "Nuevo PR" |
+| `closed`                 | Notificación a Discord con status (MERGED/REJECTED), roast, calificación y métricas Sonar       |
+
+**Limitación:** Los jobs que usan secrets (sonar, ai-review, discord) **no se ejecutan** en PRs desde forks. Solo funcionan cuando el PR proviene de una rama del mismo repositorio.
 
 ---
 
@@ -32,6 +34,7 @@ El archivo `sonar-project.properties` en la raíz define:
 
 1. Obtener API key en [Google AI Studio](https://aistudio.google.com/apikey).
 2. Añadir en GitHub Secrets: `GEMINI_API_KEY`.
+3. Modelo usado: `gemini-2.5-flash` (estable, buen rendimiento/precio).
 
 ### 3. Discord
 
@@ -57,12 +60,13 @@ El archivo `sonar-project.properties` en la raíz define:
 
 ## Archivos del Pipeline
 
-| Archivo                           | Propósito                                     |
-| --------------------------------- | --------------------------------------------- |
-| `.github/workflows/pr-review.yml` | Workflow principal                            |
-| `sonar-project.properties`        | Configuración SonarCloud                      |
-| `scripts/pr-review.js`            | Extrae diff, llama a Gemini, comenta en el PR |
-| `scripts/discord-notify.js`       | Envía embed a Discord                         |
+| Archivo                            | Propósito                                                   |
+| ---------------------------------- | ----------------------------------------------------------- |
+| `.github/workflows/pr-review.yml`  | Workflow principal                                          |
+| `sonar-project.properties`         | Configuración SonarCloud                                    |
+| `scripts/pr-review.js`             | Extrae diff, llama a Gemini, comenta en el PR               |
+| `scripts/discord-notify.js`        | Envía embed a Discord cuando el PR se cierra                |
+| `scripts/discord-notify-new-pr.js` | Envía notificación a Discord cuando se abre/actualiza un PR |
 
 ---
 
@@ -90,11 +94,13 @@ El bot publica un comentario con esta estructura:
 
 ## Formato del Mensaje en Discord
 
-Embed tipo Card con:
+**Al abrir/actualizar PR:** Embed simple con título, descripción y autor.
+
+**Al cerrar PR:** Embed tipo Card con:
 
 - **Título:** Synti-IQ Review: Pull Request #N
 - **Status:** MERGED (verde) / REJECTED (rojo)
-- **IA Roast:** Cita del roast extraído del comentario
+- **IA Roast:** Cita del roast extraído del comentario (o "Revisión completada." si no hay comentario del bot)
 - **Calificación:** Estrellas (1–5) y nivel
 - **Sonar Stats:** Bugs, Security Hotspots, Vulnerabilities
 - **Link:** Enlace al PR en GitHub
