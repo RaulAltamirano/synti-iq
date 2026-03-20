@@ -1,0 +1,52 @@
+name: Discord — Commit to dev
+
+on:
+  push:
+    branches: [dev]
+
+permissions:
+  contents: read
+
+jobs:
+  discord-dev-commit:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Fetch commit details
+        id: commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Use head_commit for single-push; if bulk push, we notify the latest
+          HEAD_SHA="${{ github.sha }}"
+          COMMIT=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.repository }}/commits/${HEAD_SHA}" 2>/dev/null || echo "{}")
+          COMMIT_MSG=$(echo "$COMMIT" | jq -r '.commit.message // ""' 2>/dev/null)
+          COMMIT_AUTHOR=$(echo "$COMMIT" | jq -r '.commit.author.name // .author.login // "unknown"' 2>/dev/null)
+          COMMIT_URL=$(echo "$COMMIT" | jq -r '.html_url // ""' 2>/dev/null)
+          FILES=$(echo "$COMMIT" | jq -r '[.files[]?.filename] | join(", ")' 2>/dev/null)
+          echo "sha=${HEAD_SHA:0:7}" >> $GITHUB_OUTPUT
+          echo "message<<MSG_EOF" >> $GITHUB_OUTPUT
+          printf '%s' "$COMMIT_MSG" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "MSG_EOF" >> $GITHUB_OUTPUT
+          echo "author=$COMMIT_AUTHOR" >> $GITHUB_OUTPUT
+          echo "url=${COMMIT_URL:-}" >> $GITHUB_OUTPUT
+          echo "files<<FILES_EOF" >> $GITHUB_OUTPUT
+          printf '%s' "${FILES:-}" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "FILES_EOF" >> $GITHUB_OUTPUT
+
+      - name: Notify Discord — Commit to dev
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DISCORD_THREAD_ID: ${{ secrets.DISCORD_THREAD_ID }}
+          DISCORD_USE_FORUM: ${{ vars.DISCORD_USE_FORUM }}
+          COMMIT_SHA: ${{ steps.commit.outputs.sha }}
+          COMMIT_MESSAGE: ${{ steps.commit.outputs.message }}
+          COMMIT_AUTHOR: ${{ steps.commit.outputs.author }}
+          COMMIT_URL: ${{ steps.commit.outputs.url }}
+          COMMIT_FILES: ${{ steps.commit.outputs.files }}
+        run: node scripts/discord-notify-dev-commit.js

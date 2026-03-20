@@ -87,4 +87,9 @@ async function bootstrap() {
   logger.log(`🚀 Application is running on: ${await app.getUrl()}`);
   logger.log(`📚 Swagger documentation: ${await app.getUrl()}/api/docs`);
 }
-bootstrap();
+
+bootstrap().catch(err => {
+  // eslint-disable-next-line no-console
+  console.error('Bootstrap failed:', err);
+  process.exit(1);
+});
