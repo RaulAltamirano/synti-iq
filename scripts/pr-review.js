@@ -96,9 +96,9 @@ ${definitionOfDone.slice(0, 2000)}
   const userPrompt = `
 ## Task
 
-Review the following PR diff against the project standards above. Write the GitHub comment in professional English. Use this exact format:
+Review the following PR diff against the project standards above. Provide your analysis in this exact format (the IA Roast is for Discord only, not for the GitHub comment):
 
-**IA Roast:** "[One funny, sarcastic one-liner in Spanish roasting the code quality. Mention @${prAuthor}. Max 150 chars. This line is used for Discord notification.]"
+**IA Roast:** "[One funny, sarcastic one-liner in Spanish roasting the code quality. Mention @${prAuthor}. Max 150 chars.]"
 
 **Convention Analysis:**
 - [List specific findings: PASS/FAIL/N/A, Location, Detail, Reference. Professional tone, English.]
@@ -151,7 +151,32 @@ ${diff}
     process.exit(1);
   }
 
-  const commentBody = `${BOT_COMMENT_PREFIX}\n\n${textPart}`;
+  const parsed = parseGeminiResponse(textPart);
+
+  // GitHub comment: professional content + roast in collapsible (for Discord extraction on close)
+  const githubComment = [
+    BOT_COMMENT_PREFIX,
+    '',
+    '**Convention Analysis:**',
+    parsed.conventionAnalysis,
+    '',
+    '**Security (SonarCloud):**',
+    parsed.security,
+    '',
+    '**Verdict:**',
+    parsed.verdict,
+    '',
+    '**Rating:**',
+    parsed.rating,
+    '',
+    '<details><summary>IA Roast (Discord)</summary>',
+    '',
+    `**IA Roast:** "${parsed.roast}"`,
+    '',
+    '**Calificación:** ' + parsed.rating + '/5',
+    '',
+    '</details>',
+  ].join('\n');
 
   // 4. Delete previous bot comments (optional, for cleaner PRs)
   const commentsRes = await fetch(
@@ -180,7 +205,7 @@ ${diff}
     }
   }
 
-  // 5. Post new comment
+  // 5. Post new comment (professional only)
   const postRes = await fetch(`${apiBase}/repos/${owner}/${repoName}/issues/${prNumber}/comments`, {
     method: 'POST',
     headers: {
@@ -189,7 +214,7 @@ ${diff}
       'X-GitHub-Api-Version': '2022-11-28',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ body: commentBody }),
+    body: JSON.stringify({ body: githubComment }),
   });
 
   if (!postRes.ok) {
@@ -198,6 +223,26 @@ ${diff}
   }
 
   console.log('PR review comment posted successfully');
+}
+
+function parseGeminiResponse(text) {
+  const roastMatch = text.match(/\*\*IA Roast:\*\*\s*"([^"]*)"/);
+  const conventionMatch = text.match(
+    /\*\*Convention Analysis:\*\*\s*([\s\S]*?)(?=\*\*Security\s*\(SonarCloud\)|\*\*Verdict|\*\*Rating|$)/,
+  );
+  const securityMatch = text.match(
+    /\*\*Security\s*\(SonarCloud\):\*\*\s*([\s\S]*?)(?=\*\*Verdict|\*\*Rating|$)/,
+  );
+  const verdictMatch = text.match(/\*\*Verdict:\*\*\s*([\s\S]*?)(?=\*\*Rating|$)/);
+  const ratingMatch = text.match(/\*\*Rating:\*\*\s*(\d)/);
+
+  return {
+    roast: (roastMatch?.[1] || 'Review completed.').trim(),
+    conventionAnalysis: (conventionMatch?.[1] || 'N/A').trim(),
+    security: (securityMatch?.[1] || 'N/A').trim(),
+    verdict: (verdictMatch?.[1] || 'N/A').trim(),
+    rating: ratingMatch?.[1] || '3',
+  };
 }
 
 function readFile(root, relPath) {

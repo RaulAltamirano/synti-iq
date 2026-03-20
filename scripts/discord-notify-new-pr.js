@@ -1,30 +1,65 @@
 #!/usr/bin/env node
 /**
  * Notifies Discord when a new PR is opened or updated.
- * Env: DISCORD_WEBHOOK, PR_NUMBER, PR_TITLE, PR_URL, PR_AUTHOR, PR_ACTION
+ * Only task description (no roast). Roast is shown when PR is closed (merge/reject).
+ * Env: DISCORD_WEBHOOK, PR_*, ISSUE_*
  */
 
 async function main() {
   const webhook = process.env.DISCORD_WEBHOOK;
   const prNumber = process.env.PR_NUMBER || '?';
-  const prTitle = (process.env.PR_TITLE || 'Sin título').slice(0, 200);
+  const prTitle = (process.env.PR_TITLE || 'No title').slice(0, 200);
   const prUrl = process.env.PR_URL || '';
   const prAuthor = process.env.PR_AUTHOR || 'author';
   const prAction = process.env.PR_ACTION || 'opened';
+  const prBranch = process.env.PR_BRANCH || '';
+  const issueNumber = process.env.ISSUE_NUMBER || '';
+  const issueTitle = (process.env.ISSUE_TITLE || '').slice(0, 150);
+  const issueBody = (process.env.ISSUE_BODY || '').slice(0, 400);
+  const issueUrl = process.env.ISSUE_URL || '';
 
   if (!webhook) {
     console.error('Missing DISCORD_WEBHOOK');
     process.exit(1);
   }
 
-  const status = prAction === 'synchronize' ? 'PR actualizado' : 'Nuevo PR';
+  const status = prAction === 'synchronize' ? 'PR updated' : 'New PR';
+  let description = `**${prTitle}**\n\nBy: @${prAuthor}`;
+  if (prBranch) {
+    description += `\nBranch: \`${prBranch}\``;
+  }
+
+  const fields = [];
+  if (issueNumber && issueTitle) {
+    fields.push({
+      name: `📋 Task #${issueNumber}`,
+      value: issueTitle,
+      inline: false,
+    });
+    if (issueBody) {
+      fields.push({
+        name: 'Description',
+        value: issueBody,
+        inline: false,
+      });
+    }
+    if (issueUrl) {
+      fields.push({
+        name: 'Issue',
+        value: `[View in GitHub](${issueUrl})`,
+        inline: true,
+      });
+    }
+  }
+
   const embed = {
     title: `🚩 Synti-IQ: ${status} #${prNumber}`,
-    description: `**${prTitle}**\n\nPor: @${prAuthor}`,
+    description,
     color: 3447003,
     url: prUrl,
-    footer: { text: 'Revisar en GitHub' },
+    footer: { text: 'Review on GitHub' },
     timestamp: new Date().toISOString(),
+    ...(fields.length > 0 && { fields }),
   };
 
   const res = await fetch(webhook, {
