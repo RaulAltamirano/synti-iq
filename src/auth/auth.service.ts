@@ -28,6 +28,7 @@ import { AuthMetadataService } from './services/auth-metadata.service';
 import { RateLimitService } from './services/rate-limit.service';
 import { ReferralService } from 'src/referral/referral.service';
 import { MailService } from 'src/mail/mail.service';
+import { TwoFactorService } from './services/two-factor.service';
 
 @Injectable()
 export class AuthService {
@@ -44,6 +45,7 @@ export class AuthService {
     private readonly rateLimitService: RateLimitService,
     private readonly referralService: ReferralService,
     private readonly mailService: MailService,
+    private readonly twoFactorService: TwoFactorService,
     @InjectRepository(User)
     private readonly userEntityRepository: Repository<User>,
     @InjectRepository(Role)
@@ -272,6 +274,7 @@ export class AuthService {
 
     const user = await this.userRepository.findByEmail(dto.email, {
       selectPassword: true,
+      selectTwoFactorSecret: true,
     });
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
@@ -282,6 +285,23 @@ export class AuthService {
     const passwordValid = await this.passwordService.verify(dto.password, user.password, dto.email);
     if (!passwordValid) {
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (user.twoFactorSecret) {
+      if (!dto.totpCode) {
+        throw new UnauthorizedException({
+          requires_2fa: true,
+          message: 'TOTP code required',
+        });
+      }
+
+      const isValidTotp = await this.twoFactorService.verify(user, dto.totpCode);
+      const isValidBackup =
+        !isValidTotp && (await this.twoFactorService.verifyBackupCode(user.id, dto.totpCode));
+
+      if (!isValidTotp && !isValidBackup) {
+        throw new UnauthorizedException('Invalid TOTP or backup code');
+      }
     }
 
     await this.rateLimitService.clearRateLimit(dto.email, ipAddress);
@@ -401,6 +421,53 @@ export class AuthService {
       });
       throw new InternalServerErrorException('Authentication error');
     }
+  }
+
+  async setup2fa(userId: string): Promise<{ secret: string; qrCode: string }> {
+    const user = await this.userEntityRepository.findOne({
+      where: { id: userId, isDelete: false },
+      select: ['id', 'email'],
+    });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    return this.twoFactorService.generateSecret(user);
+  }
+
+  async verify2fa(userId: string, code: string): Promise<{ backupCodes: string[] }> {
+    const user = await this.userEntityRepository.findOne({
+      where: { id: userId },
+      select: ['id', 'email'],
+    });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    const result = await this.twoFactorService.verifyAndActivate(user, code);
+    return { backupCodes: result.backupCodes };
+  }
+
+  async disable2fa(userId: string, code: string): Promise<void> {
+    await this.twoFactorService.disable(userId, code);
+  }
+
+  async get2faStatus(userId: string): Promise<{
+    enabled: boolean;
+    method: 'authenticator' | null;
+    backupCodesRemaining: number;
+  }> {
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    return this.twoFactorService.getStatus(user);
+  }
+
+  async regenerateBackupCodes(userId: string): Promise<string[]> {
+    const status = await this.get2faStatus(userId);
+    if (!status.enabled) {
+      throw new BadRequestException('2FA is not enabled');
+    }
+    return this.twoFactorService.regenerateBackupCodes(userId);
   }
 
   private validateUserStatus(user: User): void {

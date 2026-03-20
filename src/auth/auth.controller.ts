@@ -1,4 +1,13 @@
-import { Controller, Post, Body, Req, Res, UnauthorizedException, HttpCode } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Req,
+  Res,
+  UnauthorizedException,
+  HttpCode,
+} from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Auth, GetUser } from './decorator';
 import { LoginUserDto, TokensUserDto } from 'src/auth/dto';
@@ -9,6 +18,7 @@ import { RegisterBusinessDto } from './dto/register-business.dto';
 import { TokenResponseHelper } from './helpers/token-response.helper';
 import { ApiDoc } from 'src/shared/decorators';
 import { authEndpoints } from 'src/docs/auth.endpoints';
+import { VerifyTotpDto } from './dto/verify-totp.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -89,6 +99,48 @@ export class AuthController {
     this.clearAuthCookies(res);
 
     return { message: 'Successfully logged out' };
+  }
+
+  @ApiDoc(authEndpoints, 'auth2faSetup')
+  @Auth('', [])
+  @Post('2fa/setup')
+  @HttpCode(200)
+  async setup2fa(@GetUser('sub') userId: string) {
+    return this.authService.setup2fa(userId);
+  }
+
+  @ApiDoc(authEndpoints, 'auth2faVerify')
+  @Auth('', [])
+  @Post('2fa/verify')
+  @HttpCode(200)
+  async verify2fa(@GetUser('sub') userId: string, @Body() dto: VerifyTotpDto) {
+    const result = await this.authService.verify2fa(userId, dto.code);
+    return { backupCodes: result.backupCodes };
+  }
+
+  @ApiDoc(authEndpoints, 'auth2faDisable')
+  @Auth('', [])
+  @Post('2fa/disable')
+  @HttpCode(200)
+  async disable2fa(@GetUser('sub') userId: string, @Body() dto: VerifyTotpDto) {
+    await this.authService.disable2fa(userId, dto.code);
+    return { message: '2FA disabled successfully' };
+  }
+
+  @ApiDoc(authEndpoints, 'auth2faStatus')
+  @Auth('', [])
+  @Get('2fa/status')
+  async get2faStatus(@GetUser('sub') userId: string) {
+    return this.authService.get2faStatus(userId);
+  }
+
+  @ApiDoc(authEndpoints, 'auth2faRegenerateBackupCodes')
+  @Auth('', [])
+  @Post('2fa/regenerate-backup-codes')
+  @HttpCode(200)
+  async regenerateBackupCodes(@GetUser('sub') userId: string) {
+    const backupCodes = await this.authService.regenerateBackupCodes(userId);
+    return { backupCodes };
   }
 
   @ApiDoc(authEndpoints, 'refresh')

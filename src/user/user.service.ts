@@ -13,7 +13,6 @@ import { DataSource, FindOneOptions, QueryRunner, Repository, SelectQueryBuilder
 import { Cache } from 'cache-manager';
 
 import { User } from './entities/user.entity';
-import { UserProfileResponse } from './interfaces/user-profile-response.interface';
 import { DatabaseService } from 'src/database/database.service';
 import { PasswordService } from 'src/auth/services/password/password.service';
 import { RedisService } from 'src/shared/redis/redis.service';
@@ -355,15 +354,20 @@ export class UserService {
     email: string,
     options: {
       selectPassword?: boolean;
+      selectTwoFactorSecret?: boolean;
       includeRole?: boolean;
     } = {},
   ): Promise<User | null> {
-    const { selectPassword = false, includeRole = true } = options;
+    const { selectPassword = false, selectTwoFactorSecret = false, includeRole = true } = options;
 
     const queryOptions: FindOneOptions<User> = {
       where: { email, isDelete: false },
     };
-    if (selectPassword) queryOptions.select = ['id', 'email', 'password', 'isActive', 'isDelete'];
+    if (selectPassword || selectTwoFactorSecret) {
+      queryOptions.select = ['id', 'email', 'isActive', 'isDelete'];
+      if (selectPassword) queryOptions.select.push('password');
+      if (selectTwoFactorSecret) queryOptions.select.push('twoFactorSecret');
+    }
 
     if (includeRole) {
       queryOptions.relations = ['role'];
@@ -385,11 +389,7 @@ export class UserService {
     return user.role.name;
   }
 
-  async assignRole(
-    userId: string,
-    roleId: number,
-    profileData?: Record<string, unknown>,
-  ): Promise<void> {
+  async assignRole(userId: string, roleId: number, profileData?: any): Promise<void> {
     const queryRunner = this.dataSource.createQueryRunner();
 
     await queryRunner.connect();
@@ -476,11 +476,7 @@ export class UserService {
     }
   }
 
-  async updateRole(
-    userId: string,
-    roleId: number,
-    profileData?: Record<string, unknown>,
-  ): Promise<void> {
+  async updateRole(userId: string, roleId: number, profileData?: any): Promise<void> {
     const queryRunner = this.dataSource.createQueryRunner();
 
     await queryRunner.connect();

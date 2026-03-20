@@ -29,11 +29,15 @@ import { AuthSessionManager } from './services/auth-session-manager.service';
 import { AuthMetadataService } from './services/auth-metadata.service';
 import { RateLimitService } from './services/rate-limit.service';
 import { ReferralModule } from 'src/referral/referral.module';
+import { TwoFactorService } from './services/two-factor.service';
+import { UserBackupCode } from './entities/user-backup-code.entity';
+import { ObservabilityModule } from 'src/shared/observability/observability.module';
 
 @Module({
   controllers: [AuthController],
   providers: [
     AuthService,
+    TwoFactorService,
     TokenFactory,
     JwtStrategy,
     CookieTokenExtractor,
@@ -64,8 +68,9 @@ import { ReferralModule } from 'src/referral/referral.module';
     UserProfileModule,
     SubscriptionModule,
     ReferralModule,
-    TypeOrmModule.forFeature([User, Role, Subscription]),
+    ObservabilityModule,
+    TypeOrmModule.forFeature([User, Role, Subscription, UserBackupCode]),
   ],
-  exports: [AuthService, PassportModule, GuardsModule],
+  exports: [AuthService, TwoFactorService, PassportModule, GuardsModule],
 })
 export class AuthModule {}
