@@ -6,11 +6,11 @@
  */
 
 const RATING_LABELS = [
-  'Nivel: Desastre nuclear',
-  'Nivel: Tabla de Excel',
-  'Nivel: Aceptable',
-  'Nivel: Bueno',
-  'Nivel: Dios del código',
+  'Level: Nuclear disaster',
+  'Level: Excel spreadsheet',
+  'Level: Acceptable',
+  'Level: Good',
+  'Level: Code god',
 ];
 
 async function main() {
@@ -54,7 +54,7 @@ async function main() {
     color,
     fields: [
       {
-        name: 'Calificación',
+        name: 'Rating',
         value: `${stars} (${rating}/5) - ${levelLabel}`,
         inline: true,
       },
@@ -65,7 +65,7 @@ async function main() {
       },
     ],
     footer: {
-      text: 'Actividad del repositorio',
+      text: 'Repository activity',
     },
     timestamp: new Date().toISOString(),
   };

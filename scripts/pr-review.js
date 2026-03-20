@@ -3,6 +3,7 @@
  * PR Review Script — Extracts PR diff, sends to Gemini for code review, posts comment on GitHub.
  * Run from project root in GitHub Actions. Requires: GITHUB_REPOSITORY, GITHUB_EVENT_PATH, GITHUB_TOKEN, GEMINI_API_KEY
  * Optional: SONAR_TOKEN — fetches SonarCloud metrics for the comment
+ * Optional: SONAR_PROJECT — SonarCloud project key (default: RaulAltamirano_synti-iq)
  */
 
 const fs = require('fs');
@@ -48,7 +49,7 @@ async function main() {
   // 0. Fetch SonarCloud metrics (optional)
   let sonarStats = '';
   const sonarToken = process.env.SONAR_TOKEN;
-  const sonarProject = 'RaulAltamirano_synti-iq';
+  const sonarProject = process.env.SONAR_PROJECT || 'RaulAltamirano_synti-iq';
   if (sonarToken) {
     try {
       const sonarRes = await fetch(
@@ -65,7 +66,7 @@ async function main() {
         if (bugs !== '0') parts.push(`🔴 ${bugs} Bugs`);
         if (hotspots !== '0') parts.push(`⚠️ ${hotspots} Hotspots`);
         if (vulns !== '0') parts.push(`🟠 ${vulns} Vulns`);
-        sonarStats = parts.length ? parts.join(' | ') : '✅ Sin hallazgos críticos';
+        sonarStats = parts.length ? parts.join(' | ') : '✅ No critical findings';
       }
     } catch (_) {
       /* ignore */
@@ -98,12 +99,28 @@ async function main() {
     diff = '(No code changes in diff)';
   }
 
-  // 2. Load context files
+  // 2. Load context files with smart truncation
   const root = path.resolve(__dirname, '..');
+  const CONTEXT_LIMITS = {
+    'AGENTS.md': 5000,
+    'docs/CONVENTIONS.md': 5000,
+    'DEFINITION_OF_DONE.md': 2500,
+    'docs/prompts/code-review.md': Infinity,
+    'docs/QUALITY_METRICS.md': 1500,
+    'docs/prompts/fix-quality.md': 2000,
+    'docs/prompts/pre-pr-review.md': 1500,
+  };
+
   const codeReviewPrompt = readFile(root, 'docs/prompts/code-review.md');
   const agentsMd = readFile(root, 'AGENTS.md');
   const conventionsMd = readFile(root, 'docs/CONVENTIONS.md');
   const definitionOfDone = readFile(root, 'DEFINITION_OF_DONE.md');
+  const qualityMetrics = readFile(root, 'docs/QUALITY_METRICS.md');
+  const fixQuality = readFile(root, 'docs/prompts/fix-quality.md');
+  const prePrReview = readFile(root, 'docs/prompts/pre-pr-review.md');
+
+  const truncate = (text, limit) =>
+    typeof limit === 'number' && limit < Infinity ? text.slice(0, limit) : text;
 
   const context = `
 ## Project Context (internalize before reviewing)
@@ -112,25 +129,42 @@ async function main() {
 ${codeReviewPrompt}
 
 ### AGENTS.md (excerpt)
-${agentsMd.slice(0, 4000)}
+${truncate(agentsMd, CONTEXT_LIMITS['AGENTS.md'])}
 
 ### CONVENTIONS.md (excerpt)
-${conventionsMd.slice(0, 4000)}
+${truncate(conventionsMd, CONTEXT_LIMITS['docs/CONVENTIONS.md'])}
 
 ### Definition of Done
-${definitionOfDone.slice(0, 2000)}
+${truncate(definitionOfDone, CONTEXT_LIMITS['DEFINITION_OF_DONE.md'])}
+
+### Quality Metrics
+${truncate(qualityMetrics, CONTEXT_LIMITS['docs/QUALITY_METRICS.md'])}
+
+### Fix Quality (reference)
+${truncate(fixQuality, CONTEXT_LIMITS['docs/prompts/fix-quality.md'])}
+
+### Pre-PR Verification (reference)
+${truncate(prePrReview, CONTEXT_LIMITS['docs/prompts/pre-pr-review.md'])}
 `;
 
   const userPrompt = `
 ## Task
 
-Review the following PR diff against project standards (AGENTS.md, CONVENTIONS.md, code-review prompt). Provide actionable feedback. Use this exact format:
+Review the following PR diff EXHAUSTIVELY against project standards. Check every category that applies to the diff. Use this exact format:
 
-**IA Roast:** "[One funny sarcastic one-liner in Spanish. Mention @${prAuthor}. Max 150 chars. Use phrases or style from: The Simpsons, Futurama, Lupita (Mexican humor), TikTok trends, or Oprankedy. Vary the style each time.]"
+**IA Roast:** "[One funny sarcastic one-liner in English. Mention @${prAuthor}. Max 150 chars. Use phrases or style from: The Simpsons, Futurama, Lupita (Mexican humor), TikTok trends, or Oprankedy. Vary the style each time.]"
 
 **Convention Analysis:**
-- [PASS/FAIL/N/A] - Location: [file or section] - Detail: [what is wrong or correct] - Reference: [AGENTS.md/CONVENTIONS.md/DEFINITION_OF_DONE]
-- [Add 1-3 bullets. Each must have Location and Detail. Be specific.]
+For each category that applies to the diff, output at least one bullet. Use N/A only if the category has no relevant changes.
+- Architecture: [PASS/FAIL/N/A] - Location: [file:line or section] - Detail: [what is wrong or correct] - Reference: [AGENTS.md/CONVENTIONS.md]
+- TypeScript Quality: [PASS/FAIL/N/A] - Location: [file:line] - Detail: [no any, return types, strict typing] - Reference: [CONVENTIONS.md]
+- DTOs & Validation: [PASS/FAIL/N/A] - Location: [file:line] - Detail: [class-validator, @IsOptional] - Reference: [CONVENTIONS.md]
+- Error Handling: [PASS/FAIL/N/A] - Location: [file:line] - Detail: [NotFoundException, BadRequestException, etc.] - Reference: [AGENTS.md]
+- Logging & Observability: [PASS/FAIL/N/A] - Location: [file:line] - Detail: [Logger, withSpan, no console] - Reference: [docs/LOGGING.md, CONVENTIONS.md]
+- Testing: [PASS/FAIL/N/A] - Location: [file or section] - Detail: [unit tests, fixtures, mocks] - Reference: [CONVENTIONS.md, DEFINITION_OF_DONE]
+- API & Documentation: [PASS/FAIL/N/A] - Location: [file:line] - Detail: [ApiDoc, Swagger, endpoint specs] - Reference: [CONVENTIONS.md]
+- Conventions: [PASS/FAIL/N/A] - Location: [file] - Detail: [kebab-case, PascalCase, absolute imports] - Reference: [AGENTS.md]
+Add 1-3 bullets per category that applies. Be specific. If the diff touches DTOs, validate DTOs. If it touches services, validate architecture and error handling.
 
 **Security (SonarCloud):**
 - [Specific concerns if any, or "No obvious security issues detected in diff."]
@@ -139,7 +173,7 @@ Review the following PR diff against project standards (AGENTS.md, CONVENTIONS.m
 
 **Rating:** [1-5]/5
 
-IMPORTANT: Verdict and Convention Analysis must never be empty or N/A. Always provide actionable feedback.
+IMPORTANT: Verdict and Convention Analysis must never be empty or N/A. Review exhaustively. Output everything in English.
 
 ---
 
@@ -175,13 +209,32 @@ ${diff}
   }
 
   const geminiData = await geminiRes.json();
-  const textPart = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+  const candidate = geminiData?.candidates?.[0];
+  const textPart = candidate?.content?.parts?.[0]?.text;
+  const finishReason = candidate?.finishReason;
+
   if (!textPart) {
-    console.error('No text in Gemini response:', JSON.stringify(geminiData, null, 2));
+    const reason = finishReason || 'unknown';
+    console.error(
+      `No text in Gemini response. finishReason=${reason}`,
+      JSON.stringify(geminiData, null, 2),
+    );
     process.exit(1);
   }
 
-  const parsed = parseGeminiResponse(textPart);
+  const problematicReasons = ['MAX_TOKENS', 'SAFETY', 'RECITATION'];
+  if (finishReason && problematicReasons.includes(finishReason)) {
+    console.error(`Gemini finishReason: ${finishReason}. Response may be truncated or blocked.`);
+  }
+
+  let parsed = parseGeminiResponse(textPart);
+  if (finishReason === 'MAX_TOKENS') {
+    const truncNote = '\n\n(Response truncated. Consider splitting the PR or reducing diff size.)';
+    parsed = {
+      ...parsed,
+      conventionAnalysis: parsed.conventionAnalysis + truncNote,
+    };
+  }
 
   // GitHub: brief professional review with emojis. Hidden blocks for Discord extraction on PR close.
   const sections = [
@@ -250,22 +303,34 @@ ${diff}
   console.log('PR review comment posted successfully');
 }
 
+/**
+ * Parses Gemini response into structured review output.
+ * @param {string} text - Raw Gemini response text
+ * @returns {{ roast: string, conventionAnalysis: string, security: string, verdict: string, rating: string }}
+ */
 function parseGeminiResponse(text) {
+  const normalize = s => (s || '').trim().replace(/\n{2,}/g, '\n');
+  const isEmpty = s => !s || /^n\/?a\s*$/i.test(String(s).trim());
+
   const roastMatch = text.match(/\*\*IA Roast:\*\*\s*"([^"]*)"/);
-  const conventionMatch = text.match(
-    /\*\*Convention Analysis:\*\*\s*([\s\S]*?)(?=\*\*Security\s*\(SonarCloud\)|\*\*Verdict|\*\*Rating|$)/,
-  );
-  const securityMatch = text.match(
-    /\*\*Security\s*\(SonarCloud\):\*\*\s*([\s\S]*?)(?=\*\*Verdict|\*\*Rating|$)/,
-  );
+  const conventionMatch =
+    text.match(
+      /\*\*Convention Analysis:\*\*\s*([\s\S]*?)(?=\*\*Security\s*\(SonarCloud\)|\*\*Security:\*\*|\*\*Verdict|\*\*Rating|$)/,
+    ) ||
+    (text.includes('Convention') || /PASS|FAIL/.test(text)
+      ? text.match(
+          /\*\*Convention[\s\S]*?:\*\*\s*([\s\S]*?)(?=\*\*Security|\*\*Verdict|\*\*Rating|$)/,
+        )
+      : null);
+  const securityMatch =
+    text.match(/\*\*Security\s*\(SonarCloud\):\*\*\s*([\s\S]*?)(?=\*\*Verdict|\*\*Rating|$)/) ||
+    text.match(/\*\*Security:\*\*\s*([\s\S]*?)(?=\*\*Verdict|\*\*Rating|$)/);
   const verdictMatch = text.match(/\*\*Verdict:\*\*\s*([\s\S]*?)(?=\*\*Rating|$)/);
   const ratingMatch = text.match(/\*\*Rating:\*\*\s*(\d)/);
 
-  const isEmpty = s => !s || /^n\/?a\s*$/i.test(s.trim());
-
-  const convention = (conventionMatch?.[1] || '').trim();
-  const securityRaw = (securityMatch?.[1] || '').trim();
-  const verdictRaw = (verdictMatch?.[1] || '').trim();
+  const convention = normalize(conventionMatch?.[1] || '');
+  const securityRaw = normalize(securityMatch?.[1] || '');
+  const verdictRaw = normalize(verdictMatch?.[1] || '');
 
   return {
     roast: (roastMatch?.[1] || 'Review completed.').trim(),
@@ -289,7 +354,11 @@ function readFile(root, relPath) {
   }
 }
 
-main().catch(err => {
-  console.error(err);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch(err => {
+    console.error(err);
+    process.exit(1);
+  });
+} else {
+  module.exports = { parseGeminiResponse, readFile };
+}

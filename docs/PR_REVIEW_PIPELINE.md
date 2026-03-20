@@ -54,6 +54,8 @@ The `sonar-project.properties` file in the project root defines:
 
 `GITHUB_TOKEN` is automatically injected by GitHub Actions.
 
+**Optional:** `SONAR_PROJECT` — SonarCloud project key (default: `RaulAltamirano_synti-iq`). Set in workflow env if using a different project.
+
 > **Note:** Pipeline variables are documented in [.env.example](../.env.example) (PR Review Pipeline section). They are configured as **Secrets** in GitHub, not in local `.env`.
 
 ---
@@ -70,6 +72,23 @@ The `sonar-project.properties` file in the project root defines:
 
 ---
 
+## Review Scope
+
+The AI review follows the 8-category structure from [docs/prompts/code-review.md](prompts/code-review.md):
+
+1. **Architecture** — No business logic in controllers, repository layer, module structure
+2. **TypeScript Quality** — No `any`, explicit return types, strict typing
+3. **DTOs & Validation** — class-validator, `@IsOptional`, nested validation
+4. **Error Handling** — NotFoundException, BadRequestException, etc.
+5. **Logging & Observability** — NestJS Logger, withSpan, no console
+6. **Testing** — Unit tests, fixtures, mocks, edge cases
+7. **API & Documentation** — ApiDoc, Swagger, endpoint specs
+8. **Conventions** — kebab-case files, PascalCase classes, absolute imports
+
+Context loaded: AGENTS.md, CONVENTIONS.md, DEFINITION_OF_DONE.md, QUALITY_METRICS.md, fix-quality.md, pre-pr-review.md.
+
+---
+
 ## GitHub Comment Format
 
 The bot posts a **brief professional comment** with emojis for readability (no roast in GitHub):
@@ -77,7 +96,7 @@ The bot posts a **brief professional comment** with emojis for readability (no r
 ```
 🤖 AI Technical Assistant - Review
 
-**📋 Convention Analysis:** [bullets with PASS/FAIL, Location, Detail]
+**📋 Convention Analysis:** [8-category bullets: Architecture, TypeScript, DTOs, Error Handling, Logging, Testing, API, Conventions — each with PASS/FAIL/N/A, Location, Detail]
 **🔒 Security:** [AI assessment]
 **📊 SonarCloud:** [🔴 Bugs | ⚠️ Hotspots | 🟠 Vulns — from SonarCloud API]
 **📌 Verdict:** [✅ Approved / ❌ Changes Required]
@@ -105,15 +124,16 @@ The bot posts a **brief professional comment** with emojis for readability (no r
 
 ## Troubleshooting
 
-| Issue                    | Possible cause                             | Solution                                                                                    |
-| ------------------------ | ------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| SonarCloud fails         | Invalid token or project does not exist    | Verify `SONAR_TOKEN` and `projectKey` in SonarCloud                                         |
-| Gemini does not respond  | Invalid API key or rate limit              | Check `GEMINI_API_KEY`; reduce PR frequency                                                 |
-| Gemini 404 NOT_FOUND     | Deprecated or unavailable model            | Script uses `gemini-2.5-flash`. See [models](https://ai.google.dev/gemini-api/docs/models). |
-| Discord does not receive | Invalid or revoked webhook                 | Regenerate webhook and update `DISCORD_WEBHOOK`                                             |
-| discord-notify exit 1    | Empty webhook (fork PR), invalid URL, 4xx  | Check logs: "Response:" shows Discord error. Fork PRs do not receive secrets.               |
-| Diff truncated           | PR too large                               | Script limits to 2000 lines / 50KB; consider smaller PRs                                    |
-| Empty roast in Discord   | Bot comment does not match expected format | Ensure prompt in `pr-review.js` requests **IA Roast:** and **Rating:**                      |
+| Issue                       | Possible cause                             | Solution                                                                                    |
+| --------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| SonarCloud fails            | Invalid token or project does not exist    | Verify `SONAR_TOKEN` and `projectKey` in SonarCloud                                         |
+| Gemini does not respond     | Invalid API key or rate limit              | Check `GEMINI_API_KEY`; reduce PR frequency                                                 |
+| Gemini 404 NOT_FOUND        | Deprecated or unavailable model            | Script uses `gemini-2.5-flash`. See [models](https://ai.google.dev/gemini-api/docs/models). |
+| Discord does not receive    | Invalid or revoked webhook                 | Regenerate webhook and update `DISCORD_WEBHOOK`                                             |
+| discord-notify exit 1       | Empty webhook (fork PR), invalid URL, 4xx  | Check logs: "Response:" shows Discord error. Fork PRs do not receive secrets.               |
+| Diff truncated              | PR too large                               | Script limits to 2000 lines / 50KB; consider smaller PRs                                    |
+| Incomplete/truncated review | Gemini hit MAX_TOKENS or SAFETY            | Check `finishReason` in workflow logs; consider splitting the PR or reducing diff size      |
+| Empty roast in Discord      | Bot comment does not match expected format | Ensure prompt in `pr-review.js` requests **IA Roast:** and **Rating:**                      |
 
 ---
 

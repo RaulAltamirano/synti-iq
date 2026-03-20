@@ -7,11 +7,11 @@
  */
 
 const RATING_LABELS = [
-  'Nivel: Desastre nuclear',
-  'Nivel: Tabla de Excel',
-  'Nivel: Aceptable',
-  'Nivel: Bueno',
-  'Nivel: Dios del código',
+  'Level: Nuclear disaster',
+  'Level: Excel spreadsheet',
+  'Level: Acceptable',
+  'Level: Good',
+  'Level: Code god',
 ];
 
 async function summarizeWithGemini(title, body) {
@@ -93,11 +93,7 @@ async function main() {
     .map(([url, label]) => `[${label}](${url})`)
     .join(' • ');
 
-  if (links) {
-    fields.push({ name: '🔗 Links', value: links, inline: false });
-  }
-
-  // Resumen de hallazgos (no roast al abrir), Calificación, Sonar
+  // Findings summary (no roast on open), Rating, Sonar
   const summaryText = (process.env.SUMMARY_TEXT || 'Sin hallazgos específicos.')
     .slice(0, 900)
     .replace(/\n{2,}/g, '\n');
@@ -111,13 +107,17 @@ async function main() {
   if (sonarBugs !== '0') sonarParts.push(`🔴 ${sonarBugs} Bugs`);
   if (sonarHotspots !== '0') sonarParts.push(`⚠️ ${sonarHotspots} Hotspots`);
   if (sonarVulns !== '0') sonarParts.push(`🟠 ${sonarVulns} Vulns`);
-  const sonarStats = sonarParts.length ? sonarParts.join(' | ') : '✅ Sin hallazgos críticos';
+  const sonarStats = sonarParts.length ? sonarParts.join(' | ') : '✅ No critical findings';
 
   fields.push(
-    { name: '📋 Resumen de hallazgos', value: summaryText, inline: false },
-    { name: 'Calificación', value: `${stars} (${rating}/5) - ${levelLabel}`, inline: true },
+    { name: '📋 Findings summary', value: summaryText, inline: false },
+    { name: 'Rating', value: `${stars} (${rating}/5) - ${levelLabel}`, inline: true },
     { name: 'Sonar Stats', value: sonarStats, inline: true },
   );
+
+  if (links) {
+    fields.push({ name: '🔗 Links', value: links, inline: false });
+  }
 
   const embed = {
     title: `🚩 Synti-IQ: ${status} #${prNumber}`,

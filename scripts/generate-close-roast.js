@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Generates a roast with BURLA (mockery) about why the PR was closed/merged.
+ * Generates a roast (mockery) about why the PR was closed/merged.
  * Outputs to stdout for workflow capture.
  * Env: GEMINI_API_KEY, PR_AUTHOR, PR_MERGED, SONAR_BUGS, SONAR_SECURITY_HOTSPOTS, RATING, VERDICT
  */
@@ -20,21 +20,21 @@ async function main() {
   }
 
   const context = merged
-    ? `PR fue MERGEADO. Rating ${rating}/5. Sonar: ${bugs} bugs, ${hotspots} hotspots.`
-    : `PR fue CERRADO/RECHAZADO. Rating ${rating}/5. Sonar: ${bugs} bugs, ${hotspots} hotspots. Verdict: ${verdict}`;
+    ? `PR was MERGED. Rating ${rating}/5. Sonar: ${bugs} bugs, ${hotspots} hotspots.`
+    : `PR was CLOSED/REJECTED. Rating ${rating}/5. Sonar: ${bugs} bugs, ${hotspots} hotspots. Verdict: ${verdict}`;
 
   const styles = [
     'The Simpsons (Homer, Mr. Burns, Bart)',
     'Futurama (Bender, Fry, Zapp Brannigan)',
-    'Lupita (humor mexicano)',
-    'TikTok / trends virales',
+    'Lupita (Mexican humor)',
+    'TikTok / viral trends',
     'Oprankedy / YouTube pranks',
   ];
   const style = styles[Math.floor(Math.random() * styles.length)];
 
-  const prompt = `Genera UNA frase sarcástica/burla en español sobre por qué este PR fue ${merged ? 'mergeado' : 'cerrado/rechazado'}. 
-Contexto: ${context}
-Estilo: ${style}. Menciona a @${author}. Máximo 150 caracteres. Solo la frase, sin comillas ni prefijos.`;
+  const prompt = `Generate ONE sarcastic roast in English about why this PR was ${merged ? 'merged' : 'closed/rejected'}. 
+Context: ${context}
+Style: ${style}. Mention @${author}. Max 150 characters. Output only the phrase, no quotes or prefixes.`;
 
   try {
     const res = await fetch(
