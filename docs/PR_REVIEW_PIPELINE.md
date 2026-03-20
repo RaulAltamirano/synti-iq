@@ -72,33 +72,31 @@ The `sonar-project.properties` file in the project root defines:
 
 ## GitHub Comment Format
 
-The bot posts a **brief professional comment** (no roast in GitHub at all):
+The bot posts a **brief professional comment** with emojis for readability (no roast in GitHub):
 
 ```
 🤖 AI Technical Assistant - Review
 
-**Convention Analysis:** [1-2 bullets]
-
-**Security (SonarCloud):** [one line]
-
-**Verdict:** ✅ Approved / ❌ Changes Required. [summary]
-
-**Rating:** X/5
+**📋 Convention Analysis:** [bullets with PASS/FAIL, Location, Detail]
+**🔒 Security:** [AI assessment]
+**📊 SonarCloud:** [🔴 Bugs | ⚠️ Hotspots | 🟠 Vulns — from SonarCloud API]
+**📌 Verdict:** [✅ Approved / ❌ Changes Required]
+**⭐ Rating:** [1-5]/5
 ```
 
 ---
 
 ## Discord Message Format
 
-**On PR open/update:** Brief embed with PR title, author, branch, and short task summary (title + first 80 chars of issue body). No roast.
+**On PR open/update:** Brief embed with PR title, author, branch, task summary (3-line Gemini summary when `GEMINI_API_KEY` is set), and links (View MR, View requirement).
 
-**Data source:** When branch matches `N-task-name`, fetches issue #N from GitHub API (`GET /repos/{owner}/{repo}/issues/{N}`). The issue `title` and `body` come from the GitHub Issue (or linked Project item). Discord shows a truncated excerpt.
+**Data source:** When branch matches `N-task-name`, fetches issue #N from GitHub API. Gemini summarizes the issue in 3 lines for readability. Fallback: truncated title + body.
 
 **On PR close (merge/reject):** Card-style embed with roast:
 
 - **Title:** Synti-IQ Review: Pull Request #N
 - **Status:** MERGED (green) / REJECTED (red)
-- **IA Roast:** "Review completed." (roast not stored in GitHub; would require separate storage to show custom roast on close)
+- **IA Roast:** Extracted from the AI review comment (hidden block `<!-- DISCORD_ROAST:... -->`)
 - **Rating:** Stars (1–5) and level
 - **Sonar Stats:** Bugs, Security Hotspots, Vulnerabilities
 - **Link:** Link to PR on GitHub

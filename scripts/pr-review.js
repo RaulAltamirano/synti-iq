@@ -2,6 +2,7 @@
 /**
  * PR Review Script — Extracts PR diff, sends to Gemini for code review, posts comment on GitHub.
  * Run from project root in GitHub Actions. Requires: GITHUB_REPOSITORY, GITHUB_EVENT_PATH, GITHUB_TOKEN, GEMINI_API_KEY
+ * Optional: SONAR_TOKEN — fetches SonarCloud metrics for the comment
  */
 
 const fs = require('fs');
@@ -43,6 +44,33 @@ async function main() {
   const prAuthor = pr.user?.login || 'author';
   const [owner, repoName] = repo.split('/');
   const apiBase = 'https://api.github.com';
+
+  // 0. Fetch SonarCloud metrics (optional)
+  let sonarStats = '';
+  const sonarToken = process.env.SONAR_TOKEN;
+  const sonarProject = 'RaulAltamirano_synti-iq';
+  if (sonarToken) {
+    try {
+      const sonarRes = await fetch(
+        `https://sonarcloud.io/api/measures/component?component=${sonarProject}&metricKeys=bugs,security_hotspots,vulnerabilities`,
+        { headers: { Authorization: `Bearer ${sonarToken}` } },
+      );
+      if (sonarRes.ok) {
+        const data = await sonarRes.json();
+        const getVal = m => data?.component?.measures?.find(x => x.metric === m)?.value ?? '0';
+        const bugs = getVal('bugs');
+        const hotspots = getVal('security_hotspots');
+        const vulns = getVal('vulnerabilities');
+        const parts = [];
+        if (bugs !== '0') parts.push(`🔴 ${bugs} Bugs`);
+        if (hotspots !== '0') parts.push(`⚠️ ${hotspots} Hotspots`);
+        if (vulns !== '0') parts.push(`🟠 ${vulns} Vulns`);
+        sonarStats = parts.length ? parts.join(' | ') : '✅ Sin hallazgos críticos';
+      }
+    } catch (_) {
+      /* ignore */
+    }
+  }
 
   // 1. Get PR diff
   const diffRes = await fetch(`${apiBase}/repos/${owner}/${repoName}/pulls/${prNumber}`, {
@@ -155,22 +183,20 @@ ${diff}
 
   const parsed = parseGeminiResponse(textPart);
 
-  // GitHub: brief professional review. Hidden blocks for Discord extraction on PR close.
+  // GitHub: brief professional review with emojis. Hidden blocks for Discord extraction on PR close.
+  const sections = [
+    ['📋 Convention Analysis', parsed.conventionAnalysis],
+    ['🔒 Security', parsed.security],
+    ['📌 Verdict', parsed.verdict],
+    ['⭐ Rating', parsed.rating + '/5'],
+  ];
+  if (sonarStats) {
+    sections.splice(2, 0, ['📊 SonarCloud', sonarStats]); // after Security, before Verdict
+  }
   const githubComment = [
     BOT_COMMENT_PREFIX,
     '',
-    '**Convention Analysis:**',
-    parsed.conventionAnalysis,
-    '',
-    '**Security (SonarCloud):**',
-    parsed.security,
-    '',
-    '**Verdict:**',
-    parsed.verdict,
-    '',
-    '**Rating:**',
-    parsed.rating + '/5',
-    '',
+    ...sections.flatMap(([title, body]) => [`**${title}:**`, body, '']),
     `<!-- DISCORD_ROAST:${String(parsed.roast).replace(/-->/g, '')} -->`,
     `<!-- DISCORD_RATING:${parsed.rating} -->`,
   ].join('\n');
