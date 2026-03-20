@@ -14,6 +14,10 @@ Automated Pull Request review pipeline integrating SonarCloud, Gemini (AI), and 
 
 **Limitation:** Jobs that use secrets (sonar, ai-review, discord) **do not run** on PRs from forks. They only run when the PR comes from a branch in the same repository.
 
+**CI Quality Gate:** A separate [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) workflow runs on all PRs (main, master, dev) and on push to main/master. It runs `yarn lint`, `yarn format:check`, `yarn build`, and `yarn test`. Configure **Branch Protection** to require the `quality` job to pass before merge.
+
+**Sonar job steps:** The `sonar` job in `pr-review.yml` runs: lint → format:check → build → test:cov → SonarCloud scan → **Quality Gate check**. If the Quality Gate fails, the job fails and blocks merge (when required by Branch Protection).
+
 ---
 
 ## Required Configuration
@@ -65,7 +69,8 @@ The `sonar-project.properties` file in the project root defines:
 
 | File                               | Purpose                                                         |
 | ---------------------------------- | --------------------------------------------------------------- |
-| `.github/workflows/pr-review.yml`  | Main workflow                                                   |
+| `.github/workflows/ci.yml`         | Quality gate: lint, format:check, build, test on PR/push        |
+| `.github/workflows/pr-review.yml`  | Main workflow: SonarCloud, AI review, Discord                   |
 | `sonar-project.properties`         | SonarCloud configuration                                        |
 | `scripts/pr-review.js`             | Extracts diff, calls Gemini, posts comment on PR                |
 | `scripts/discord-notify.js`        | Sends embed to Discord when PR is closed                        |
