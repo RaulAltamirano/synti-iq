@@ -67,6 +67,53 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: node scripts/pr-review.js
 
+  discord-commit-update:
+    if: github.event_name == 'pull_request' && github.event.action == 'synchronize' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Fetch commit and comments
+        id: fetch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUM="${{ github.event.pull_request.number }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          COMMIT=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.repository }}/commits/${HEAD_SHA}" 2>/dev/null || echo "{}")
+          COMMIT_MSG=$(echo "$COMMIT" | jq -r '.commit.message // ""' 2>/dev/null)
+          COMMIT_AUTHOR=$(echo "$COMMIT" | jq -r '.commit.author.name // .author.login // "unknown"' 2>/dev/null)
+          COMMENTS=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.repository }}/issues/${PR_NUM}/comments" 2>/dev/null || echo "[]")
+          echo "sha=${HEAD_SHA}" >> $GITHUB_OUTPUT
+          echo "message<<MSG_EOF" >> $GITHUB_OUTPUT
+          printf '%s' "$COMMIT_MSG" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "MSG_EOF" >> $GITHUB_OUTPUT
+          echo "author=$COMMIT_AUTHOR" >> $GITHUB_OUTPUT
+          echo "comments<<COMMENTS_DELIM" >> $GITHUB_OUTPUT
+          echo "$COMMENTS" >> $GITHUB_OUTPUT
+          echo "COMMENTS_DELIM" >> $GITHUB_OUTPUT
+
+      - name: Notify Discord - New commit
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DISCORD_THREAD_ID: ${{ secrets.DISCORD_THREAD_ID }}
+          DISCORD_USE_FORUM: ${{ vars.DISCORD_USE_FORUM }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          COMMIT_SHA: ${{ steps.fetch.outputs.sha }}
+          COMMIT_MESSAGE: ${{ steps.fetch.outputs.message }}
+          COMMIT_AUTHOR: ${{ steps.fetch.outputs.author }}
+          COMMENTS_JSON: ${{ steps.fetch.outputs.comments }}
+        run: node scripts/discord-notify-commit.js
+
   discord-notify-new-pr:
     needs: [ai-review]
     if: always() && (needs.ai-review.result == 'success' || needs.ai-review.result == 'failure')
@@ -113,7 +160,7 @@ jobs:
             "https://api.github.com/repos/${{ github.repository }}/issues/${PR_NUM}/comments" 2>/dev/null || echo "[]")
           BODY=$(echo "$COMMENTS" | jq -r '[.[] | select(.body != null and (.body | test("^🤖")))] | last | .body // ""' 2>/dev/null)
           ROAST=$(echo "$BODY" | perl -0777 -ne 'print $1 if /<!-- DISCORD_ROAST:(.*?)-->/s' 2>/dev/null | head -c 300 | tr -d '\n\r')
-          [ -z "$ROAST" ] && ROAST="Review completed."
+          [ -z "$ROAST" ] && ROAST="Revisión completada."
           RATING=$(echo "$BODY" | grep -oP '(?<=<!-- DISCORD_RATING:)\d(?= -->)' 2>/dev/null | head -1)
           [ -z "$RATING" ] && RATING="3"
           SUMMARY=$(echo "$BODY" | perl -0777 -ne 'print $1 if /<!-- DISCORD_SUMMARY:(.*?)-->/s' 2>/dev/null | head -c 2000 | tr -d '\r')
@@ -233,7 +280,7 @@ jobs:
           echo "" >> $GITHUB_OUTPUT
           echo "VERDICT_DELIM" >> $GITHUB_OUTPUT
           echo "roast_fallback<<ROAST_FB_DELIM" >> $GITHUB_OUTPUT
-          printf '%s' "${ROAST:-Review completed.}" >> $GITHUB_OUTPUT
+          printf '%s' "${ROAST:-Revisión completada.}" >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
           echo "ROAST_FB_DELIM" >> $GITHUB_OUTPUT
 

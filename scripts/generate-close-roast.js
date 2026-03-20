@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 /**
- * Generates a roast (mockery) about why the PR was closed/merged.
- * Outputs to stdout for workflow capture.
+ * Generates a roast (burla) about why the PR was closed/merged.
+ * Uses roast-prompt.config.js for easy customization.
  * Env: GEMINI_API_KEY, PR_AUTHOR, PR_MERGED, SONAR_BUGS, SONAR_SECURITY_HOTSPOTS, RATING, VERDICT
  */
+
+const config = require('./roast-prompt.config.js');
 
 async function main() {
   const key = process.env.GEMINI_API_KEY;
@@ -15,26 +17,23 @@ async function main() {
   const verdict = process.env.VERDICT || '';
 
   if (!key) {
-    console.log('Review completed.');
+    console.log(config.fallback);
     return;
   }
 
+  const action = merged ? 'mergeado' : 'cerrado/rechazado';
   const context = merged
-    ? `PR was MERGED. Rating ${rating}/5. Sonar: ${bugs} bugs, ${hotspots} hotspots.`
-    : `PR was CLOSED/REJECTED. Rating ${rating}/5. Sonar: ${bugs} bugs, ${hotspots} hotspots. Verdict: ${verdict}`;
+    ? `PR fue MERGEADO. Rating ${rating}/5. Sonar: ${bugs} bugs, ${hotspots} hotspots.`
+    : `PR fue CERRADO/RECHAZADO. Rating ${rating}/5. Sonar: ${bugs} bugs, ${hotspots} hotspots. Veredicto: ${verdict}`;
 
-  const styles = [
-    'The Simpsons (Homer, Mr. Burns, Bart)',
-    'Futurama (Bender, Fry, Zapp Brannigan)',
-    'Lupita (Mexican humor)',
-    'TikTok / viral trends',
-    'Oprankedy / YouTube pranks',
-  ];
-  const style = styles[Math.floor(Math.random() * styles.length)];
+  const style = config.styles[Math.floor(Math.random() * config.styles.length)];
 
-  const prompt = `Generate ONE sarcastic roast in English about why this PR was ${merged ? 'merged' : 'closed/rejected'}. 
-Context: ${context}
-Style: ${style}. Mention @${author}. Max 150 characters. Output only the phrase, no quotes or prefixes.`;
+  const prompt = config.promptTemplate
+    .replace(/\{\{action\}\}/g, action)
+    .replace(/\{\{context\}\}/g, context)
+    .replace(/\{\{style\}\}/g, style)
+    .replace(/\{\{author\}\}/g, author)
+    .replace(/\{\{maxChars\}\}/g, String(config.maxChars));
 
   try {
     const res = await fetch(
@@ -44,12 +43,12 @@ Style: ${style}. Mention @${author}. Max 150 characters. Output only the phrase,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 128 },
+          generationConfig: { temperature: 0.7, maxOutputTokens: 256 },
         }),
       },
     );
     if (!res.ok) {
-      console.log('Review completed.');
+      console.log(config.fallback);
       return;
     }
     const data = await res.json();
@@ -57,11 +56,11 @@ Style: ${style}. Mention @${author}. Max 150 characters. Output only the phrase,
     const roast =
       text
         ?.trim()
-        .slice(0, 200)
-        .replace(/^["']|["']$/g, '') || 'Review completed.';
+        .slice(0, config.maxChars)
+        .replace(/^["']|["']$/g, '') || config.fallback;
     console.log(roast);
   } catch (_) {
-    console.log('Review completed.');
+    console.log(config.fallback);
   }
 }
 

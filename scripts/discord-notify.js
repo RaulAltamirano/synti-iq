@@ -23,8 +23,8 @@ async function main() {
   const sonarHotspots = process.env.SONAR_SECURITY_HOTSPOTS || '0';
   const sonarVulns = process.env.SONAR_VULNERABILITIES || '0';
   const rawRoast = process.env.ROAST_TEXT || '';
-  const fallback = process.env.ROAST_FALLBACK || 'Review completed.';
-  const generic = 'Review completed.';
+  const fallback = process.env.ROAST_FALLBACK || 'Revisión completada.';
+  const generic = 'Revisión completada.';
   const roastText =
     rawRoast && rawRoast.trim() && rawRoast.trim() !== generic
       ? rawRoast.trim()

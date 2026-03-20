@@ -6,10 +6,11 @@ Automated Pull Request review pipeline integrating SonarCloud, Gemini (AI), and 
 
 ## Flow Summary
 
-| PR Event                 | Actions                                                                              |
-| ------------------------ | ------------------------------------------------------------------------------------ |
-| `opened` / `synchronize` | SonarCloud analysis, AI review (Gemini), PR comment, Discord "New PR" notification   |
-| `closed`                 | Discord notification with status (MERGED/REJECTED), roast, rating, and Sonar metrics |
+| PR Event      | Actions                                                                                             |
+| ------------- | --------------------------------------------------------------------------------------------------- |
+| `opened`      | SonarCloud, AI review, Discord "New PR" notification                                                |
+| `synchronize` | SonarCloud, AI review, Discord "New PR" + **Discord commit update** (thread with commit + comments) |
+| `closed`      | Discord notification with status (MERGED/REJECTED), roast, rating, and Sonar metrics                |
 
 **Limitation:** Jobs that use secrets (sonar, ai-review, discord) **do not run** on PRs from forks. They only run when the PR comes from a branch in the same repository.
 
@@ -62,13 +63,26 @@ The `sonar-project.properties` file in the project root defines:
 
 ## Pipeline Files
 
-| File                               | Purpose                                                    |
-| ---------------------------------- | ---------------------------------------------------------- |
-| `.github/workflows/pr-review.yml`  | Main workflow                                              |
-| `sonar-project.properties`         | SonarCloud configuration                                   |
-| `scripts/pr-review.js`             | Extracts diff, calls Gemini, posts comment on PR           |
-| `scripts/discord-notify.js`        | Sends embed to Discord when PR is closed                   |
-| `scripts/discord-notify-new-pr.js` | Sends notification to Discord when PR is opened or updated |
+| File                               | Purpose                                                         |
+| ---------------------------------- | --------------------------------------------------------------- |
+| `.github/workflows/pr-review.yml`  | Main workflow                                                   |
+| `sonar-project.properties`         | SonarCloud configuration                                        |
+| `scripts/pr-review.js`             | Extracts diff, calls Gemini, posts comment on PR                |
+| `scripts/discord-notify.js`        | Sends embed to Discord when PR is closed                        |
+| `scripts/discord-notify-new-pr.js` | Sends notification to Discord when PR is opened or updated      |
+| `scripts/discord-notify-commit.js` | Sends commit + comments to Discord on each push (synchronize)   |
+| `scripts/roast-prompt.config.js`   | Config del roast (idioma, estilos, prompt) — fácil de modificar |
+
+---
+
+## Roast (al cerrar PR)
+
+El roast se genera en **español** y se configura en `scripts/roast-prompt.config.js`:
+
+- **language**: `'es'` | `'en'`
+- **styles**: referencias de humor (Los Simpson, Lupita, etc.) — añade las que quieras
+- **promptTemplate**: plantilla con `{{action}}`, `{{context}}`, `{{style}}`, `{{author}}`, `{{maxChars}}`
+- **fallback**: mensaje cuando Gemini falla
 
 ---
 
@@ -119,6 +133,17 @@ The bot posts a **brief professional comment** with emojis for readability (no r
 - **Rating:** Stars (1–5) and level
 - **Sonar Stats:** Bugs, Security Hotspots, Vulnerabilities
 - **Link:** Link to PR on GitHub
+
+**On each new commit (synchronize):** Separate notification with:
+
+- Commit hash, message, author, branch
+- Recent human comments on the PR (excludes bot comments)
+- Link to PR
+
+**Thread options (optional):**
+
+- `DISCORD_THREAD_ID` (secret): Post all commit updates to this thread. Create a thread in Discord, enable Developer Mode, right-click the thread → Copy Thread ID.
+- `DISCORD_USE_FORUM` (variable, `true`): If the webhook is in a **forum channel**, each commit creates a new forum post (thread). Set in **Settings > Variables**.
 
 ---
 
