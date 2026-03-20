@@ -69,9 +69,8 @@ async function main() {
         inline: true,
       },
     ],
-    url: prUrl,
     footer: {
-      text: 'Revisar MR en GitHub',
+      text: 'Actividad del repositorio',
     },
     timestamp: new Date().toISOString(),
   };

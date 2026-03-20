@@ -1,10 +1,18 @@
 #!/usr/bin/env node
 /**
  * Notifies Discord when a new PR is opened or updated.
- * Shows brief task description from linked issue (branch like 20-task-name).
- * Uses Gemini to generate a 3-line summary when GEMINI_API_KEY is set.
- * Env: DISCORD_WEBHOOK, PR_*, ISSUE_*, GEMINI_API_KEY (optional)
+ * Runs AFTER ai-review (even when it fails). Shows task, links, IA roast, rating, Sonar.
+ * Env: DISCORD_WEBHOOK, PR_*, ISSUE_*, GEMINI_API_KEY (optional),
+ *   ROAST_TEXT, RATING, SONAR_BUGS, SONAR_SECURITY_HOTSPOTS, SONAR_VULNERABILITIES
  */
+
+const RATING_LABELS = [
+  'Nivel: Desastre nuclear',
+  'Nivel: Tabla de Excel',
+  'Nivel: Aceptable',
+  'Nivel: Bueno',
+  'Nivel: Dios del código',
+];
 
 async function summarizeWithGemini(title, body) {
   const key = process.env.GEMINI_API_KEY;
@@ -88,6 +96,28 @@ async function main() {
   if (links) {
     fields.push({ name: '🔗 Links', value: links, inline: false });
   }
+
+  // IA Roast, Calificación, Sonar (from ai-review + SonarCloud, even when they fail)
+  const roastText = (process.env.ROAST_TEXT || 'Review completed.')
+    .slice(0, 500)
+    .replace(/[\n\r]+/g, ' ');
+  const rating = Math.min(5, Math.max(1, parseInt(process.env.RATING || '3', 10) || 3));
+  const stars = '⭐'.repeat(rating) + '☆'.repeat(5 - rating);
+  const levelLabel = RATING_LABELS[rating - 1] || RATING_LABELS[2];
+  const sonarBugs = process.env.SONAR_BUGS || '0';
+  const sonarHotspots = process.env.SONAR_SECURITY_HOTSPOTS || '0';
+  const sonarVulns = process.env.SONAR_VULNERABILITIES || '0';
+  const sonarParts = [];
+  if (sonarBugs !== '0') sonarParts.push(`🔴 ${sonarBugs} Bugs`);
+  if (sonarHotspots !== '0') sonarParts.push(`⚠️ ${sonarHotspots} Hotspots`);
+  if (sonarVulns !== '0') sonarParts.push(`🟠 ${sonarVulns} Vulns`);
+  const sonarStats = sonarParts.length ? sonarParts.join(' | ') : '✅ Sin hallazgos críticos';
+
+  fields.push(
+    { name: 'IA Roast', value: `> "${roastText}"\n— *@${prAuthor}*`, inline: false },
+    { name: 'Calificación', value: `${stars} (${rating}/5) - ${levelLabel}`, inline: true },
+    { name: 'Sonar Stats', value: sonarStats, inline: true },
+  );
 
   const embed = {
     title: `🚩 Synti-IQ: ${status} #${prNumber}`,
