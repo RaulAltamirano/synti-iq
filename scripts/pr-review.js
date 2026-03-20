@@ -155,7 +155,7 @@ ${diff}
 
   const parsed = parseGeminiResponse(textPart);
 
-  // GitHub: brief professional review only. No roast at all.
+  // GitHub: brief professional review. Hidden blocks for Discord extraction on PR close.
   const githubComment = [
     BOT_COMMENT_PREFIX,
     '',
@@ -170,6 +170,9 @@ ${diff}
     '',
     '**Rating:**',
     parsed.rating + '/5',
+    '',
+    `<!-- DISCORD_ROAST:${String(parsed.roast).replace(/-->/g, '')} -->`,
+    `<!-- DISCORD_RATING:${parsed.rating} -->`,
   ].join('\n');
 
   // 4. Delete previous bot comments (optional, for cleaner PRs)
