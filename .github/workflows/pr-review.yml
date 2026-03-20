@@ -3,6 +3,14 @@ name: PR Review Pipeline
 on:
   pull_request:
     types: [opened, synchronize, closed]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -17,10 +25,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '20.19'
           cache: 'yarn'
 
       - name: Enable Yarn
@@ -41,6 +57,13 @@ jobs:
       - name: Test with coverage
         run: yarn test:cov
 
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v4
         env:
@@ -48,7 +71,7 @@ jobs:
 
       - name: SonarCloud Quality Gate check
         id: sonarqube-quality-gate-check
-        uses: sonarsource/sonarqube-quality-gate-action@master
+        uses: sonarsource/sonarqube-quality-gate-action@v2
         with:
           pollingTimeoutSec: 600
         env:
@@ -61,10 +84,18 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '20.19'
           cache: 'yarn'
 
       - name: Enable Yarn
@@ -140,7 +171,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '20.19'
 
       - name: Get SonarCloud metrics
         id: sonar
@@ -251,7 +282,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '20.19'
 
       - name: Get SonarCloud metrics
         id: sonar

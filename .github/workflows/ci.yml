@@ -3,8 +3,16 @@ name: CI — Quality Gate
 on:
   pull_request:
     branches: [main, master, dev]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
   push:
     branches: [main, master]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -15,10 +23,18 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '20.19'
           cache: 'yarn'
 
       - name: Enable Yarn
@@ -26,6 +42,9 @@ jobs:
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
+
+      - name: Audit dependencies
+        run: yarn audit --level high
 
       - name: Lint
         run: yarn lint
