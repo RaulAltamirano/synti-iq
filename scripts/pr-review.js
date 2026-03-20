@@ -120,8 +120,8 @@ ${diff}
 \`\`\`
 `;
 
-  // 3. Call Gemini
-  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+  // 3. Call Gemini (gemini-2.5-flash: stable, good price-performance; fallback: gemini-2.0-flash)
+  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
   const geminiRes = await fetch(geminiUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

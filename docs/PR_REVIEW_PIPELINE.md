@@ -103,14 +103,15 @@ Embed tipo Card con:
 
 ## Troubleshooting
 
-| Problema                   | Posible causa                                      | Solución                                                                           |
-| -------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| SonarCloud falla           | Token inválido o proyecto no existe                | Verificar `SONAR_TOKEN` y `projectKey` en SonarCloud                               |
-| Gemini no responde         | API key inválida o rate limit                      | Comprobar `GEMINI_API_KEY`; reducir frecuencia de PRs                              |
-| Discord no recibe mensaje  | Webhook incorrecto o revocado                      | Regenerar webhook y actualizar `DISCORD_WEBHOOK`                                   |
-| discord-notify exit code 1 | Webhook vacío (PR desde fork), URL inválida, 4xx   | Ver logs: "Response:" muestra error de Discord. PRs desde fork no reciben secrets. |
-| Diff truncado              | PR muy grande                                      | El script limita a 2000 líneas / 50KB; considerar PRs más pequeños                 |
-| Roast vacío en Discord     | El comentario del bot no tiene el formato esperado | Revisar que el prompt en `pr-review.js` pida **IA Roast:** y **Calificación:**     |
+| Problema                   | Posible causa                                      | Solución                                                                                       |
+| -------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| SonarCloud falla           | Token inválido o proyecto no existe                | Verificar `SONAR_TOKEN` y `projectKey` en SonarCloud                                           |
+| Gemini no responde         | API key inválida o rate limit                      | Comprobar `GEMINI_API_KEY`; reducir frecuencia de PRs                                          |
+| Gemini 404 NOT_FOUND       | Modelo deprecado o no disponible                   | El script usa `gemini-2.5-flash`. Ver [modelos](https://ai.google.dev/gemini-api/docs/models). |
+| Discord no recibe mensaje  | Webhook incorrecto o revocado                      | Regenerar webhook y actualizar `DISCORD_WEBHOOK`                                               |
+| discord-notify exit code 1 | Webhook vacío (PR desde fork), URL inválida, 4xx   | Ver logs: "Response:" muestra error de Discord. PRs desde fork no reciben secrets.             |
+| Diff truncado              | PR muy grande                                      | El script limita a 2000 líneas / 50KB; considerar PRs más pequeños                             |
+| Roast vacío en Discord     | El comentario del bot no tiene el formato esperado | Revisar que el prompt en `pr-review.js` pida **IA Roast:** y **Calificación:**                 |
 
 ---
 
