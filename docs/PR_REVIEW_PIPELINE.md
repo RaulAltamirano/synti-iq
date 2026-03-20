@@ -90,7 +90,9 @@ The bot posts a **brief professional comment** (no roast in GitHub at all):
 
 ## Discord Message Format
 
-**On PR open/update:** Simple embed with task description only (title, author, branch, task # and description when branch matches `N-task-name`). No roast.
+**On PR open/update:** Brief embed with PR title, author, branch, and short task summary (title + first 80 chars of issue body). No roast.
+
+**Data source:** When branch matches `N-task-name`, fetches issue #N from GitHub API (`GET /repos/{owner}/{repo}/issues/{N}`). The issue `title` and `body` come from the GitHub Issue (or linked Project item). Discord shows a truncated excerpt.
 
 **On PR close (merge/reject):** Card-style embed with roast:
 

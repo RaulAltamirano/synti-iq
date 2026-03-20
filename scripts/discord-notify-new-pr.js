@@ -14,8 +14,8 @@ async function main() {
   const prAction = process.env.PR_ACTION || 'opened';
   const prBranch = process.env.PR_BRANCH || '';
   const issueNumber = process.env.ISSUE_NUMBER || '';
-  const issueTitle = (process.env.ISSUE_TITLE || '').slice(0, 150);
-  const issueBody = (process.env.ISSUE_BODY || '').slice(0, 300);
+  const issueTitle = (process.env.ISSUE_TITLE || '').slice(0, 100);
+  const issueBody = (process.env.ISSUE_BODY || '').slice(0, 80);
   const issueUrl = process.env.ISSUE_URL || '';
 
   if (!webhook) {
@@ -31,7 +31,7 @@ async function main() {
 
   const fields = [];
   if (issueNumber && (issueTitle || issueBody)) {
-    const taskValue = [issueTitle, issueBody].filter(Boolean).join('\n\n');
+    const taskValue = [issueTitle, issueBody].filter(Boolean).join(' — ');
     fields.push({
       name: `📋 Task #${issueNumber}`,
       value: taskValue + (issueUrl ? `\n\n[View in GitHub](${issueUrl})` : ''),

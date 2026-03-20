@@ -96,17 +96,22 @@ ${definitionOfDone.slice(0, 2000)}
   const userPrompt = `
 ## Task
 
-Review the following PR diff. Keep the review BRIEF and to the point. Use this exact format:
+Review the following PR diff against project standards (AGENTS.md, CONVENTIONS.md, code-review prompt). Provide actionable feedback. Use this exact format:
 
-**IA Roast:** "[One funny, sarcastic one-liner in Spanish. Mention @${prAuthor}. Max 150 chars. Used for Discord on merge/close.]"
+**IA Roast:** "[One funny, sarcastic one-liner in Spanish. Mention @${prAuthor}. Max 150 chars.]"
 
-**Convention Analysis:** [1-2 bullets max. PASS/FAIL/N/A, Location, brief detail.]
+**Convention Analysis:**
+- [PASS/FAIL/N/A] - Location: [file or section] - Detail: [what is wrong or correct] - Reference: [AGENTS.md/CONVENTIONS.md/DEFINITION_OF_DONE]
+- [Add 1-3 bullets. Each must have Location and Detail. Be specific.]
 
-**Security (SonarCloud):** [One line. "No obvious issues" if none.]
+**Security (SonarCloud):**
+- [Specific concerns if any, or "No obvious security issues detected in diff."]
 
-**Verdict:** [✅ Approved / ❌ Changes Required]. [One short sentence.]
+**Verdict:** [✅ Approved / ❌ Changes Required]. [One sentence: what to fix or confirmation that it looks good.]
 
 **Rating:** [1-5]/5
+
+IMPORTANT: Verdict and Convention Analysis must never be empty or N/A. Always provide actionable feedback.
 
 ---
 
@@ -131,7 +136,7 @@ ${diff}
       ],
       generationConfig: {
         temperature: 0.3,
-        maxOutputTokens: 2048,
+        maxOutputTokens: 4096,
       },
     }),
   });
@@ -225,11 +230,21 @@ function parseGeminiResponse(text) {
   const verdictMatch = text.match(/\*\*Verdict:\*\*\s*([\s\S]*?)(?=\*\*Rating|$)/);
   const ratingMatch = text.match(/\*\*Rating:\*\*\s*(\d)/);
 
+  const isEmpty = s => !s || /^n\/?a\s*$/i.test(s.trim());
+
+  const convention = (conventionMatch?.[1] || '').trim();
+  const securityRaw = (securityMatch?.[1] || '').trim();
+  const verdictRaw = (verdictMatch?.[1] || '').trim();
+
   return {
     roast: (roastMatch?.[1] || 'Review completed.').trim(),
-    conventionAnalysis: (conventionMatch?.[1] || 'N/A').trim(),
-    security: (securityMatch?.[1] || 'N/A').trim(),
-    verdict: (verdictMatch?.[1] || 'N/A').trim(),
+    conventionAnalysis: isEmpty(convention)
+      ? 'No specific findings. Consider running yarn quality locally.'
+      : convention,
+    security: isEmpty(securityRaw) ? 'No obvious security issues detected in diff.' : securityRaw,
+    verdict: isEmpty(verdictRaw)
+      ? 'Review incomplete. Please address any convention or security findings above.'
+      : verdictRaw,
     rating: ratingMatch?.[1] || '3',
   };
 }
