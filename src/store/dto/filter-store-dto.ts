@@ -5,6 +5,10 @@ import { BasePaginationParams } from 'src/pagination/dtos/base-pagination-params
 export class StoreFilterDto extends BasePaginationParams {
   @IsString()
   @IsOptional()
+  businessProfileId?: string;
+
+  @IsString()
+  @IsOptional()
   name?: string;
 
   @IsBoolean()

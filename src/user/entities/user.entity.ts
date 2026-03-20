@@ -22,8 +22,11 @@ export class User {
   @Column('text', { select: false })
   password: string;
 
-  @Column('text')
-  fullName: string;
+  @Column('text', { name: 'firstName' })
+  firstName: string;
+
+  @Column('text', { name: 'lastName' })
+  lastName: string;
 
   @Column('bool', { default: true })
   isActive: boolean;

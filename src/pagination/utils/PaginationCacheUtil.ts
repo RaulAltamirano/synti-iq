@@ -1,4 +1,5 @@
 import { createHash } from 'crypto';
+import { Logger } from '@nestjs/common';
 import { PaginatedResponse } from '../interfaces/PaginatedResponse';
 import { BasePaginationParams } from '../dtos/base-pagination-params';
 import { CacheService } from 'src/cache/cache.service';
@@ -40,12 +41,12 @@ export class PaginationCacheUtil {
   }
 
   static createPaginatedResponse<T>({
-    data,
+    items,
     total,
     page,
     limit,
   }: {
-    data: T[];
+    items: T[];
     total: number;
     page: number;
     limit: number;
@@ -56,7 +57,7 @@ export class PaginationCacheUtil {
     const totalPages = Math.ceil(safeTotal / safeLimit) || 1;
 
     return {
-      data: data || [],
+      items: items || [],
       total: safeTotal,
       page: safePage,
       totalPages,
@@ -108,7 +109,7 @@ export class PaginationCacheUtil {
     cacheService: CacheService,
     cachePrefix: string,
     paginationParams: BasePaginationParams,
-    fetchDataFn: () => Promise<{ data: T[]; total: number }>,
+    fetchDataFn: () => Promise<{ items: T[]; total: number }>,
     options: {
       ttl?: number;
       staleWhileRevalidate?: boolean;
@@ -121,16 +122,20 @@ export class PaginationCacheUtil {
 
     const fetchFreshData = async (): Promise<PaginatedResponse<T>> => {
       try {
-        const { data, total } = await fetchDataFn();
+        const { items, total } = await fetchDataFn();
 
         return this.createPaginatedResponse({
-          data,
+          items,
           total,
           page: Number(paginationParams.page) || 1,
           limit: Number(paginationParams.limit) || 10,
         });
       } catch (error) {
-        console.error('Error fetching paginated data:', error);
+        Logger.error(
+          'Error fetching paginated data',
+          error instanceof Error ? error.stack : String(error),
+          'PaginationCacheUtil',
+        );
         throw error;
       }
     };
@@ -152,7 +157,11 @@ export class PaginationCacheUtil {
 
       return result;
     } catch (error) {
-      console.error(`Error retrieving paginated data for key ${cacheKey}:`, error);
+      Logger.error(
+        `Error retrieving paginated data for key ${cacheKey}`,
+        error,
+        PaginationCacheUtil.name,
+      );
 
       const freshData = await fetchFreshData();
 
@@ -174,7 +183,11 @@ export class PaginationCacheUtil {
     try {
       await cacheService.invalidate(`${prefix}:*`);
     } catch (error) {
-      console.error(`Error invalidating cache with prefix ${prefix}:`, error);
+      Logger.error(
+        `Error invalidating cache with prefix ${prefix}`,
+        error,
+        PaginationCacheUtil.name,
+      );
     }
   }
 }

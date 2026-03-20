@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.entity';
 import { DeliveryProfile } from 'src/delivery-profiles/entities/delivery_profile.entity';
 import { ProviderProfile } from 'src/provider-profile/entities/provider_profile.entity';
+import { BusinessProfile } from 'src/business-profile/entities/business_profile.entity';
 import { CustomerProfile } from 'src/customer-profile/entities/customer_profile.entity';
 import { Subscription } from 'src/subscription/entities/subscription.entity';
 import { UserProfile } from './entities/user_profile.entity';
@@ -18,6 +19,7 @@ import {
   CashierProfileStrategy,
   DeliveryProfileStrategy,
   ProviderProfileStrategy,
+  BusinessProfileStrategy,
   CustomerProfileStrategy,
 } from './strategies/profile-creation.strategy';
 
@@ -32,6 +34,7 @@ import {
     CashierProfileStrategy,
     DeliveryProfileStrategy,
     ProviderProfileStrategy,
+    BusinessProfileStrategy,
     CustomerProfileStrategy,
   ],
   imports: [
@@ -40,6 +43,7 @@ import {
       CashierProfile,
       DeliveryProfile,
       ProviderProfile,
+      BusinessProfile,
       CustomerProfile,
       Subscription,
       Store,

@@ -6,9 +6,21 @@ describe('StoreScheduleController', () => {
   let controller: StoreScheduleController;
 
   beforeEach(async () => {
+    const mockStoreScheduleService = {
+      findOne: jest.fn(),
+      update: jest.fn(),
+      remove: jest.fn(),
+      toggleActive: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [StoreScheduleController],
-      providers: [StoreScheduleService],
+      providers: [
+        {
+          provide: StoreScheduleService,
+          useValue: mockStoreScheduleService,
+        },
+      ],
     }).compile();
 
     controller = module.get<StoreScheduleController>(StoreScheduleController);

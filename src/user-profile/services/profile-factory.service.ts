@@ -1,25 +1,26 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { QueryRunner } from 'typeorm';
 import { SystemRole } from 'src/shared/enums/roles.enum';
 import { CreateCashierProfileDto } from 'src/cashier-profile/dto/create-cashier-profile.dto';
 import { CreateDeliveryProfileDto } from 'src/delivery-profiles/dto/create-delivery-profile.dto';
 import { CreateProviderProfileDto } from 'src/provider-profile/dto/create-provider-profile.dto';
+import { CreateBusinessProfileDto } from 'src/business-profile/dto/create-business-profile.dto';
 import { CreateCustomerProfileDto } from 'src/customer-profile/dto/create-customer-profile.dto';
 import {
   CashierProfileStrategy,
   DeliveryProfileStrategy,
   ProviderProfileStrategy,
+  BusinessProfileStrategy,
   CustomerProfileStrategy,
 } from '../strategies/profile-creation.strategy';
 
 @Injectable()
 export class ProfileFactoryService {
-  private readonly logger = new Logger(ProfileFactoryService.name);
-
   constructor(
     private readonly cashierProfileStrategy: CashierProfileStrategy,
     private readonly deliveryProfileStrategy: DeliveryProfileStrategy,
     private readonly providerProfileStrategy: ProviderProfileStrategy,
+    private readonly businessProfileStrategy: BusinessProfileStrategy,
     private readonly customerProfileStrategy: CustomerProfileStrategy,
   ) {}
 
@@ -29,6 +30,7 @@ export class ProfileFactoryService {
       | CreateCashierProfileDto
       | CreateDeliveryProfileDto
       | CreateProviderProfileDto
+      | CreateBusinessProfileDto
       | CreateCustomerProfileDto
       | Record<string, unknown>,
     queryRunner: QueryRunner,
@@ -50,6 +52,9 @@ export class ProfileFactoryService {
         case SystemRole.PROVIDER:
           return await this.providerProfileStrategy.create(data, queryRunner);
 
+        case SystemRole.BUSINESS_OWNER:
+          return await this.businessProfileStrategy.create(data, queryRunner);
+
         case SystemRole.CUSTOMER:
           return await this.customerProfileStrategy.create(data, queryRunner);
 
@@ -63,10 +68,6 @@ export class ProfileFactoryService {
           );
       }
     } catch (error) {
-      this.logger.error(
-        `Error creating profile for role ${role}: ${error.message}. Data: ${JSON.stringify(data)}`,
-        error.stack,
-      );
       throw error;
     }
   }

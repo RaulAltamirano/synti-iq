@@ -1,8 +1,7 @@
-import { Controller, Get, Put, Query, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller, Get, Query, UsePipes, ValidationPipe } from '@nestjs/common';
 import { UserService } from './user.service';
 import { FilterUserDto } from 'src/auth/dto/filter-user.dto';
 import { PaginatedResponse } from 'src/pagination/interfaces/PaginatedResponse';
-import { UpdateUserDto } from './dtos/UpdateUserDto';
 import { Auth, GetUser } from 'src/auth/decorator';
 import { User } from './entities/user.entity';
 import { ApiTags, ApiOperation, ApiResponse, ApiCookieAuth } from '@nestjs/swagger';

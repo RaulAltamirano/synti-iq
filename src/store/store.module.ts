@@ -13,16 +13,24 @@ import { Location } from 'src/location/entities/location.entity';
 import { LocationModule } from 'src/location/location.module';
 import { RecurringScheduleTemplate } from 'src/recurring-schedule-template/entities/recurring-schedule-template.entity';
 import { CashierScheduleAssignment } from 'src/cashier-schedule-assignment/entities/cashier-schedule-assignment.entity';
+import { GuardsModule } from 'src/auth/guards/guards.module';
+import { BusinessProfile } from 'src/business-profile/entities/business_profile.entity';
+import { UserProfileModule } from 'src/user-profile/user_profile.module';
+import { UserModule } from 'src/user/user.module';
 
 @Module({
   controllers: [StoreController],
   providers: [StoreService],
   imports: [
+    GuardsModule,
     CacheModule.register(),
     LocationModule,
+    UserProfileModule,
+    UserModule,
     TypeOrmModule.forFeature([
       Store,
       Location,
+      BusinessProfile,
       CashierProfile,
       Inventory,
       Sale,

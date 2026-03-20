@@ -72,7 +72,12 @@ export class RolesPermissionsGuard implements CanActivate {
         );
       }
 
-      const rolesRequiringProfile = [SystemRole.CASHIER, SystemRole.DELIVERY, SystemRole.PROVIDER];
+      const rolesRequiringProfile = [
+        SystemRole.CASHIER,
+        SystemRole.DELIVERY,
+        SystemRole.PROVIDER,
+        SystemRole.BUSINESS_OWNER,
+      ];
       if (rolesRequiringProfile.includes(userRole as SystemRole)) {
         const profileValidation = await this.userProfileService.validateProfileCoherence(user.id);
         if (!profileValidation.isValid) {

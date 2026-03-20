@@ -1,5 +1,5 @@
 export interface FilterUserParams {
-  fullName?: string;
+  name?: string;
   email?: string;
   isActive?: boolean;
 }

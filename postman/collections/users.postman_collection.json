@@ -1,0 +1,67 @@
+{
+  "info": {
+    "_postman_id": "synti-iq-users",
+    "name": "Users",
+    "description": "User management endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "item": [
+    {
+      "name": "Users",
+      "description": "User management endpoints",
+      "item": [
+        {
+          "name": "👤 Get My Profile",
+          "description": "## 👤 Get Current User Profile\n\nGet the complete profile information of the currently authenticated user.\n\n### 🔒 Authentication\n\nRequires access_token cookie (sent automatically after login).\n\n### ✅ Success Response (200 OK)\n\n```json\n{\n  \"id\": \"user-uuid\",\n  \"email\": \"user@example.com\",\n  \"fullName\": \"John Doe\",\n  \"role\": {\n    \"id\": 1,\n    \"name\": \"customer\"\n  },\n  \"isActive\": true,\n  \"isApproved\": true,\n  \"isOnline\": false,\n  \"createdAt\": \"2024-01-01T00:00:00.000Z\",\n  \"lastLogin\": \"2024-01-08T20:00:00.000Z\",\n  \"lastActivityAt\": \"2024-01-08T21:00:00.000Z\",\n  \"profile\": {\n    \"id\": \"profile-uuid\",\n    \"profileType\": \"customer\",\n    \"profileId\": null,\n    \"metadata\": {},\n    \"createdAt\": \"2024-01-01T00:00:00.000Z\",\n    \"updatedAt\": \"2024-01-01T00:00:00.000Z\"\n  }\n}\n```\n\n**Response Fields:**\n- `id`: User unique identifier\n- `email`: User email address\n- `fullName`: User full name\n- `role`: User role information (id, name)\n- `isActive`: Whether the user account is active\n- `isApproved`: Whether the user account is approved\n- `isOnline`: Whether the user is currently online\n- `createdAt`: Account creation timestamp\n- `lastLogin`: Last login timestamp (optional)\n- `lastActivityAt`: Last activity timestamp (optional)\n- `profile`: User profile information (optional, null if no profile exists)\n\n### ⚠️ Error Responses\n\n- **401 Unauthorized**: Invalid or expired token\n- **404 Not Found**: User not found or inactive\n\n**Note**: This is the endpoint for getting user profile information.",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/user/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "user",
+                "me"
+              ]
+            },
+            "description": "Get the complete profile information of the currently authenticated user. This is the recommended endpoint for getting user profile."
+          },
+          "response": []
+        },
+        {
+          "name": "Filter Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/user?page=1&limit=10",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "user"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Get paginated list of users with filters"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,135 @@
+name: PR Review Pipeline
+
+on:
+  pull_request:
+    types: [opened, synchronize, closed]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  sonar:
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+
+      - name: Enable Yarn
+        run: corepack enable
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build
+        run: yarn build
+
+      - name: Test with coverage
+        run: yarn test:cov
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@v4
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  ai-review:
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+
+      - name: Enable Yarn
+        run: corepack enable
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Run AI Review
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: node scripts/pr-review.js
+
+  discord-notify:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Get SonarCloud metrics
+        id: sonar
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          BUGS="0"
+          HOTSPOTS="0"
+          VULNS="0"
+          if [ -n "$SONAR_TOKEN" ]; then
+            RES=$(curl -s -H "Authorization: Bearer ${SONAR_TOKEN}" \
+              "https://sonarcloud.io/api/measures/component?component=RaulAltamirano_synti-iq&metricKeys=bugs,security_hotspots,vulnerabilities" 2>/dev/null || true)
+            if [ -n "$RES" ]; then
+              BUGS=$(echo "$RES" | jq -r '.component.measures[]? | select(.metric=="bugs") | .value // "0"' 2>/dev/null || echo "0")
+              HOTSPOTS=$(echo "$RES" | jq -r '.component.measures[]? | select(.metric=="security_hotspots") | .value // "0"' 2>/dev/null || echo "0")
+              VULNS=$(echo "$RES" | jq -r '.component.measures[]? | select(.metric=="vulnerabilities") | .value // "0"' 2>/dev/null || echo "0")
+            fi
+          fi
+          echo "bugs=${BUGS:-0}" >> $GITHUB_OUTPUT
+          echo "hotspots=${HOTSPOTS:-0}" >> $GITHUB_OUTPUT
+          echo "vulns=${VULNS:-0}" >> $GITHUB_OUTPUT
+
+      - name: Extract roast and rating from last PR comment
+        id: roast
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUM="${{ github.event.pull_request.number }}"
+          COMMENTS=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.repository }}/issues/${PR_NUM}/comments" 2>/dev/null || echo "[]")
+          BODY=$(echo "$COMMENTS" | jq -r '[.[] | select(.body != null and (.body | startswith("🤖")))] | last | .body // ""' 2>/dev/null)
+          ROAST=$(echo "$BODY" | grep -oP '(?<=\*\*IA Roast:\*\* ")[^"]*' 2>/dev/null | head -1 | tr -d '\n' | head -c 300)
+          [ -z "$ROAST" ] && ROAST="Revisión completada."
+          RATING=$(echo "$BODY" | grep -oP '\*\*Calificación:\*\* [1-5]/5' 2>/dev/null | grep -oP '[1-5]' | head -1)
+          [ -z "$RATING" ] && RATING="3"
+          echo "roast<<ROAST_DELIM" >> $GITHUB_OUTPUT
+          printf '%s' "$ROAST" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "ROAST_DELIM" >> $GITHUB_OUTPUT
+          echo "rating=$RATING" >> $GITHUB_OUTPUT
+
+      - name: Notify Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_MERGED: ${{ github.event.pull_request.merged }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          SONAR_BUGS: ${{ steps.sonar.outputs.bugs }}
+          SONAR_SECURITY_HOTSPOTS: ${{ steps.sonar.outputs.hotspots }}
+          SONAR_VULNERABILITIES: ${{ steps.sonar.outputs.vulns }}
+          ROAST_TEXT: ${{ steps.roast.outputs.roast }}
+          RATING: ${{ steps.roast.outputs.rating }}
+        run: node scripts/discord-notify.js

@@ -1,0 +1,215 @@
+{
+  "info": {
+    "_postman_id": "synti-iq-customer-addresses",
+    "name": "📍 Customer Addresses",
+    "description": "## 📍 Customer Address Management\n\nManage shipping and billing addresses for customers.\n\n### 📋 Available Endpoints\n\n- **Create Shipping Address**: Add a new shipping address\n- **Create Billing Address**: Add a new billing address\n- **Get Shipping Addresses**: List all shipping addresses\n- **Get Billing Addresses**: List all billing addresses\n- **Set Default Shipping**: Mark an address as default shipping\n- **Set Default Billing**: Mark an address as default billing\n- **Delete Address**: Remove an address\n\n### 🔒 Authentication\n\nAll endpoints require:\n- access_token cookie (sent automatically after login)\n- Authenticated user (addresses are user-specific)\n\n### 📝 Notes\n\n- Customers can have multiple addresses of each type\n- Only one address can be marked as default per type\n- Addresses are optional during registration but required for shipping orders\n- Billing address is required after trial period expires",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "item": [
+    {
+      "name": "📍 Customer Addresses",
+      "description": "## 📍 Customer Address Management\n\nManage shipping and billing addresses for customers.\n\n### 📋 Available Endpoints\n\n- **Create Shipping Address**: Add a new shipping address\n- **Create Billing Address**: Add a new billing address\n- **Get Shipping Addresses**: List all shipping addresses\n- **Get Billing Addresses**: List all billing addresses\n- **Set Default Shipping**: Mark an address as default shipping\n- **Set Default Billing**: Mark an address as default billing\n- **Delete Address**: Remove an address\n\n### 🔒 Authentication\n\nAll endpoints require:\n- access_token cookie (sent automatically after login)\n- Authenticated user (addresses are user-specific)\n\n### 📝 Notes\n\n- Customers can have multiple addresses of each type\n- Only one address can be marked as default per type\n- Addresses are optional during registration but required for shipping orders\n- Billing address is required after trial period expires",
+      "item": [
+        {
+          "name": "Create Shipping Address",
+          "description": "## 📦 Create Shipping Address\n\nAdd a new shipping address for the authenticated customer.\n\n### 📥 Request Body\n\n```json\n{\n  \"name\": \"Home\",\n  \"fullAddress\": \"123 Main St, New York, NY 10001\",\n  \"addressReference\": \"Apartment 4B\",\n  \"addressType\": \"shipping\",\n  \"isDefaultShipping\": true,\n  \"coordinates\": {\n    \"latitude\": 40.7128,\n    \"longitude\": -74.0060\n  }\n}\n```\n\n### ✅ Success Response (201 Created)\n\nReturns the created address with all details including ID and timestamps.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Home\",\n  \"fullAddress\": \"123 Main St, New York, NY 10001\",\n  \"addressReference\": \"Apartment 4B\",\n  \"addressType\": \"shipping\",\n  \"isDefaultShipping\": true,\n  \"coordinates\": {\n    \"latitude\": 40.7128,\n    \"longitude\": -74.0060\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/locations/shipping",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "locations",
+                "shipping"
+              ]
+            },
+            "description": "Create a new shipping address for the authenticated customer"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Billing Address",
+          "description": "## 💳 Create Billing Address\n\nAdd a new billing address for the authenticated customer.\n\n### 📥 Request Body\n\n```json\n{\n  \"name\": \"Office\",\n  \"fullAddress\": \"456 Business Ave, New York, NY 10002\",\n  \"addressReference\": \"Suite 200\",\n  \"addressType\": \"billing\",\n  \"isDefaultBilling\": true\n}\n```\n\n### ✅ Success Response (201 Created)\n\nReturns the created address with all details.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Office\",\n  \"fullAddress\": \"456 Business Ave, New York, NY 10002\",\n  \"addressReference\": \"Suite 200\",\n  \"addressType\": \"billing\",\n  \"isDefaultBilling\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/locations/billing",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "locations",
+                "billing"
+              ]
+            },
+            "description": "Create a new billing address for the authenticated customer"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Shipping Addresses",
+          "description": "## 📦 Get Shipping Addresses\n\nGet all shipping addresses for the authenticated customer.\n\n### ✅ Success Response (200 OK)\n\nReturns an array of shipping addresses, ordered by default first, then by creation date.",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/locations/shipping",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "locations",
+                "shipping"
+              ]
+            },
+            "description": "Get all shipping addresses for the authenticated customer"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Billing Addresses",
+          "description": "## 💳 Get Billing Addresses\n\nGet all billing addresses for the authenticated customer.\n\n### ✅ Success Response (200 OK)\n\nReturns an array of billing addresses, ordered by default first, then by creation date.",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/locations/billing",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "locations",
+                "billing"
+              ]
+            },
+            "description": "Get all billing addresses for the authenticated customer"
+          },
+          "response": []
+        },
+        {
+          "name": "Set Default Shipping",
+          "description": "## 📦 Set Default Shipping Address\n\nMark an address as the default shipping address. This will unmark any previously default shipping address.\n\n### ✅ Success Response (204 No Content)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/locations/:id/default-shipping",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "locations",
+                ":id",
+                "default-shipping"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "Address ID"
+                }
+              ]
+            },
+            "description": "Set an address as the default shipping address"
+          },
+          "response": []
+        },
+        {
+          "name": "Set Default Billing",
+          "description": "## 💳 Set Default Billing Address\n\nMark an address as the default billing address. This will unmark any previously default billing address.\n\n### ✅ Success Response (204 No Content)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/locations/:id/default-billing",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "locations",
+                ":id",
+                "default-billing"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "Address ID"
+                }
+              ]
+            },
+            "description": "Set an address as the default billing address"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Address",
+          "description": "## 🗑️ Delete Address\n\nDelete an address belonging to the authenticated customer.\n\n### ✅ Success Response (204 No Content)\n\n### ⚠️ Note\n\nThe address will be permanently deleted. Make sure it's not the only required address before deleting.",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/locations/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "locations",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": "Address ID"
+                }
+              ]
+            },
+            "description": "Delete an address belonging to the authenticated customer"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

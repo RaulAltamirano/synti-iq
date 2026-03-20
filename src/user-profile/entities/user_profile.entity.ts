@@ -9,13 +9,15 @@ import {
   UpdateDateColumn,
   Check,
   Index,
+  Unique,
 } from 'typeorm';
 import { SystemRole } from 'src/shared/enums/roles.enum';
 
 @Entity('user_profiles')
 @Check(
-  `(profile_type IN ('cashier', 'delivery', 'provider', 'customer') AND profile_id IS NOT NULL) OR (profile_type IN ('admin', 'manager') AND profile_id IS NULL)`,
+  `(profile_type IN ('cashier', 'delivery', 'provider', 'customer', 'business_owner') AND profile_id IS NOT NULL) OR (profile_type IN ('admin', 'manager') AND profile_id IS NULL)`,
 )
+@Unique('UQ_user_profiles_profile_type_id', ['profileType', 'profileId'])
 @Index(['profileType', 'profileId'])
 @Index(['profileType'])
 export class UserProfile {

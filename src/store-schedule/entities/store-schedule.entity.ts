@@ -36,13 +36,13 @@ export class StoreSchedule {
   timeBlocks?: TimeBlock[];
 
   @Column('text')
-  dayOfWeek: string; // e.g., '
+  dayOfWeek: string;
 
-  @Column('time with time zone') // Hora de apertura
-  openTime: Date;
+  @Column('time with time zone')
+  openTime: string;
 
-  @Column('time with time zone') // Hora de cierre
-  closeTime: Date;
+  @Column('time with time zone')
+  closeTime: string;
 
   @Column('boolean', { default: true })
   isActive: boolean;

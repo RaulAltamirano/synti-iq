@@ -1,7 +1,7 @@
 import { Type } from 'class-transformer';
 import { IsOptional, IsString, IsEnum, IsDate, IsUUID } from 'class-validator';
 import { BasePaginationParams } from 'src/pagination/dtos/base-pagination-params';
-import { AssignmentStatus } from '../enums/assignment-status.dto';
+import { AssignmentStatus } from '../enums/assignment-status.enum';
 
 export class AssignmentFilterDto extends BasePaginationParams {
   @IsOptional()

@@ -65,6 +65,16 @@ export class RolesSeed {
         description: 'Delivery person role',
         permissionGroupNames: [],
       },
+      {
+        name: SystemRole.BUSINESS_OWNER,
+        description: 'Business owner with full access to their business',
+        permissionGroupNames: [
+          'Sales Operations',
+          'Product Management',
+          'Inventory Management',
+          'Reports',
+        ],
+      },
     ];
   }
 

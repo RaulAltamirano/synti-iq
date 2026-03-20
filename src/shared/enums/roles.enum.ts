@@ -5,6 +5,7 @@ export enum SystemRole {
   PROVIDER = 'provider',
   CASHIER = 'cashier',
   DELIVERY = 'delivery',
+  BUSINESS_OWNER = 'business_owner',
 }
 
 export const SYSTEM_ROLES = Object.values(SystemRole) as string[];

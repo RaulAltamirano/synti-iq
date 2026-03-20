@@ -1,4 +1,4 @@
-import { applyDecorators } from '@nestjs/common';
+import { applyDecorators, Logger } from '@nestjs/common';
 import {
   ApiOperation,
   ApiResponse,
@@ -14,8 +14,9 @@ export function ApiDoc(docs: Record<string, EndpointDocSpec>, endpointId: string
 
   if (!spec) {
     if (process.env.NODE_ENV !== 'production') {
-      console.warn(
+      Logger.warn(
         `[ApiDoc] Endpoint "${endpointId}" not found in docs. Available: ${Object.keys(docs).join(', ')}`,
+        'ApiDoc',
       );
     }
     return applyDecorators();

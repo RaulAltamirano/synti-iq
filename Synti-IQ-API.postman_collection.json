@@ -100,10 +100,88 @@
             },
             "url": {
               "raw": "{{base_url}}/api/auth/signup",
-              "host": ["{{base_url}}"],
-              "path": ["api", "auth", "signup"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "signup"
+              ]
             },
             "description": "Register a new user account with email, password, full name, and profile type. Returns user info. Authentication tokens are sent as HttpOnly cookies."
+          },
+          "response": []
+        },
+        {
+          "name": "🏢 Register Business",
+          "description": "## 🏢 Register Business Account\n\nRegister a new business owner account. Creates a user with role `business_owner`, a BusinessProfile, and sends a welcome email (if RESEND_API_KEY is configured).\n\n### 📥 Request Body\n\n```json\n{\n  \"email\": \"owner@business.com\",\n  \"password\": \"Password123!\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"businessName\": \"Mi Negocio S.A.\",\n  \"referralCode\": \"ABC123\"\n}\n```\n\n**Required fields:**\n- `email`: Valid email address\n- `password`: Min 8 characters\n- `firstName`, `lastName`: Owner names\n- `businessName`: Business/company name\n\n**Optional:**\n- `referralCode`: 6-12 alphanumeric characters (referral program)\n\n### ✅ Success Response (201 Created)\n\n```json\n{\n  \"message\": \"Business account registered successfully\",\n  \"user\": {\n    \"id\": \"uuid\",\n    \"email\": \"owner@business.com\",\n    \"firstName\": \"John\",\n    \"lastName\": \"Doe\",\n    \"role\": \"business_owner\"\n  },\n  \"token_type\": \"Bearer\",\n  \"expires_in\": 900,\n  \"refresh_expires_in\": 604800,\n  \"sessionId\": \"uuid\"\n}\n```\n\n**Note**: Authentication tokens are sent as HttpOnly cookies (`access_token` and `refresh_token`).\n\n**Response Fields:**\n- `message`: Confirmation message\n- `user`: Newly created business owner (id, email, firstName, lastName, role)\n- `token_type`, `expires_in`, `refresh_expires_in`: Token metadata\n- `sessionId`: Current session ID\n\n**HTTP Headers:**\n- `Location`: `/api/user/me`\n\n### ⚠️ Error Responses\n\n- **400**: Invalid input (validation failed)\n- **401**: Email already in use\n\n### 📧 Welcome Email\n\nOn successful registration, a welcome email is sent to the provided email (requires `RESEND_API_KEY` and `MAIL_FROM` in .env). If not configured, registration still succeeds.\n\n### 🔄 Auto-Actions\n\n- ✅ Extracts `access_token` and `refresh_token` from cookies\n- ✅ Saves `user_id` and `user_email` to environment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const statusCode = pm.response.code;",
+                  "const isSuccess = statusCode >= 200 && statusCode < 300;",
+                  "",
+                  "if (isSuccess) {",
+                  "    try {",
+                  "        const response = pm.response.json();",
+                  "        const accessTokenCookie = pm.cookies.get('access_token');",
+                  "        const refreshTokenCookie = pm.cookies.get('refresh_token');",
+                  "        ",
+                  "        if (accessTokenCookie) pm.environment.set('access_token', accessTokenCookie);",
+                  "        if (refreshTokenCookie) pm.environment.set('refresh_token', refreshTokenCookie);",
+                  "        ",
+                  "        if (response.user) {",
+                  "            if (response.user.id) pm.environment.set('user_id', response.user.id);",
+                  "            if (response.user.email) pm.environment.set('user_email', response.user.email);",
+                  "        }",
+                  "        ",
+                  "        pm.test('Register Business successful', function () {",
+                  "            pm.expect(response.user).to.exist;",
+                  "            pm.expect(response.user.role).to.eql('business_owner');",
+                  "            pm.expect(accessTokenCookie).to.exist;",
+                  "            pm.expect(refreshTokenCookie).to.exist;",
+                  "        });",
+                  "    } catch (error) {",
+                  "        console.error('Error parsing response:', error);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"owner@business.com\",\n    \"password\": \"Password123!\",\n    \"firstName\": \"John\",\n    \"lastName\": \"Doe\",\n    \"businessName\": \"Mi Negocio S.A.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register-business",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register-business"
+              ]
+            },
+            "description": "Register a new business owner account. Creates BusinessProfile and sends welcome email. Tokens via HttpOnly cookies."
           },
           "response": []
         },
@@ -195,8 +273,14 @@
             },
             "url": {
               "raw": "{{base_url}}/api/auth/login",
-              "host": ["{{base_url}}"],
-              "path": ["api", "auth", "login"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
             },
             "description": "Authenticate user. Access and refresh tokens are sent as HttpOnly cookies for security."
           },
@@ -264,8 +348,14 @@
             ],
             "url": {
               "raw": "{{base_url}}/api/auth/refresh",
-              "host": ["{{base_url}}"],
-              "path": ["api", "auth", "refresh"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "refresh"
+              ]
             },
             "description": "Refresh the access token using the refresh_token cookie. Returns token metadata and sets new tokens as HttpOnly cookies. Enable 'Send cookies' in Postman."
           },
@@ -279,19 +369,24 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/auth/logout",
-              "host": ["{{base_url}}"],
-              "path": ["api", "auth", "logout"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout"
+              ]
             },
             "description": "Logout from the current session. Invalidates the current access token and clears authentication cookies."
           },
           "response": []
         }
-      ],
-      "description": "Authentication endpoints for user registration, login, and session management"
+      ]
     },
     {
       "name": "📱 User Sessions",
-      "description": "## 📱 User Session Management\n\nManage user sessions, device tracking, and session invalidation.\n\n### 📋 Available Endpoints\n\n- **Get Active Sessions**: List all active sessions with pagination and filters\n- **Get Active Devices**: Get summary of active devices with session counts\n- **Invalidate Session**: Invalidate a specific session by ID\n- **Invalidate Device Sessions**: End all sessions for a specific device type\n- **Invalidate Other Sessions**: End all sessions except the current one\n- **Invalidate All Sessions**: End all user sessions\n- **Validate Session**: Validate session ownership\n- **Update Session Last Used**: Update session last used timestamp",
+      "description": "User session management endpoints",
       "item": [
         {
           "name": "Get Active Sessions",
@@ -300,8 +395,13 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/user-session?page=1&limit=10",
-              "host": ["{{base_url}}"],
-              "path": ["api", "user-session"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "user-session"
+              ],
               "query": [
                 {
                   "key": "page",
@@ -324,8 +424,14 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/user-session/devices",
-              "host": ["{{base_url}}"],
-              "path": ["api", "user-session", "devices"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "user-session",
+                "devices"
+              ]
             },
             "description": "Get summary of active devices with session counts"
           },
@@ -338,8 +444,14 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/user-session/:sessionId",
-              "host": ["{{base_url}}"],
-              "path": ["api", "user-session", ":sessionId"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "user-session",
+                ":sessionId"
+              ],
               "variable": [
                 {
                   "key": "sessionId",
@@ -358,8 +470,15 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/user-session/devices/:deviceType",
-              "host": ["{{base_url}}"],
-              "path": ["api", "user-session", "devices", ":deviceType"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "user-session",
+                "devices",
+                ":deviceType"
+              ],
               "variable": [
                 {
                   "key": "deviceType",
@@ -379,8 +498,16 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/user-session/current/:sessionId/others",
-              "host": ["{{base_url}}"],
-              "path": ["api", "user-session", "current", ":sessionId", "others"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "user-session",
+                "current",
+                ":sessionId",
+                "others"
+              ],
               "variable": [
                 {
                   "key": "sessionId",
@@ -399,8 +526,14 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/user-session/all",
-              "host": ["{{base_url}}"],
-              "path": ["api", "user-session", "all"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "user-session",
+                "all"
+              ]
             },
             "description": "Invalidate all sessions for current user"
           },
@@ -413,8 +546,15 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/user-session/:sessionId/validate",
-              "host": ["{{base_url}}"],
-              "path": ["api", "user-session", ":sessionId", "validate"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "user-session",
+                ":sessionId",
+                "validate"
+              ],
               "variable": [
                 {
                   "key": "sessionId",
@@ -433,8 +573,15 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/user-session/:sessionId/last-used",
-              "host": ["{{base_url}}"],
-              "path": ["api", "user-session", ":sessionId", "last-used"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "user-session",
+                ":sessionId",
+                "last-used"
+              ],
               "variable": [
                 {
                   "key": "sessionId",
@@ -446,12 +593,11 @@
           },
           "response": []
         }
-      ],
-      "description": "User session management endpoints"
+      ]
     },
     {
       "name": "Users",
-      "description": "## 👥 User Management\n\nManage users and user profiles.\n\n### 📋 Available Endpoints\n\n- **Get My Profile**: Get current authenticated user profile\n- **Filter Users**: Get paginated list of users with filters",
+      "description": "User management endpoints",
       "item": [
         {
           "name": "👤 Get My Profile",
@@ -461,8 +607,14 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/user/me",
-              "host": ["{{base_url}}"],
-              "path": ["api", "user", "me"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "user",
+                "me"
+              ]
             },
             "description": "Get the complete profile information of the currently authenticated user. This is the recommended endpoint for getting user profile."
           },
@@ -475,8 +627,13 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/user?page=1&limit=10",
-              "host": ["{{base_url}}"],
-              "path": ["api", "user"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "user"
+              ],
               "query": [
                 {
                   "key": "page",
@@ -492,8 +649,7 @@
           },
           "response": []
         }
-      ],
-      "description": "User management endpoints"
+      ]
     },
     {
       "name": "Products",
@@ -505,8 +661,13 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/product?page=1&limit=10",
-              "host": ["{{base_url}}"],
-              "path": ["api", "product"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "product"
+              ],
               "query": [
                 {
                   "key": "page",
@@ -529,8 +690,14 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/product/:id",
-              "host": ["{{base_url}}"],
-              "path": ["api", "product", ":id"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "product",
+                ":id"
+              ],
               "variable": [
                 {
                   "key": "id",
@@ -563,8 +730,13 @@
             },
             "url": {
               "raw": "{{base_url}}/api/product",
-              "host": ["{{base_url}}"],
-              "path": ["api", "product"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "product"
+              ]
             },
             "description": "Create a new product"
           },
@@ -591,8 +763,14 @@
             },
             "url": {
               "raw": "{{base_url}}/api/product/:id",
-              "host": ["{{base_url}}"],
-              "path": ["api", "product", ":id"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "product",
+                ":id"
+              ],
               "variable": [
                 {
                   "key": "id",
@@ -611,8 +789,14 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/product/:id",
-              "host": ["{{base_url}}"],
-              "path": ["api", "product", ":id"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "product",
+                ":id"
+              ],
               "variable": [
                 {
                   "key": "id",
@@ -631,8 +815,15 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/product/:id/soft",
-              "host": ["{{base_url}}"],
-              "path": ["api", "product", ":id", "soft"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "product",
+                ":id",
+                "soft"
+              ],
               "variable": [
                 {
                   "key": "id",
@@ -651,8 +842,15 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/product/search/sku-barcode?sku=PH-001",
-              "host": ["{{base_url}}"],
-              "path": ["api", "product", "search", "sku-barcode"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "product",
+                "search",
+                "sku-barcode"
+              ],
               "query": [
                 {
                   "key": "sku",
@@ -696,8 +894,14 @@
             },
             "url": {
               "raw": "{{base_url}}/api/inventory/movements",
-              "host": ["{{base_url}}"],
-              "path": ["api", "inventory", "movements"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "inventory",
+                "movements"
+              ]
             },
             "description": "Create a new inventory movement"
           },
@@ -710,8 +914,16 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/inventory/products/:id/stock",
-              "host": ["{{base_url}}"],
-              "path": ["api", "inventory", "products", ":id", "stock"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "inventory",
+                "products",
+                ":id",
+                "stock"
+              ],
               "variable": [
                 {
                   "key": "id",
@@ -730,8 +942,16 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/inventory/products/:id/movements?page=1&limit=10",
-              "host": ["{{base_url}}"],
-              "path": ["api", "inventory", "products", ":id", "movements"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "inventory",
+                "products",
+                ":id",
+                "movements"
+              ],
               "query": [
                 {
                   "key": "page",
@@ -760,8 +980,15 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/inventory/products/low-stock?threshold=10",
-              "host": ["{{base_url}}"],
-              "path": ["api", "inventory", "products", "low-stock"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "inventory",
+                "products",
+                "low-stock"
+              ],
               "query": [
                 {
                   "key": "threshold",
@@ -785,11 +1012,56 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/store",
-              "host": ["{{base_url}}"],
-              "path": ["api", "store"]
+              "raw": "{{base_url}}/api/store?page=1&pageSize=10",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "store"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                },
+                {
+                  "key": "name",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "isActive",
+                  "value": "true",
+                  "disabled": true
+                },
+                {
+                  "key": "minDailySalesTarget",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "maxDailySalesTarget",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "sortBy",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "businessProfileId",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
             },
-            "description": "Get all stores with optional filters"
+            "description": "Lista paginada de tiendas. **Requiere autenticación.** Si el usuario es **business_owner**, solo se devuelven sus tiendas (filtro por su business profile). Cada ítem incluye `createdAt` y `updatedAt`. Query: `page`, `pageSize`, `name`, `isActive`, `minDailySalesTarget`, `maxDailySalesTarget`, `sortBy`, `businessProfileId`."
           },
           "response": []
         },
@@ -800,8 +1072,14 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/store/:id",
-              "host": ["{{base_url}}"],
-              "path": ["api", "store", ":id"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "store",
+                ":id"
+              ],
               "variable": [
                 {
                   "key": "id",
@@ -809,7 +1087,7 @@
                 }
               ]
             },
-            "description": "Get store details by ID"
+            "description": "Obtiene una tienda por ID (incluye schedules, cashiers, paymentMethods, createdAt, updatedAt). **Requiere autenticación.** Si el usuario es business_owner, solo puede ver tiendas de su negocio."
           },
           "response": []
         },
@@ -825,7 +1103,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"name\": \"Main Store\",\n    \"phoneNumber\": \"+1234567890\",\n    \"email\": \"store@example.com\",\n    \"isActive\": true,\n    \"storeType\": \"RETAIL\",\n    \"location\": {\n        \"address\": \"123 Main St\",\n        \"city\": \"New York\",\n        \"state\": \"NY\",\n        \"zipCode\": \"10001\",\n        \"country\": \"USA\"\n    }\n}",
+              "raw": "{\n  \"name\": \"Tienda Centro CDMX\",\n  \"phoneNumber\": \"+52 55 1234 5678\",\n  \"email\": \"tienda@ejemplo.com.mx\",\n  \"isActive\": true,\n  \"storeType\": \"RETAIL\",\n  \"dailySalesTarget\": 0,\n  \"monthlySalesTarget\": 0,\n  \"location\": {\n    \"name\": \"Sucursal Paseo de la Reforma\",\n    \"fullAddress\": \"Av. Paseo de la Reforma 222, Col. Juárez, Cuauhtémoc, 06600 Ciudad de México, CDMX, México\",\n    \"addressReference\": \"Entre Eje 1 Norte y Av. Juárez\",\n    \"street\": \"Av. Paseo de la Reforma 222\",\n    \"neighborhood\": \"Col. Juárez\",\n    \"city\": \"Ciudad de México\",\n    \"state\": \"CDMX\",\n    \"postalCode\": \"06600\",\n    \"country\": \"México\",\n    \"coordinates\": {\n      \"latitude\": 19.4326,\n      \"longitude\": -99.1332\n    }\n  },\n  \"schedules\": [\n    { \"dayOfWeek\": \"monday\", \"openTime\": \"08:00-06:00\", \"closeTime\": \"21:00-06:00\" },\n    { \"dayOfWeek\": \"tuesday\", \"openTime\": \"08:00-06:00\", \"closeTime\": \"21:00-06:00\" },\n    { \"dayOfWeek\": \"wednesday\", \"openTime\": \"08:00-06:00\", \"closeTime\": \"21:00-06:00\" },\n    { \"dayOfWeek\": \"thursday\", \"openTime\": \"08:00-06:00\", \"closeTime\": \"21:00-06:00\" },\n    { \"dayOfWeek\": \"friday\", \"openTime\": \"08:00-06:00\", \"closeTime\": \"21:00-06:00\" },\n    { \"dayOfWeek\": \"saturday\", \"openTime\": \"08:00-06:00\", \"closeTime\": \"14:00-06:00\" }\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -834,10 +1112,15 @@
             },
             "url": {
               "raw": "{{base_url}}/api/store",
-              "host": ["{{base_url}}"],
-              "path": ["api", "store"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "store"
+              ]
             },
-            "description": "Create a new store"
+            "description": "Crea una tienda con dirección y horarios de apertura en una sola petición.\n\n**Requisito:** rol `business_owner` (cookies o Bearer {{access_token}}).\n\n**Body:**\n- **name** (requerido): nombre de la tienda.\n- **location** (opcional): dirección. Campos: `name`, `fullAddress` (requerido dentro de location), `addressReference`, `street`, `neighborhood`, `city`, `state`, `postalCode`, `country`, `coordinates` (`latitude`, `longitude`).\n- **schedules** (opcional): horarios de apertura. Array de objetos, uno por día. Cada objeto: `dayOfWeek` (monday|tuesday|wednesday|thursday|friday|saturday|sunday), `openTime`, `closeTime` (formato HH:MM o HH:MM:SS, opcional timezone ej. -06:00). No repetir día; openTime debe ser anterior a closeTime. Opcionales por ítem: `name`, `description`.\n- **phoneNumber**, **email**, **isActive**, **storeType**, **dailySalesTarget**, **monthlySalesTarget** (opcionales).\n\n**Respuesta:** 201 con la tienda creada (incluye `schedules` si se enviaron)."
           },
           "response": []
         },
@@ -848,8 +1131,14 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/store/:id",
-              "host": ["{{base_url}}"],
-              "path": ["api", "store", ":id"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "store",
+                ":id"
+              ],
               "variable": [
                 {
                   "key": "id",
@@ -857,7 +1146,7 @@
                 }
               ]
             },
-            "description": "Delete a store"
+            "description": "Delete a store by ID."
           },
           "response": []
         },
@@ -873,7 +1162,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"cashierId\": \"\"\n}",
+              "raw": "{\n  \"cashierId\": \"{{cashier_profile_id}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -882,8 +1171,15 @@
             },
             "url": {
               "raw": "{{base_url}}/api/store/:id/cashiers",
-              "host": ["{{base_url}}"],
-              "path": ["api", "store", ":id", "cashiers"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "store",
+                ":id",
+                "cashiers"
+              ],
               "variable": [
                 {
                   "key": "id",
@@ -891,7 +1187,7 @@
                 }
               ]
             },
-            "description": "Assign a cashier to a store"
+            "description": "Assign a cashier to a store. Body: `cashierId` (UUID of cashier profile)."
           },
           "response": []
         },
@@ -902,8 +1198,15 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/store/:id/cashiers",
-              "host": ["{{base_url}}"],
-              "path": ["api", "store", ":id", "cashiers"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "store",
+                ":id",
+                "cashiers"
+              ],
               "variable": [
                 {
                   "key": "id",
@@ -911,44 +1214,16 @@
                 }
               ]
             },
-            "description": "Get all cashiers assigned to a store"
+            "description": "List cashiers assigned to a store."
           },
           "response": []
         }
       ],
-      "description": "Store management endpoints"
+      "description": "Endpoints that exist in the API: GET/POST /api/store, GET/DELETE /api/store/:id, POST/GET /api/store/:id/cashiers."
     },
     {
       "name": "Store Schedules",
       "item": [
-        {
-          "name": "Create Store Schedule",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"storeId\": \"\",\n    \"dayOfWeek\": \"MONDAY\",\n    \"openTime\": \"09:00\",\n    \"closeTime\": \"18:00\",\n    \"isActive\": true\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{base_url}}/api/store-schedule",
-              "host": ["{{base_url}}"],
-              "path": ["api", "store-schedule"]
-            },
-            "description": "Create a new store schedule"
-          },
-          "response": []
-        },
         {
           "name": "Get Store Schedule",
           "request": {
@@ -956,8 +1231,14 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/store-schedule/:id",
-              "host": ["{{base_url}}"],
-              "path": ["api", "store-schedule", ":id"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "store-schedule",
+                ":id"
+              ],
               "variable": [
                 {
                   "key": "id",
@@ -990,8 +1271,14 @@
             },
             "url": {
               "raw": "{{base_url}}/api/store-schedule/:id",
-              "host": ["{{base_url}}"],
-              "path": ["api", "store-schedule", ":id"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "store-schedule",
+                ":id"
+              ],
               "variable": [
                 {
                   "key": "id",
@@ -1010,8 +1297,14 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/store-schedule/:id",
-              "host": ["{{base_url}}"],
-              "path": ["api", "store-schedule", ":id"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "store-schedule",
+                ":id"
+              ],
               "variable": [
                 {
                   "key": "id",
@@ -1030,8 +1323,15 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/store-schedule/:id/toggle-active",
-              "host": ["{{base_url}}"],
-              "path": ["api", "store-schedule", ":id", "toggle-active"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "store-schedule",
+                ":id",
+                "toggle-active"
+              ],
               "variable": [
                 {
                   "key": "id",
@@ -1070,8 +1370,13 @@
             },
             "url": {
               "raw": "{{base_url}}/api/cashier-schedules",
-              "host": ["{{base_url}}"],
-              "path": ["api", "cashier-schedules"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "cashier-schedules"
+              ]
             },
             "description": "Create a new cashier schedule assignment"
           },
@@ -1084,8 +1389,13 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/cashier-schedules",
-              "host": ["{{base_url}}"],
-              "path": ["api", "cashier-schedules"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "cashier-schedules"
+              ]
             },
             "description": "Get all cashier schedules with filters"
           },
@@ -1098,8 +1408,14 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/cashier-schedules/:id",
-              "host": ["{{base_url}}"],
-              "path": ["api", "cashier-schedules", ":id"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "cashier-schedules",
+                ":id"
+              ],
               "variable": [
                 {
                   "key": "id",
@@ -1132,8 +1448,14 @@
             },
             "url": {
               "raw": "{{base_url}}/api/cashier-schedules/:id",
-              "host": ["{{base_url}}"],
-              "path": ["api", "cashier-schedules", ":id"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "cashier-schedules",
+                ":id"
+              ],
               "variable": [
                 {
                   "key": "id",
@@ -1152,8 +1474,14 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/cashier-schedules/:id",
-              "host": ["{{base_url}}"],
-              "path": ["api", "cashier-schedules", ":id"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "cashier-schedules",
+                ":id"
+              ],
               "variable": [
                 {
                   "key": "id",
@@ -1172,8 +1500,16 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/cashier-schedules/cashiers/:cashierId/schedules",
-              "host": ["{{base_url}}"],
-              "path": ["api", "cashier-schedules", "cashiers", ":cashierId", "schedules"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "cashier-schedules",
+                "cashiers",
+                ":cashierId",
+                "schedules"
+              ],
               "variable": [
                 {
                   "key": "cashierId",
@@ -1206,8 +1542,15 @@
             },
             "url": {
               "raw": "{{base_url}}/api/cashier-schedules/swap/request",
-              "host": ["{{base_url}}"],
-              "path": ["api", "cashier-schedules", "swap", "request"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "cashier-schedules",
+                "swap",
+                "request"
+              ]
             },
             "description": "Request a shift swap"
           },
@@ -1220,8 +1563,16 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/cashier-schedules/swap/:assignmentId/confirm",
-              "host": ["{{base_url}}"],
-              "path": ["api", "cashier-schedules", "swap", ":assignmentId", "confirm"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "cashier-schedules",
+                "swap",
+                ":assignmentId",
+                "confirm"
+              ],
               "variable": [
                 {
                   "key": "assignmentId",
@@ -1260,8 +1611,13 @@
             },
             "url": {
               "raw": "{{base_url}}/api/sale",
-              "host": ["{{base_url}}"],
-              "path": ["api", "sale"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "sale"
+              ]
             },
             "description": "Create a new sale"
           },
@@ -1274,8 +1630,13 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/sale",
-              "host": ["{{base_url}}"],
-              "path": ["api", "sale"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "sale"
+              ]
             },
             "description": "Get all sales"
           },
@@ -1288,8 +1649,14 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/sale/:id",
-              "host": ["{{base_url}}"],
-              "path": ["api", "sale", ":id"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "sale",
+                ":id"
+              ],
               "variable": [
                 {
                   "key": "id",
@@ -1322,8 +1689,14 @@
             },
             "url": {
               "raw": "{{base_url}}/api/sale/:id",
-              "host": ["{{base_url}}"],
-              "path": ["api", "sale", ":id"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "sale",
+                ":id"
+              ],
               "variable": [
                 {
                   "key": "id",
@@ -1342,8 +1715,14 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/sale/:id",
-              "host": ["{{base_url}}"],
-              "path": ["api", "sale", ":id"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "sale",
+                ":id"
+              ],
               "variable": [
                 {
                   "key": "id",
@@ -1382,8 +1761,13 @@
             },
             "url": {
               "raw": "{{base_url}}/api/payment-method",
-              "host": ["{{base_url}}"],
-              "path": ["api", "payment-method"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "payment-method"
+              ]
             },
             "description": "Create a new payment method"
           },
@@ -1396,8 +1780,13 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/payment-method",
-              "host": ["{{base_url}}"],
-              "path": ["api", "payment-method"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "payment-method"
+              ]
             },
             "description": "Get all payment methods"
           },
@@ -1410,8 +1799,14 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/payment-method/:id",
-              "host": ["{{base_url}}"],
-              "path": ["api", "payment-method", ":id"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "payment-method",
+                ":id"
+              ],
               "variable": [
                 {
                   "key": "id",
@@ -1444,8 +1839,14 @@
             },
             "url": {
               "raw": "{{base_url}}/api/payment-method/:id",
-              "host": ["{{base_url}}"],
-              "path": ["api", "payment-method", ":id"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "payment-method",
+                ":id"
+              ],
               "variable": [
                 {
                   "key": "id",
@@ -1464,8 +1865,14 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/payment-method/:id",
-              "host": ["{{base_url}}"],
-              "path": ["api", "payment-method", ":id"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "payment-method",
+                ":id"
+              ],
               "variable": [
                 {
                   "key": "id",
@@ -1504,8 +1911,13 @@
             },
             "url": {
               "raw": "{{base_url}}/api/product-categorie",
-              "host": ["{{base_url}}"],
-              "path": ["api", "product-categorie"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "product-categorie"
+              ]
             },
             "description": "Create a new product category"
           },
@@ -1518,8 +1930,13 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/product-categorie",
-              "host": ["{{base_url}}"],
-              "path": ["api", "product-categorie"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "product-categorie"
+              ]
             },
             "description": "Get all product categories"
           },
@@ -1532,8 +1949,14 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/product-categorie/:id",
-              "host": ["{{base_url}}"],
-              "path": ["api", "product-categorie", ":id"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "product-categorie",
+                ":id"
+              ],
               "variable": [
                 {
                   "key": "id",
@@ -1566,8 +1989,14 @@
             },
             "url": {
               "raw": "{{base_url}}/api/product-categorie/:id",
-              "host": ["{{base_url}}"],
-              "path": ["api", "product-categorie", ":id"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "product-categorie",
+                ":id"
+              ],
               "variable": [
                 {
                   "key": "id",
@@ -1586,8 +2015,14 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/product-categorie/:id",
-              "host": ["{{base_url}}"],
-              "path": ["api", "product-categorie", ":id"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "product-categorie",
+                ":id"
+              ],
               "variable": [
                 {
                   "key": "id",
@@ -1628,8 +2063,14 @@
             },
             "url": {
               "raw": "{{base_url}}/api/locations/shipping",
-              "host": ["{{base_url}}"],
-              "path": ["api", "locations", "shipping"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "locations",
+                "shipping"
+              ]
             },
             "description": "Create a new shipping address for the authenticated customer"
           },
@@ -1657,8 +2098,14 @@
             },
             "url": {
               "raw": "{{base_url}}/api/locations/billing",
-              "host": ["{{base_url}}"],
-              "path": ["api", "locations", "billing"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "locations",
+                "billing"
+              ]
             },
             "description": "Create a new billing address for the authenticated customer"
           },
@@ -1672,8 +2119,14 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/locations/shipping",
-              "host": ["{{base_url}}"],
-              "path": ["api", "locations", "shipping"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "locations",
+                "shipping"
+              ]
             },
             "description": "Get all shipping addresses for the authenticated customer"
           },
@@ -1687,8 +2140,14 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/locations/billing",
-              "host": ["{{base_url}}"],
-              "path": ["api", "locations", "billing"]
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "locations",
+                "billing"
+              ]
             },
             "description": "Get all billing addresses for the authenticated customer"
           },
@@ -1702,8 +2161,15 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/locations/:id/default-shipping",
-              "host": ["{{base_url}}"],
-              "path": ["api", "locations", ":id", "default-shipping"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "locations",
+                ":id",
+                "default-shipping"
+              ],
               "variable": [
                 {
                   "key": "id",
@@ -1724,8 +2190,15 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/locations/:id/default-billing",
-              "host": ["{{base_url}}"],
-              "path": ["api", "locations", ":id", "default-billing"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "locations",
+                ":id",
+                "default-billing"
+              ],
               "variable": [
                 {
                   "key": "id",
@@ -1746,8 +2219,14 @@
             "header": [],
             "url": {
               "raw": "{{base_url}}/api/locations/:id",
-              "host": ["{{base_url}}"],
-              "path": ["api", "locations", ":id"],
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "locations",
+                ":id"
+              ],
               "variable": [
                 {
                   "key": "id",
@@ -1776,8 +2255,13 @@
                 "header": [],
                 "url": {
                   "raw": "{{base_url}}/api/roles",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "roles"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "roles"
+                  ]
                 },
                 "description": "Get all roles in the system. Requires admin role and manage_users permission."
               },
@@ -1790,8 +2274,14 @@
                 "header": [],
                 "url": {
                   "raw": "{{base_url}}/api/roles/:id",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "roles", ":id"],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "roles",
+                    ":id"
+                  ],
                   "variable": [
                     {
                       "key": "id",
@@ -1825,8 +2315,14 @@
                 },
                 "url": {
                   "raw": "{{base_url}}/api/roles/:id",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "roles", ":id"],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "roles",
+                    ":id"
+                  ],
                   "variable": [
                     {
                       "key": "id",
@@ -1852,8 +2348,13 @@
                 "header": [],
                 "url": {
                   "raw": "{{base_url}}/api/permissions",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "permissions"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "permissions"
+                  ]
                 },
                 "description": "Get all permissions in the system. Requires admin role and manage_users permission."
               },
@@ -1866,8 +2367,14 @@
                 "header": [],
                 "url": {
                   "raw": "{{base_url}}/api/permissions/:id",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "permissions", ":id"],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "permissions",
+                    ":id"
+                  ],
                   "variable": [
                     {
                       "key": "id",
@@ -1901,8 +2408,14 @@
                 },
                 "url": {
                   "raw": "{{base_url}}/api/permissions/:id",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "permissions", ":id"],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "permissions",
+                    ":id"
+                  ],
                   "variable": [
                     {
                       "key": "id",
@@ -1928,8 +2441,13 @@
                 "header": [],
                 "url": {
                   "raw": "{{base_url}}/api/permission-groups",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "permission-groups"]
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "permission-groups"
+                  ]
                 },
                 "description": "Get all permission groups in the system. Requires admin role and manage_users permission."
               },
@@ -1942,8 +2460,14 @@
                 "header": [],
                 "url": {
                   "raw": "{{base_url}}/api/permission-groups/:id",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "permission-groups", ":id"],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "permission-groups",
+                    ":id"
+                  ],
                   "variable": [
                     {
                       "key": "id",
@@ -1977,8 +2501,14 @@
                 },
                 "url": {
                   "raw": "{{base_url}}/api/permission-groups/:id",
-                  "host": ["{{base_url}}"],
-                  "path": ["api", "permission-groups", ":id"],
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "permission-groups",
+                    ":id"
+                  ],
                   "variable": [
                     {
                       "key": "id",
@@ -1993,6 +2523,120 @@
             }
           ],
           "description": "Permission group management endpoints"
+        }
+      ]
+    },
+    {
+      "name": "🎁 Referral",
+      "description": "## 🎁 Referral Endpoints\n\nManage referral codes and track referrals for business owners.\n\n### 📋 Endpoints\n\n- **Get My Code**: Get or generate referral code (business_owner)\n- **Get My Referrer**: Get referrer info if registered with a code\n- **Get My Referrals**: List referrals and stats (business_owner)\n- **Validate Code**: Validate a referral code (public)\n- **Generate Code**: Force generate referral code (business_owner)\n\n### 🔒 Auth\n\nMost endpoints require business_owner role. Enable 'Send cookies' in Postman.",
+      "item": [
+        {
+          "name": "Get My Code",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/referrals/me/code",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "referral",
+                "my-code"
+              ]
+            },
+            "description": "Get referral code for current business owner. Auto-generates if none exists."
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Referrer",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/referrals/me/referrer",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "referral",
+                "my-referrer"
+              ]
+            },
+            "description": "Get referrer info if current user registered with a referral code."
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Referrals",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/referrals/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "referral",
+                "my-referrals"
+              ]
+            },
+            "description": "List referrals and stats for current business owner."
+          },
+          "response": []
+        },
+        {
+          "name": "Validate Referral Code",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/referrals/validate/:code",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "referral",
+                "validate",
+                ":code"
+              ],
+              "variable": [
+                {
+                  "key": "code",
+                  "value": "ABC123",
+                  "description": "6-12 alphanumeric chars"
+                }
+              ]
+            },
+            "description": "Validate a referral code (public, no auth). Returns isValid, benefits, referrer info."
+          },
+          "response": []
+        },
+        {
+          "name": "Generate Referral Code",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/referrals/me/code",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "referral",
+                "generate"
+              ]
+            },
+            "description": "Force generate a new referral code for business owner. Use if code was lost."
+          },
+          "response": []
         }
       ]
     }
@@ -2013,6 +2657,7 @@
           "// Skip token refresh for auth endpoints",
           "const isAuthRequest = requestUrl.includes('/auth/login') || ",
           "                     requestUrl.includes('/auth/signup') || ",
+          "                     requestUrl.includes('/auth/register-business') || ",
           "                     requestUrl.includes('/auth/refresh');",
           "",
           "// Only refresh if we have refresh token but no access token",

@@ -11,11 +11,13 @@ import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.ent
 import { DeliveryProfile } from 'src/delivery-profiles/entities/delivery_profile.entity';
 import { ProviderProfile } from 'src/provider-profile/entities/provider_profile.entity';
 import { CustomerProfile } from 'src/customer-profile/entities/customer_profile.entity';
+import { BusinessProfile } from 'src/business-profile/entities/business_profile.entity';
 import { Store } from 'src/store/entities/store.entity';
 import { CreateCashierProfileDto } from 'src/cashier-profile/dto/create-cashier-profile.dto';
 import { CreateDeliveryProfileDto } from 'src/delivery-profiles/dto/create-delivery-profile.dto';
 import { CreateProviderProfileDto } from 'src/provider-profile/dto/create-provider-profile.dto';
 import { CreateCustomerProfileDto } from 'src/customer-profile/dto/create-customer-profile.dto';
+import { CreateBusinessProfileDto } from 'src/business-profile/dto/create-business-profile.dto';
 
 export interface IProfileCreationStrategy {
   create(data: unknown, queryRunner: QueryRunner): Promise<string>;
@@ -124,6 +126,39 @@ export class ProviderProfileStrategy implements IProfileCreationStrategy {
     if (!verifyProvider) {
       throw new InternalServerErrorException(
         `Failed to create provider profile: profile with ID ${profileId} not found after creation`,
+      );
+    }
+
+    return profileId;
+  }
+}
+
+@Injectable()
+export class BusinessProfileStrategy implements IProfileCreationStrategy {
+  private readonly logger = new Logger(BusinessProfileStrategy.name);
+
+  constructor(
+    @InjectRepository(BusinessProfile)
+    private readonly businessProfileRepository: Repository<BusinessProfile>,
+  ) {}
+
+  async create(data: unknown, queryRunner: QueryRunner): Promise<string> {
+    const businessData = data as CreateBusinessProfileDto;
+
+    const businessProfile = this.businessProfileRepository.create({
+      ...businessData,
+    });
+
+    const savedBusiness = await queryRunner.manager.save(businessProfile);
+    const profileId = savedBusiness.id;
+
+    const verifyBusiness = await queryRunner.manager.findOne(BusinessProfile, {
+      where: { id: profileId },
+    });
+
+    if (!verifyBusiness) {
+      throw new InternalServerErrorException(
+        `Failed to create business profile: profile with ID ${profileId} not found after creation`,
       );
     }
 

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { CashierScheduleAssignment } from '../entities/cashier-schedule-assignment.entity';
-import { AssignmentStatus } from '../enums/assignment-status.dto';
+import { AssignmentStatus } from '../enums/assignment-status.enum';
 import { CreateAssignmentDto } from '../dto/create-assignment.dto';
 
 @Injectable()

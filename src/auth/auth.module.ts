@@ -28,6 +28,7 @@ import { Subscription } from 'src/subscription/entities/subscription.entity';
 import { AuthSessionManager } from './services/auth-session-manager.service';
 import { AuthMetadataService } from './services/auth-metadata.service';
 import { RateLimitService } from './services/rate-limit.service';
+import { ReferralModule } from 'src/referral/referral.module';
 
 @Module({
   controllers: [AuthController],
@@ -62,6 +63,7 @@ import { RateLimitService } from './services/rate-limit.service';
     GuardsModule,
     UserProfileModule,
     SubscriptionModule,
+    ReferralModule,
     TypeOrmModule.forFeature([User, Role, Subscription]),
   ],
   exports: [AuthService, PassportModule, GuardsModule],

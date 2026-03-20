@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 
@@ -27,7 +27,7 @@ export class CacheService {
         fetchFn()
           .then(newValue => this.cacheManager.set(key, newValue, options.ttl || this.defaultTTL))
           .catch(error => {
-            console.error(`Error refreshing cache for key ${key}:`, error);
+            Logger.error(`Error refreshing cache for key ${key}`, error, CacheService.name);
           });
       }
       return cached;

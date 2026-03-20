@@ -10,7 +10,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { CashierScheduleAssignmentRepository } from './repositories/cashier-schedule-assignment.repository';
 import { AssignmentFactory } from './factories/assignment.factory';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { AssignmentStatus } from './enums/assignment-status.dto';
+import { AssignmentStatus } from './enums/assignment-status.enum';
 import { CreateAssignmentDto, RequestShiftSwapDto } from './dto/create-assignment.dto';
 
 describe('CashierScheduleAssignmentService', () => {

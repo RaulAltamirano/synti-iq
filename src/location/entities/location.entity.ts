@@ -7,10 +7,10 @@ import {
   Index,
   Point,
   ManyToOne,
+  OneToOne,
   JoinColumn,
   CreateDateColumn,
   UpdateDateColumn,
-  OneToMany,
 } from 'typeorm';
 import { AddressType } from '../enums/address-type.enum';
 
@@ -28,6 +28,24 @@ export class Location {
   @Column('text', { nullable: true })
   addressReference: string;
 
+  @Column('varchar', { length: 255, nullable: true })
+  street: string | null;
+
+  @Column('varchar', { length: 100, nullable: true })
+  neighborhood: string | null;
+
+  @Column('varchar', { length: 100, nullable: true })
+  city: string | null;
+
+  @Column('varchar', { length: 100, nullable: true })
+  state: string | null;
+
+  @Column('varchar', { length: 20, nullable: true })
+  postalCode: string | null;
+
+  @Column('varchar', { length: 100, nullable: true })
+  country: string | null;
+
   @Index({ spatial: true })
   @Column({
     type: 'geometry',
@@ -40,8 +58,8 @@ export class Location {
   @JoinColumn({ name: 'userId' })
   user: User;
 
-  @OneToMany(() => Store, store => store.location)
-  stores: Store[];
+  @OneToOne(() => Store, store => store.location)
+  store: Store | null;
 
   @Column('boolean', { default: false })
   isDefault: boolean;

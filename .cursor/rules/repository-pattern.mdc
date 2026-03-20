@@ -1,0 +1,25 @@
+---
+description: Repository pattern, custom repositories, TypeORM
+globs: src/**/*.repository*.ts, src/**/repositories/**/*.ts
+alwaysApply: false
+---
+
+# Repository Pattern
+
+## When to Use
+
+- **`@InjectRepository(Entity)`**: simple CRUD, no custom query logic.
+- **Custom repository**: complex queries, domain-specific finders, abstractions over multiple entities.
+
+## Custom Repository
+
+- Location: `repositories/` within the module (e.g. `src/user-session/user-session.repository.ts`, `src/cashier-schedule-assignment/repositories/`).
+- Class extends or implements a repository interface.
+- Register in module: `TypeOrmModule.forFeature([Entity])` plus explicit provider when using interface injection.
+- Define interface in `interfaces/` when injecting by contract (e.g. `IInventoryRepository`).
+
+## References
+
+- [docs/CONVENTIONS.md](../docs/CONVENTIONS.md) — Repository Pattern section
+- `src/user-session/user-session.repository.ts` — custom repository example
+- `src/inventory/interfaces/inventory-repository.interface.ts` — repository interface example

@@ -4,6 +4,7 @@ import { SeedsStandaloneModule } from '../seeds/seeds-standalone.module';
 import { PermissionsSeed } from '../seeds/permissions.seed';
 import { PermissionGroupsSeed } from '../seeds/permission-groups.seed';
 import { RolesSeed } from '../seeds/roles.seed';
+import { SubscriptionPlansSeed } from '../seeds/subscription-plans.seed';
 import { UsersSeed } from '../seeds/users.seed';
 
 async function runSeeds() {
@@ -22,6 +23,7 @@ async function runSeeds() {
     const permissionsSeed = app.get(PermissionsSeed);
     const permissionGroupsSeed = app.get(PermissionGroupsSeed);
     const rolesSeed = app.get(RolesSeed);
+    const subscriptionPlansSeed = app.get(SubscriptionPlansSeed);
     const usersSeed = app.get(UsersSeed);
 
     switch (seedType.toLowerCase()) {
@@ -42,6 +44,10 @@ async function runSeeds() {
         logger.log('4️⃣ Seeding users...');
         await usersSeed.seed();
         logger.log('✅ Users seeded successfully');
+
+        logger.log('5️⃣ Seeding subscription plans...');
+        await subscriptionPlansSeed.seed();
+        logger.log('✅ Subscription plans seeded successfully');
         break;
 
       case 'permissions':
@@ -68,9 +74,17 @@ async function runSeeds() {
         logger.log('✅ Users seeded successfully');
         break;
 
+      case 'subscription_plans':
+        logger.log('📦 Seeding subscription plans...');
+        await subscriptionPlansSeed.seed();
+        logger.log('✅ Subscription plans seeded successfully');
+        break;
+
       default:
         logger.error(`❌ Unknown seed type: ${seedType}`);
-        logger.log('Available seed types: all, permissions, groups, roles, users');
+        logger.log(
+          'Available seed types: all, permissions, groups, roles, users, subscription_plans',
+        );
         process.exit(1);
     }
 

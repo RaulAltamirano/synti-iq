@@ -1,0 +1,125 @@
+{
+  "info": {
+    "_postman_id": "synti-iq-stores",
+    "name": "Stores",
+    "description": "Gestión de tiendas. Base: `{{base_url}}/api/store`.\n\n**Autenticación:** Todos los endpoints requieren usuario autenticado (JWT: cookies o Bearer {{access_token}}). **Create Store** exige además rol `business_owner`.\n\n**Business owner:** Al llamar **Get All Stores** con un usuario business_owner, la lista se filtra automáticamente a sus tiendas (por businessProfileId). Cada tienda en la respuesta incluye `createdAt` y `updatedAt` para saber cuándo se creó y se actualizó.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "item": [
+    {
+      "name": "Stores",
+      "item": [
+        {
+          "name": "Get All Stores",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/store?page=1&pageSize=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "store"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "10" },
+                { "key": "name", "value": "", "disabled": true },
+                { "key": "isActive", "value": "true", "disabled": true },
+                { "key": "minDailySalesTarget", "value": "", "disabled": true },
+                { "key": "maxDailySalesTarget", "value": "", "disabled": true },
+                { "key": "sortBy", "value": "", "disabled": true },
+                { "key": "businessProfileId", "value": "", "disabled": true }
+              ]
+            },
+            "description": "Lista paginada de tiendas. **Requiere autenticación.** Si el usuario es **business_owner**, solo se devuelven sus tiendas (filtro por su business profile). Cada ítem incluye `createdAt` y `updatedAt`. Query: `page`, `pageSize`, `name`, `isActive`, `minDailySalesTarget`, `maxDailySalesTarget`, `sortBy`, `businessProfileId`."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Store by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/store/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "store", ":id"],
+              "variable": [{"key": "id", "value": ""}]
+            },
+            "description": "Obtiene una tienda por ID (incluye schedules, cashiers, paymentMethods, createdAt, updatedAt). **Requiere autenticación.** Si el usuario es business_owner, solo puede ver tiendas de su negocio."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Store",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tienda Centro CDMX\",\n  \"phoneNumber\": \"+52 55 1234 5678\",\n  \"email\": \"tienda@ejemplo.com.mx\",\n  \"isActive\": true,\n  \"storeType\": \"RETAIL\",\n  \"dailySalesTarget\": 0,\n  \"monthlySalesTarget\": 0,\n  \"location\": {\n    \"name\": \"Sucursal Paseo de la Reforma\",\n    \"fullAddress\": \"Av. Paseo de la Reforma 222, Col. Juárez, Cuauhtémoc, 06600 Ciudad de México, CDMX, México\",\n    \"addressReference\": \"Entre Eje 1 Norte y Av. Juárez\",\n    \"street\": \"Av. Paseo de la Reforma 222\",\n    \"neighborhood\": \"Col. Juárez\",\n    \"city\": \"Ciudad de México\",\n    \"state\": \"CDMX\",\n    \"postalCode\": \"06600\",\n    \"country\": \"México\",\n    \"coordinates\": {\n      \"latitude\": 19.4326,\n      \"longitude\": -99.1332\n    }\n  },\n  \"schedules\": [\n    { \"dayOfWeek\": \"monday\", \"openTime\": \"08:00-06:00\", \"closeTime\": \"21:00-06:00\" },\n    { \"dayOfWeek\": \"tuesday\", \"openTime\": \"08:00-06:00\", \"closeTime\": \"21:00-06:00\" },\n    { \"dayOfWeek\": \"wednesday\", \"openTime\": \"08:00-06:00\", \"closeTime\": \"21:00-06:00\" },\n    { \"dayOfWeek\": \"thursday\", \"openTime\": \"08:00-06:00\", \"closeTime\": \"21:00-06:00\" },\n    { \"dayOfWeek\": \"friday\", \"openTime\": \"08:00-06:00\", \"closeTime\": \"21:00-06:00\" },\n    { \"dayOfWeek\": \"saturday\", \"openTime\": \"08:00-06:00\", \"closeTime\": \"14:00-06:00\" }\n  ]\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{base_url}}/api/store",
+              "host": ["{{base_url}}"],
+              "path": ["api", "store"]
+            },
+            "description": "Crea una tienda con dirección y horarios de apertura en una sola petición.\n\n**Requisito:** rol `business_owner` (cookies o Bearer {{access_token}}).\n\n**Body:**\n- **name** (requerido): nombre de la tienda.\n- **location** (opcional): dirección. Campos: `name`, `fullAddress` (requerido dentro de location), `addressReference`, `street`, `neighborhood`, `city`, `state`, `postalCode`, `country`, `coordinates` (`latitude`, `longitude`).\n- **schedules** (opcional): horarios de apertura. Array de objetos, uno por día. Cada objeto: `dayOfWeek` (monday|tuesday|wednesday|thursday|friday|saturday|sunday), `openTime`, `closeTime` (formato HH:MM o HH:MM:SS, opcional timezone ej. -06:00). No repetir día; openTime debe ser anterior a closeTime. Opcionales por ítem: `name`, `description`.\n- **phoneNumber**, **email**, **isActive**, **storeType**, **dailySalesTarget**, **monthlySalesTarget** (opcionales).\n\n**Respuesta:** 201 con la tienda creada (incluye `schedules` si se enviaron)."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Store",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/store/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "store", ":id"],
+              "variable": [{"key": "id", "value": ""}]
+            },
+            "description": "Delete a store by ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Assign Cashier to Store",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cashierId\": \"{{cashier_profile_id}}\"\n}",
+              "options": {"raw": {"language": "json"}}
+            },
+            "url": {
+              "raw": "{{base_url}}/api/store/:id/cashiers",
+              "host": ["{{base_url}}"],
+              "path": ["api", "store", ":id", "cashiers"],
+              "variable": [{"key": "id", "value": ""}]
+            },
+            "description": "Assign a cashier to a store. Body: `cashierId` (UUID of cashier profile)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Store Cashiers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/store/:id/cashiers",
+              "host": ["{{base_url}}"],
+              "path": ["api", "store", ":id", "cashiers"],
+              "variable": [{"key": "id", "value": ""}]
+            },
+            "description": "List cashiers assigned to a store."
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints that exist in the API: GET/POST /api/store, GET/DELETE /api/store/:id, POST/GET /api/store/:id/cashiers."
+    }
+  ]
+}

@@ -71,6 +71,10 @@ DB_NAME=syntiiq
 REDIS_HOST=localhost
 REDIS_PORT=6379
 
+# Mail (Resend) - optional; if not set, welcome emails are skipped
+# RESEND_API_KEY=re_xxx
+# MAIL_FROM=onboarding@resend.dev   # Use resend.dev for testing (verified domain)
+
 # JWT (RS256 - Asymmetric)
 # Option 1: Use file paths (recommended)
 JWT_PRIVATE_KEY_PATH=./keys/private_key_pkcs8.pem
@@ -131,6 +135,10 @@ Swagger documentation is available at:
 
 - **Development**: `http://localhost:3000/api/docs`
 
+### Postman Collection
+
+The Postman collection is modular. Edit files in `postman/collections/`, then run `yarn postman:build` to regenerate `Synti-IQ-API.postman_collection.json`. See [postman/README.md](postman/README.md) for details.
+
 ## Available Scripts
 
 ```bash
@@ -153,6 +161,15 @@ yarn format:check       # Check formatting without fixing
 
 # Build
 yarn build              # Build for production
+yarn postman:build      # Regenerate Postman collection from modular files
+
+# Database seeding
+yarn seed:all                    # Run all seeds (permissions, groups, roles, users, subscription_plans)
+yarn seed:permissions            # Permissions only
+yarn seed:groups                 # Permission groups only
+yarn seed:roles                  # Roles only
+yarn seed:users                  # Users only
+yarn seed:subscription_plans     # Subscription plans only (Basic, Professional, Enterprise)
 ```
 
 ## Project Structure
@@ -186,6 +203,14 @@ src/
 ```
 
 **Conventions:** All folder names use kebab-case. Package name: `synti-iq-api`.
+
+### Conventions & Guides
+
+- **[AGENTS.md](AGENTS.md)** — Agent and developer guide (naming, structure, validation, executable commands).
+- **[docs/CONVENTIONS.md](docs/CONVENTIONS.md)** — Detailed technical conventions (DTOs, Swagger, error handling, tests).
+- **.cursor/rules/** — Cursor rules for context-aware AI assistance.
+
+For store creation behavior, SubscriptionPlan usage, and planned work (e.g. business subscriptions and max_stores limits), see [docs/STORE_AND_SUBSCRIPTION_PLANS.md](docs/STORE_AND_SUBSCRIPTION_PLANS.md).
 
 ## Environment Variables
 

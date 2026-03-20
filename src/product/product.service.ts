@@ -41,7 +41,7 @@ export class ProductService {
           const products = await queryBuilder.getMany();
 
           return PaginationCacheUtil.createPaginatedResponse({
-            data: products,
+            items: products,
             total,
             page: filters.page,
             limit: filters.limit,
@@ -287,16 +287,7 @@ export class ProductService {
       }
 
       queryBuilder.where(conditions.join(' OR '), parameters);
-
-      Logger.debug(
-        `Searching products with SKU: ${trimmedSku} and Barcode: ${trimmedBarcode}`,
-        'ProductService',
-      );
-
       const results = await queryBuilder.getMany();
-
-      Logger.debug(`Found ${results.length} products matching the criteria`, 'ProductService');
-
       return results;
     } catch (error) {
       Logger.error(`Error in findBySkuOrBarcode: ${error.message}`, error.stack, 'ProductService');

@@ -11,6 +11,7 @@ import { PasswordService } from './services/password/password.service';
 import { UserSessionService } from 'src/user-session/user-session.service';
 import { UserService } from 'src/user/user.service';
 import { SignUpDto } from 'src/auth/dto/sign-up.dto';
+import { RegisterBusinessDto } from 'src/auth/dto/register-business.dto';
 import { AuthResponseDto } from 'src/auth/dto/auth-response.dto';
 import { LoginUserDto, RefreshTokensResponseDto } from 'src/auth/dto';
 import { RefreshTokenDto } from 'src/auth/dto/refresh-token.dto';
@@ -25,6 +26,8 @@ import { Role } from 'src/role/entities/role.entity';
 import { AuthSessionManager } from './services/auth-session-manager.service';
 import { AuthMetadataService } from './services/auth-metadata.service';
 import { RateLimitService } from './services/rate-limit.service';
+import { ReferralService } from 'src/referral/referral.service';
+import { MailService } from 'src/mail/mail.service';
 
 @Injectable()
 export class AuthService {
@@ -39,6 +42,8 @@ export class AuthService {
     private readonly sessionManager: AuthSessionManager,
     private readonly metadataService: AuthMetadataService,
     private readonly rateLimitService: RateLimitService,
+    private readonly referralService: ReferralService,
+    private readonly mailService: MailService,
     @InjectRepository(User)
     private readonly userEntityRepository: Repository<User>,
     @InjectRepository(Role)
@@ -70,7 +75,8 @@ export class AuthService {
       const user = this.userEntityRepository.create({
         email: dto.email,
         password: hashedPassword,
-        fullName: dto.fullName,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
         roleId: role.id,
         isActive: true,
         createdAt: new Date(),
@@ -85,7 +91,6 @@ export class AuthService {
         queryRunner,
       );
 
-      // Get the CustomerProfile that was created
       if (!userProfile.profileId) {
         throw new InternalServerErrorException('CustomerProfile was not created during signup');
       }
@@ -122,7 +127,7 @@ export class AuthService {
 
       await queryRunner.commitTransaction();
 
-      await this.userRepository.updateLastActivity(savedUser.id);
+      await this.userRepository.updateLastLogin(savedUser.id);
 
       const metadata = this.metadataService.extractSessionMetadata(request);
       const { tokens, sessionId } = await this.sessionManager.createSession(savedUser.id, metadata);
@@ -131,7 +136,8 @@ export class AuthService {
         user: {
           id: savedUser.id,
           email: savedUser.email,
-          fullName: savedUser.fullName,
+          firstName: savedUser.firstName,
+          lastName: savedUser.lastName,
           role: role.name,
         },
         tokens,
@@ -140,6 +146,119 @@ export class AuthService {
     } catch (error) {
       await queryRunner.rollbackTransaction();
       this.logger.error(`Error during signUp: ${error.message}`, error.stack);
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async registerBusiness(dto: RegisterBusinessDto, request?: Request): Promise<AuthResponseDto> {
+    const forcedRole = SystemRole.BUSINESS_OWNER;
+
+    const existingUser = await this.userRepository.findByEmail(dto.email);
+    if (existingUser) {
+      throw new UnauthorizedException('Email already in use');
+    }
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const role = await this.roleRepository.findOne({
+        where: { name: forcedRole },
+      });
+
+      if (!role) {
+        throw new InternalServerErrorException('BUSINESS_OWNER role not found');
+      }
+
+      const hashedPassword = await this.passwordService.hash(dto.password);
+      const user = this.userEntityRepository.create({
+        email: dto.email,
+        password: hashedPassword,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        roleId: role.id,
+        isActive: true,
+        createdAt: new Date(),
+      });
+
+      const savedUser = await queryRunner.manager.save(user);
+
+      const businessProfileData = { name: dto.businessName };
+      const userProfile = await this.userProfileService.createProfileForUser(
+        savedUser.id,
+        forcedRole,
+        businessProfileData,
+        queryRunner,
+      );
+
+      if (!userProfile.profileId) {
+        throw new InternalServerErrorException(
+          'BusinessProfile was not created during registration',
+        );
+      }
+
+      if (dto.referralCode?.trim()) {
+        const referralValidation = await this.referralService.validateCode(dto.referralCode.trim());
+        if (referralValidation.isValid && referralValidation.referralCodeId) {
+          await this.referralService.recordUsage(
+            referralValidation.referralCodeId,
+            savedUser.id,
+            userProfile.profileId,
+            queryRunner,
+          );
+        }
+      }
+
+      await this.referralService.ensureCodeForBusinessProfile(userProfile.profileId, queryRunner);
+
+      const validation = await this.userProfileService.validateProfileCoherence(
+        savedUser.id,
+        queryRunner,
+      );
+      if (!validation.isValid) {
+        this.logger.error(
+          `Profile coherence validation failed after registerBusiness for user ${savedUser.id}: ${validation.errors.join(', ')}`,
+        );
+        throw new BadRequestException(
+          `Profile coherence validation failed: ${validation.errors.join(', ')}`,
+        );
+      }
+
+      await queryRunner.commitTransaction();
+
+      await this.userRepository.updateLastLogin(savedUser.id);
+
+      const metadata = this.metadataService.extractSessionMetadata(request);
+      const { tokens, sessionId } = await this.sessionManager.createSession(savedUser.id, metadata);
+
+      this.mailService
+        .sendWelcomeBusiness({
+          email: savedUser.email,
+          firstName: savedUser.firstName,
+          lastName: savedUser.lastName,
+          businessName: dto.businessName,
+        })
+        .catch((err: Error) => {
+          this.logger.warn(`Welcome email failed for ${savedUser.email}: ${err.message}`);
+        });
+
+      return {
+        user: {
+          id: savedUser.id,
+          email: savedUser.email,
+          firstName: savedUser.firstName,
+          lastName: savedUser.lastName,
+          role: role.name,
+        },
+        tokens,
+        sessionId,
+      };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      this.logger.error(`Error during registerBusiness: ${error.message}`, error.stack);
       throw error;
     } finally {
       await queryRunner.release();
@@ -181,7 +300,8 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
-        fullName: userWithRole?.fullName,
+        firstName: userWithRole?.firstName,
+        lastName: userWithRole?.lastName,
         role: userWithRole?.role?.name,
       },
       tokens,

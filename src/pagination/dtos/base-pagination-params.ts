@@ -1,15 +1,15 @@
 import { Type } from 'class-transformer';
-import { IsOptional, IsNumber, Min, Max, IsString } from 'class-validator';
+import { IsOptional, IsInt, Min, Max, IsString, IsIn } from 'class-validator';
 
 export class BasePaginationParams {
   @IsOptional()
-  @IsNumber()
+  @IsInt()
   @Min(1)
   @Type(() => Number)
   page?: number = 1;
 
   @IsOptional()
-  @IsNumber()
+  @IsInt()
   @Min(1)
   @Max(100)
   @Type(() => Number)
@@ -20,8 +20,6 @@ export class BasePaginationParams {
   sortBy?: string = 'createdAt';
 
   @IsOptional()
-  @IsString()
+  @IsIn(['ASC', 'DESC'])
   sortOrder?: 'ASC' | 'DESC' = 'DESC';
-
-  [key: string]: any;
 }

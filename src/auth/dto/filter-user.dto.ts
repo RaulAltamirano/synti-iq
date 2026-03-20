@@ -1,10 +1,10 @@
 import { IsArray, IsBoolean, IsEmail, IsOptional, IsString } from 'class-validator';
-import { PaginationParams } from 'src/pagination/interfaces/PaginationParams';
+import { BasePaginationParams } from 'src/pagination/dtos/base-pagination-params';
 
-export class FilterUserDto extends PaginationParams {
+export class FilterUserDto extends BasePaginationParams {
   @IsOptional()
   @IsString()
-  fullName?: string;
+  name?: string;
 
   @IsOptional()
   @IsEmail()

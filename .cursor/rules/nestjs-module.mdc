@@ -1,0 +1,42 @@
+---
+description: NestJS module structure, controller-service-repository pattern, DI
+globs: src/**/*.ts
+alwaysApply: false
+---
+
+# NestJS Module Structure
+
+## Controller → Service → Repository
+
+- **Controllers**: Keep thin; delegate business logic to services. Use decorators `@Get()`, `@Post()`, `@Body()`, `@Param()`, `@Query()`.
+- **Services**: Contain business logic. Mark with `@Injectable()`, inject via constructor.
+- **Repositories**: Use TypeORM `@InjectRepository(Entity)` when following the Repository pattern.
+
+## Dependency Injection
+
+```typescript
+@Injectable()
+export class MyService {
+  constructor(
+    @InjectRepository(MyEntity)
+    private readonly repo: Repository<MyEntity>,
+    private readonly otherService: OtherService,
+  ) {}
+}
+```
+
+## DTO Validation
+
+- Add class-validator decorators to all DTOs used with `@Body()`, `@Query()`, `@Param()`.
+- Global ValidationPipe applies whitelist and forbidNonWhitelisted.
+- For nested objects, use `@Type(() => NestedDto)` from class-transformer.
+
+## Module Registration
+
+- Register controllers and providers in `@Module()`.
+- Export services consumed by other modules.
+- Use `forwardRef()` only when circular dependencies are unavoidable.
+
+## Pagination
+
+Use `BasePaginationParams` and `PaginatedResponse<T>` for paginated endpoints. See AGENTS.md "Canonical Contracts" for paths.

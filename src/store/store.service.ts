@@ -1,10 +1,10 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
   InternalServerErrorException,
-  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -19,11 +19,16 @@ import { PaginationCacheUtil } from 'src/pagination/utils/PaginationCacheUtil';
 import { StoreFilterDto } from './dto/filter-store-dto';
 import { Location } from 'src/location/entities/location.entity';
 import { LocationService } from 'src/location/location.service';
+import { UserProfileService } from 'src/user-profile/user_profile.service';
+import { UserService } from 'src/user/user.service';
+import { SystemRole } from 'src/shared/enums/roles.enum';
+import { StoreSchedule } from 'src/store-schedule/entities/store-schedule.entity';
+import { DateUtils } from 'src/shared/utils/date-utils';
 
 @Injectable()
 export class StoreService {
   private readonly CACHE_PREFIX = 'store';
-  private readonly logger = new Logger(StoreService.name);
+  private readonly CACHE_VERSION_KEY = 'store:_version';
 
   constructor(
     @InjectRepository(Store)
@@ -31,12 +36,26 @@ export class StoreService {
     @InjectRepository(CashierProfile)
     private readonly cashierRepo: Repository<CashierProfile>,
     private readonly locationService: LocationService,
+    private readonly userProfileService: UserProfileService,
+    private readonly userService: UserService,
     @Inject(CACHE_MANAGER)
     private readonly cacheManager: Cache,
   ) {}
 
-  async findAll(filters: StoreFilterDto): Promise<PaginatedResponse<Store>> {
-    const cacheKey = PaginationCacheUtil.buildCacheKey(this.CACHE_PREFIX, filters);
+  async findAll(filters: StoreFilterDto, userId?: string): Promise<PaginatedResponse<Store>> {
+    if (userId) {
+      const role = await this.userService.getUserRole(userId);
+      if (role === SystemRole.BUSINESS_OWNER) {
+        const profile = await this.userProfileService.getUserProfile(userId);
+        if (profile?.profileId && profile?.profileType === SystemRole.BUSINESS_OWNER) {
+          filters.businessProfileId = profile.profileId;
+        }
+      }
+    }
+
+    const version = (await this.cacheManager.get<number>(this.CACHE_VERSION_KEY)) ?? 0;
+    const hashPart = PaginationCacheUtil.buildCacheKey(this.CACHE_PREFIX, filters).split(':')[1];
+    const cacheKey = `${this.CACHE_PREFIX}:${version}:${hashPart}`;
 
     const cachedResult = await this.cacheManager.get<PaginatedResponse<Store>>(cacheKey);
     if (cachedResult) {
@@ -59,22 +78,27 @@ export class StoreService {
     const stores = await queryBuilder.getMany();
 
     const response = PaginationCacheUtil.createPaginatedResponse({
-      data: stores,
+      items: stores,
       total,
       page: filters.page,
       limit: filters.limit,
     });
 
-    await this.cacheManager.set(
-      cacheKey,
-      response,
-      300, // 5 minutos
-    );
+    await this.cacheManager.set(cacheKey, response, 300);
 
     return response;
   }
 
-  private applyFilters(queryBuilder: any, filters: StoreFilterDto): void {
+  private applyFilters(
+    queryBuilder: ReturnType<Repository<Store>['createQueryBuilder']>,
+    filters: StoreFilterDto,
+  ): void {
+    if (filters.businessProfileId) {
+      queryBuilder.andWhere('store.businessProfileId = :businessProfileId', {
+        businessProfileId: filters.businessProfileId,
+      });
+    }
+
     if (filters.name) {
       queryBuilder.andWhere('store.name LIKE :name', {
         name: `%${filters.name}%`,
@@ -100,7 +124,7 @@ export class StoreService {
     }
   }
 
-  async findOne(id: string): Promise<Store> {
+  async findOne(id: string, userId?: string): Promise<Store> {
     const store = await this.storeRepo.findOne({
       where: { id },
       relations: ['schedules', 'cashiers', 'paymentMethods'],
@@ -110,54 +134,122 @@ export class StoreService {
       throw new NotFoundException(`Store with id ${id} not found`);
     }
 
+    if (userId) {
+      const role = await this.userService.getUserRole(userId);
+      if (role === SystemRole.BUSINESS_OWNER && store.businessProfileId) {
+        const profile = await this.userProfileService.getUserProfile(userId);
+        if (
+          !profile?.profileId ||
+          profile.profileType !== SystemRole.BUSINESS_OWNER ||
+          profile.profileId !== store.businessProfileId
+        ) {
+          throw new ForbiddenException('You can only access your own stores');
+        }
+      }
+    }
+
     return store;
   }
 
-  async create(input: CreateStoreDto): Promise<Store> {
+  async create(input: CreateStoreDto, userId: string): Promise<Store> {
     try {
-      const { name, location: locationInput } = input;
+      const { name, location: locationInput, schedules: scheduleItems } = input;
 
-      const existingStore = await this.storeRepo.findOne({
-        where: { name },
-      });
-      if (existingStore) {
-        throw new ConflictException('Ya existe una tienda con este nombre');
+      const profile = await this.userProfileService.getUserProfile(userId);
+      if (!profile?.profileId || profile.profileType !== SystemRole.BUSINESS_OWNER) {
+        throw new ForbiddenException('Only business owners can create stores');
       }
 
-      let location: Location | undefined;
+      const businessProfileId = profile.profileId;
+
+      const existingStore = await this.storeRepo.findOne({
+        where: { name, businessProfileId },
+      });
+      if (existingStore) {
+        throw new ConflictException('A store with this name already exists');
+      }
+
+      let location: Location | null = null;
       if (locationInput) {
-        location = await this.locationService.createOrFindLocation(locationInput);
+        location = await this.locationService.createLocation(locationInput);
+      }
+
+      const { schedules: _s, ...storeInput } = input;
+      const hasSchedules = scheduleItems && scheduleItems.length > 0;
+
+      if (hasSchedules) {
+        const saved = await this.storeRepo.manager.transaction(async tx => {
+          const store = this.storeRepo.create({
+            ...storeInput,
+            location,
+            businessProfileId,
+            isActive: input.isActive ?? true,
+          });
+          store.schedules = scheduleItems!.map(item => {
+            const schedule = new StoreSchedule();
+            schedule.name = item.name ?? item.dayOfWeek;
+            schedule.description = item.description;
+            schedule.dayOfWeek = item.dayOfWeek;
+            schedule.openTime = DateUtils.normalizeTimeStringForPg(item.openTime);
+            schedule.closeTime = DateUtils.normalizeTimeStringForPg(item.closeTime);
+            schedule.store = store;
+            schedule.isActive = true;
+            return schedule;
+          });
+          return tx.getRepository(Store).save(store);
+        });
+        await this.invalidateListCache();
+        const withSchedules = await this.storeRepo.findOne({
+          where: { id: saved.id },
+          relations: ['schedules'],
+        });
+        return withSchedules ?? saved;
       }
 
       const store = this.storeRepo.create({
-        ...input,
+        ...storeInput,
         location,
+        businessProfileId,
         isActive: input.isActive ?? true,
       });
 
-      return await this.storeRepo.save(store);
+      const saved = await this.storeRepo.save(store);
+      await this.invalidateListCache();
+      return saved;
     } catch (error) {
-      if (error instanceof ConflictException || error instanceof BadRequestException) {
+      if (
+        error instanceof ConflictException ||
+        error instanceof BadRequestException ||
+        error instanceof ForbiddenException
+      ) {
         throw error;
       }
 
-      this.logger.error(`Error al crear tienda: ${error.message}`, error.stack);
-      throw new InternalServerErrorException('No se pudo crear la tienda');
+      throw new InternalServerErrorException('Failed to create store');
     }
   }
 
-  async remove(id: string): Promise<void> {
-    await this.findOne(id);
+  private async invalidateListCache(): Promise<void> {
+    await this.cacheManager.set(this.CACHE_VERSION_KEY, Date.now(), 86400);
+  }
+
+  async remove(id: string, userId?: string): Promise<void> {
+    await this.findOne(id, userId);
 
     try {
       await this.storeRepo.delete(id);
+      await this.invalidateListCache();
     } catch (error) {
       throw new BadRequestException('Error deleting store', error);
     }
   }
 
-  async assignCashierToStore(storeId: string, cashierId: string): Promise<boolean> {
-    const store = await this.findOne(storeId);
+  async assignCashierToStore(
+    storeId: string,
+    cashierId: string,
+    userId?: string,
+  ): Promise<boolean> {
+    const store = await this.findOne(storeId, userId);
     const cashier = await this.cashierRepo.findOne({
       where: { id: cashierId },
     });
@@ -171,10 +263,11 @@ export class StoreService {
     return true;
   }
 
-  async getCashiersFromStore(storeId: string) {
-    const store = await this.findOne(storeId);
+  async getCashiersFromStore(storeId: string, userId?: string) {
+    const store = await this.findOne(storeId, userId);
     return store.cashiers;
   }
+
   public async validateStore(storeId: string): Promise<Store> {
     if (!storeId) {
       throw new BadRequestException('Store ID is required');

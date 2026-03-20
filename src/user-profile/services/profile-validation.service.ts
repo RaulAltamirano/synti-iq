@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, QueryRunner } from 'typeorm';
 import { SystemRole, isSystemRole } from 'src/shared/enums/roles.enum';
@@ -7,13 +7,12 @@ import { UserProfile } from '../entities/user_profile.entity';
 import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.entity';
 import { DeliveryProfile } from 'src/delivery-profiles/entities/delivery_profile.entity';
 import { ProviderProfile } from 'src/provider-profile/entities/provider_profile.entity';
+import { BusinessProfile } from 'src/business-profile/entities/business_profile.entity';
 import { CustomerProfile } from 'src/customer-profile/entities/customer_profile.entity';
 import { Subscription } from 'src/subscription/entities/subscription.entity';
 
 @Injectable()
 export class ProfileValidationService {
-  private readonly logger = new Logger(ProfileValidationService.name);
-
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
@@ -25,6 +24,8 @@ export class ProfileValidationService {
     private readonly deliveryProfileRepository: Repository<DeliveryProfile>,
     @InjectRepository(ProviderProfile)
     private readonly providerProfileRepository: Repository<ProviderProfile>,
+    @InjectRepository(BusinessProfile)
+    private readonly businessProfileRepository: Repository<BusinessProfile>,
     @InjectRepository(CustomerProfile)
     private readonly customerProfileRepository: Repository<CustomerProfile>,
     @InjectRepository(Subscription)
@@ -71,6 +72,7 @@ export class ProfileValidationService {
         SystemRole.CASHIER,
         SystemRole.DELIVERY,
         SystemRole.PROVIDER,
+        SystemRole.BUSINESS_OWNER,
         SystemRole.CUSTOMER,
       ].includes(roleName);
 
@@ -84,7 +86,7 @@ export class ProfileValidationService {
             );
           } else {
             errors.push(
-              `User with role ${roleName} requires a specific profile (cashier/delivery/provider) but profileId is null`,
+              `User with role ${roleName} requires a specific profile (cashier/delivery/provider/business_owner) but profileId is null`,
             );
           }
         } else if (profileType && profileType !== roleName) {
@@ -136,31 +138,11 @@ export class ProfileValidationService {
         }
       }
 
-      const isValid = errors.length === 0;
-
-      if (!isValid) {
-        this.logger.warn(
-          `Profile coherence validation failed for user ${userId}. Errors: ${errors.join('; ')}`,
-          {
-            userId,
-            roleName,
-            profileType,
-            hasProfile: !!user.profile,
-            specificProfileId,
-          },
-        );
-      }
-
       return {
-        isValid,
+        isValid: errors.length === 0,
         errors,
       };
     } catch (error) {
-      this.logger.error(
-        `Error validating profile coherence for user ${userId}: ${error.message}`,
-        error.stack,
-        { userId },
-      );
       errors.push(`Validation error: ${error.message}`);
       return { isValid: false, errors };
     }
@@ -189,6 +171,12 @@ export class ProfileValidationService {
           where: { id: profileId },
         });
         return !!provider;
+
+      case SystemRole.BUSINESS_OWNER:
+        const business = await manager.findOne(BusinessProfile, {
+          where: { id: profileId },
+        });
+        return !!business;
 
       case SystemRole.CUSTOMER:
         const customer = await manager.findOne(CustomerProfile, {

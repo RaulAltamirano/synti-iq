@@ -2,7 +2,6 @@ import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
-  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -15,7 +14,10 @@ import { ProviderProfile } from 'src/provider-profile/entities/provider_profile.
 import { CreateCashierProfileDto } from 'src/cashier-profile/dto/create-cashier-profile.dto';
 import { CreateDeliveryProfileDto } from 'src/delivery-profiles/dto/create-delivery-profile.dto';
 import { CreateProviderProfileDto } from 'src/provider-profile/dto/create-provider-profile.dto';
+import { CreateBusinessProfileDto } from 'src/business-profile/dto/create-business-profile.dto';
 import { CustomerProfile } from 'src/customer-profile/entities/customer_profile.entity';
+import { BusinessProfile } from 'src/business-profile/entities/business_profile.entity';
+import { User } from 'src/user/entities/user.entity';
 import { ProfileFactoryService } from './services/profile-factory.service';
 import { ProfileValidationService } from './services/profile-validation.service';
 import { ProfileActivityService } from './services/profile-activity.service';
@@ -24,17 +26,19 @@ import { ProfileRepositoryHelper } from './helpers/profile-repository.helper';
 
 @Injectable()
 export class UserProfileService {
-  private readonly logger = new Logger(UserProfileService.name);
-
   constructor(
     @InjectRepository(UserProfile)
     private readonly userProfileRepository: Repository<UserProfile>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
     @InjectRepository(CashierProfile)
     private readonly cashierProfileRepository: Repository<CashierProfile>,
     @InjectRepository(DeliveryProfile)
     private readonly deliveryProfileRepository: Repository<DeliveryProfile>,
     @InjectRepository(ProviderProfile)
     private readonly providerProfileRepository: Repository<ProviderProfile>,
+    @InjectRepository(BusinessProfile)
+    private readonly businessProfileRepository: Repository<BusinessProfile>,
     @InjectRepository(CustomerProfile)
     private readonly customerProfileRepository: Repository<CustomerProfile>,
     private readonly profileFactoryService: ProfileFactoryService,
@@ -50,6 +54,7 @@ export class UserProfileService {
       | CreateCashierProfileDto
       | CreateDeliveryProfileDto
       | CreateProviderProfileDto
+      | CreateBusinessProfileDto
       | Record<string, unknown>,
     queryRunner?: QueryRunner,
   ): Promise<UserProfile> {
@@ -59,6 +64,7 @@ export class UserProfileService {
       SystemRole.CASHIER,
       SystemRole.DELIVERY,
       SystemRole.PROVIDER,
+      SystemRole.BUSINESS_OWNER,
       SystemRole.CUSTOMER,
     ].includes(role);
 
@@ -66,9 +72,14 @@ export class UserProfileService {
     let metadata: Record<string, unknown> | null = null;
 
     if (requiresSpecificProfile) {
-      if (role !== SystemRole.CUSTOMER && !data) {
+      if (role !== SystemRole.CUSTOMER && role !== SystemRole.BUSINESS_OWNER && !data) {
         throw new BadRequestException(
           `profileData is required for role ${role} (userId: ${userId}). Roles CASHIER, DELIVERY, and PROVIDER require specific profile data.`,
+        );
+      }
+      if (role === SystemRole.BUSINESS_OWNER && !data) {
+        throw new BadRequestException(
+          `profileData is required for role ${role} (userId: ${userId}).`,
         );
       }
       if (!queryRunner) {
@@ -89,20 +100,8 @@ export class UserProfileService {
         metadata,
       });
 
-      const savedProfile = await manager.save(userProfile);
-
-      this.logger.debug(
-        `UserProfile created successfully for user ${userId} with role ${role} and profileType ${savedProfile.profileType}`,
-        { userId, role, profileType: savedProfile.profileType, profileId: savedProfile.profileId },
-      );
-
-      return savedProfile;
+      return await manager.save(userProfile);
     } catch (error) {
-      this.logger.error(
-        `Failed to create UserProfile for user ${userId} with role ${role}: ${error.message}`,
-        error.stack,
-        { userId, role, profileId },
-      );
       throw new InternalServerErrorException(
         `Failed to create UserProfile for user ${userId} with role ${role}: ${error.message}`,
       );
@@ -128,12 +127,7 @@ export class UserProfileService {
       return null;
     }
 
-    const validation = await this.validateProfileCoherence(userId);
-    if (!validation.isValid) {
-      this.logger.warn(
-        `Profile coherence issues detected for user ${userId}: ${validation.errors.join(', ')}`,
-      );
-    }
+    await this.validateProfileCoherence(userId);
 
     if (profile.profileId && profile.profileType) {
       await this.loadSpecificProfile(profile);
@@ -173,6 +167,16 @@ export class UserProfileService {
         }
         break;
 
+      case SystemRole.BUSINESS_OWNER:
+        const business = await this.businessProfileRepository.findOne({
+          where: { id: profile.profileId },
+        });
+        if (business) {
+          (profile as UserProfile & { specificProfile: BusinessProfile }).specificProfile =
+            business;
+        }
+        break;
+
       case SystemRole.CUSTOMER:
         const customer = await this.customerProfileRepository.findOne({
           where: { id: profile.profileId },
@@ -200,6 +204,7 @@ export class UserProfileService {
         cashier: this.cashierProfileRepository,
         delivery: this.deliveryProfileRepository,
         provider: this.providerProfileRepository,
+        business: this.businessProfileRepository,
         customer: this.customerProfileRepository,
       });
 
@@ -239,6 +244,10 @@ export class UserProfileService {
           await manager.delete(ProviderProfile, { id: profile.profileId });
           break;
 
+        case SystemRole.BUSINESS_OWNER:
+          await manager.delete(BusinessProfile, { id: profile.profileId });
+          break;
+
         case SystemRole.CUSTOMER:
           await manager.delete(CustomerProfile, { id: profile.profileId });
           break;
@@ -269,5 +278,22 @@ export class UserProfileService {
 
   async getLastActivityAt(userId: string, roleName: SystemRole): Promise<Date | null> {
     return this.profileActivityService.getLastActivityAt(userId, roleName);
+  }
+
+  async findOwnerByBusinessProfileId(businessProfileId: string): Promise<User | null> {
+    const userProfile = await this.userProfileRepository.findOne({
+      where: {
+        profileType: SystemRole.BUSINESS_OWNER,
+        profileId: businessProfileId,
+      },
+    });
+
+    if (!userProfile?.userId) {
+      return null;
+    }
+
+    return this.userRepository.findOne({
+      where: { id: userProfile.userId },
+    });
   }
 }

@@ -1,5 +1,6 @@
 import { EndpointDocSpec } from 'src/shared/decorators/interfaces/endpoint-doc-spec.interface';
 import { SignUpDto } from 'src/auth/dto/sign-up.dto';
+import { RegisterBusinessDto } from 'src/auth/dto/register-business.dto';
 import { LoginUserDto } from 'src/auth/dto/login-user.dto';
 
 export const authEndpoints: Record<string, EndpointDocSpec> = {
@@ -14,6 +15,35 @@ export const authEndpoints: Record<string, EndpointDocSpec> = {
           type: 'object',
           properties: {
             message: { type: 'string', example: 'User registered successfully' },
+            user: { type: 'object' },
+            token_type: { type: 'string', example: 'Bearer' },
+            expires_in: { type: 'number' },
+            refresh_expires_in: { type: 'number' },
+            sessionId: { type: 'string' },
+          },
+        },
+      },
+      {
+        status: 400,
+        description: 'Invalid input data',
+      },
+      {
+        status: 409,
+        description: 'User with this email already exists',
+      },
+    ],
+  },
+  registerBusiness: {
+    summary: 'Register a new business account',
+    body: RegisterBusinessDto,
+    responses: [
+      {
+        status: 201,
+        description: 'Business account registered successfully',
+        schema: {
+          type: 'object',
+          properties: {
+            message: { type: 'string', example: 'Business account registered successfully' },
             user: { type: 'object' },
             token_type: { type: 'string', example: 'Bearer' },
             expires_in: { type: 'number' },

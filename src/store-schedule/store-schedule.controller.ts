@@ -1,7 +1,6 @@
 import {
   Controller,
   Get,
-  Post,
   Body,
   Patch,
   Param,
@@ -9,10 +8,8 @@ import {
   HttpCode,
   HttpStatus,
   ParseUUIDPipe,
-  Logger,
 } from '@nestjs/common';
 import { StoreScheduleService } from './store-schedule.service';
-import { CreateStoreScheduleDto } from './dto/create-store-schedule.dto';
 import { UpdateStoreScheduleDto } from './dto/update-store-schedule.dto';
 import { StoreSchedule } from './entities/store-schedule.entity';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
@@ -21,25 +18,6 @@ import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 @Controller('store-schedule')
 export class StoreScheduleController {
   constructor(private readonly storeScheduleService: StoreScheduleService) {}
-
-  @Post()
-  @ApiOperation({ summary: 'Create a new store schedule' })
-  @ApiResponse({
-    status: HttpStatus.CREATED,
-    description: 'The store schedule has been successfully created.',
-    type: StoreSchedule,
-  })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: 'Invalid input data.',
-  })
-  @ApiResponse({
-    status: HttpStatus.CONFLICT,
-    description: 'A schedule already exists for this day.',
-  })
-  async create(@Body() createStoreScheduleInput: CreateStoreScheduleDto): Promise<StoreSchedule> {
-    return this.storeScheduleService.create(createStoreScheduleInput);
-  }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a store schedule by ID' })
@@ -58,15 +36,7 @@ export class StoreScheduleController {
     description: 'Invalid UUID format.',
   })
   async findOne(@Param('id', ParseUUIDPipe) id: string): Promise<StoreSchedule> {
-    try {
-      Logger.debug(`Attempting to find store schedule with ID: ${id}`);
-      const schedule = await this.storeScheduleService.findOne(id);
-      Logger.debug(`Successfully found store schedule with ID: ${id}`);
-      return schedule;
-    } catch (error) {
-      Logger.error(`Error finding store schedule with ID: ${id}`, error.stack);
-      throw error;
-    }
+    return this.storeScheduleService.findOne(id);
   }
 
   @Patch(':id')

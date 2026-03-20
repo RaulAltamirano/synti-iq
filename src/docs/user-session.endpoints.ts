@@ -29,7 +29,7 @@ export const userSessionEndpoints: Record<string, EndpointDocSpec> = {
             { $ref: '#/components/schemas/PaginatedResponse' },
             {
               properties: {
-                data: {
+                items: {
                   type: 'array',
                   items: { $ref: '#/components/schemas/UserSessionResponseDto' },
                 },

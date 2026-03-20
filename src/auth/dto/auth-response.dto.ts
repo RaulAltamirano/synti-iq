@@ -4,7 +4,8 @@ export class AuthResponseDto {
   user: {
     id: string;
     email: string;
-    fullName?: string;
+    firstName?: string;
+    lastName?: string;
     role?: string;
   };
   tokens: TokensUserDto;

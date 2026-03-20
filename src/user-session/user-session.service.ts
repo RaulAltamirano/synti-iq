@@ -130,7 +130,7 @@ export class UserSessionService {
 
       if (!sessions || sessions.length === 0) {
         return {
-          data: [],
+          items: [],
           total: 0,
           page: filters.page,
           limit: filters.limit,
@@ -140,7 +140,7 @@ export class UserSessionService {
 
       const mappedSessions = sessions.map(session => this.mapToResponseDto(session));
       return {
-        data: mappedSessions,
+        items: mappedSessions,
         total,
         page: filters.page,
         limit: filters.limit,

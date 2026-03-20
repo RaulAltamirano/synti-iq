@@ -11,6 +11,8 @@ import { RoleModule } from 'src/role/role.module';
 import { PermissionGroupModule } from 'src/permission-group/permission-group.module';
 import { LocationModule } from 'src/location/location.module';
 import { StoreModule } from 'src/store/store.module';
+import { BusinessProfileModule } from 'src/business-profile/business_profile.module';
+import { ReferralModule } from 'src/referral/referral.module';
 import { ProductModule } from 'src/product/product.module';
 import { InventoryModule } from 'src/inventory/inventory.module';
 import { SaleItemModule } from 'src/sale-item/sale-item.module';
@@ -26,6 +28,8 @@ import { ProductCategorieModule } from 'src/product-category/product-categorie.m
 import { CacheModule } from '@nestjs/cache-manager';
 import { ResponseModule } from 'src/shared/response/response.module';
 import { LoggerModule } from 'src/shared/logger';
+import { MailModule } from 'src/mail/mail.module';
+import { Resend } from 'resend';
 
 @Module({
   imports: [
@@ -57,6 +61,8 @@ import { LoggerModule } from 'src/shared/logger';
     RedisModule,
     ProductModule,
     StoreModule,
+    BusinessProfileModule,
+    ReferralModule,
     InventoryModule,
     CashierScheduleAssignmentModule,
     RecurringScheduleTemplateModule,
@@ -68,6 +74,20 @@ import { LoggerModule } from 'src/shared/logger';
     TimeBlockModule,
     ProductCategorieModule,
     ResponseModule,
+    MailModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => {
+        const apiKey = config.get<string>('RESEND_API_KEY') ?? '';
+        const from = config.get<string>('MAIL_FROM') ?? 'onboarding@resend.dev';
+        const appUrl = config.get<string>('FRONTEND_URL') ?? 'https://app.syntiiq.com';
+        return {
+          resend: apiKey ? new Resend(apiKey) : null,
+          from,
+          appUrl,
+        };
+      },
+    }),
   ],
   controllers: [],
   providers: [

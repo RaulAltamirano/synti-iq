@@ -5,6 +5,7 @@ import { LoginUserDto, TokensUserDto } from 'src/auth/dto';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { SignUpDto } from './dto/sign-up.dto';
+import { RegisterBusinessDto } from './dto/register-business.dto';
 import { TokenResponseHelper } from './helpers/token-response.helper';
 import { ApiDoc } from 'src/shared/decorators';
 import { authEndpoints } from 'src/docs/auth.endpoints';
@@ -35,6 +36,24 @@ export class AuthController {
     res.setHeader('Location', `/api/user/me`);
     return {
       message: 'User registered successfully',
+      user: result.user,
+      ...TokenResponseHelper.build(result.tokens, result.sessionId),
+    };
+  }
+
+  @ApiDoc(authEndpoints, 'registerBusiness')
+  @Post('register-business')
+  @HttpCode(201)
+  async registerBusiness(
+    @Body() dto: RegisterBusinessDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.registerBusiness(dto, req);
+    this.setAuthCookies(res, result.tokens);
+    res.setHeader('Location', `/api/user/me`);
+    return {
+      message: 'Business account registered successfully',
       user: result.user,
       ...TokenResponseHelper.build(result.tokens, result.sessionId),
     };

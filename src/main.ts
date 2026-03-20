@@ -22,19 +22,26 @@ async function bootstrap() {
   const requestIdMiddleware = new RequestIdMiddleware();
   app.use(requestIdMiddleware.use.bind(requestIdMiddleware));
 
+  const apiUrl = process.env.API_URL || 'http://localhost:3000/api';
   const config = new DocumentBuilder()
     .setTitle('Synti IQ E-commerce API')
     .setDescription(
       'API for managing store schedules, cashiers, products, inventory, statistics, and shipping operations',
     )
     .setVersion('1.0')
+    .addServer(apiUrl, 'Development')
     .addTag('Auth', 'Authentication and session management')
-    .addTag('store-schedule', 'Store hours and availability management')
-    .addTag('cashier-schedule', 'Cashier shift scheduling and management')
-    .addTag('products', 'Product catalog and management')
-    .addTag('inventory', 'Stock and inventory control')
-    .addTag('statistics', 'Sales analytics and reporting')
-    .addTag('shipping', 'Order fulfillment and delivery tracking')
+    .addTag('Users', 'User profile management')
+    .addTag('User Session', 'Active sessions and device management')
+    .addTag('Referral', 'Referral codes and benefits')
+    .addTag('Store', 'Store management')
+    .addTag('StoreSchedule', 'Store hours and availability management')
+    .addTag('Product', 'Product catalog and management')
+    .addTag('Inventory', 'Stock and inventory control')
+    .addTag('Location', 'Shipping and billing addresses')
+    .addTag('CashierSchedule', 'Cashier shift scheduling and management')
+    .addTag('Statistics', 'Sales analytics and reporting')
+    .addTag('Shipping', 'Order fulfillment and delivery tracking')
     .addCookieAuth('access_token')
     .addSecurity('api_key', {
       type: 'apiKey',

@@ -20,7 +20,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { FilterUserDto } from 'src/auth/dto/filter-user.dto';
 import { PaginatedResponse } from 'src/pagination/interfaces/PaginatedResponse';
 import { createHash } from 'crypto';
-import { CreateUserDto } from './dtos/CreateUserDto';
+import { CreateUserDto } from './dto/create-user.dto';
 import { UserProfileService } from 'src/user-profile/user_profile.service';
 import { Role } from 'src/role/entities/role.entity';
 import { SystemRole } from 'src/shared/enums/roles.enum';
@@ -63,10 +63,12 @@ export class UserService {
       .leftJoinAndSelect('user.role', 'role')
       .where('user.isDelete = :isDelete', { isDelete: false });
 
-    if (filters.fullName) {
-      query.andWhere('LOWER(user.fullName) LIKE LOWER(:fullName)', {
-        fullName: `%${this.escapeLikeString(filters.fullName)}%`,
-      });
+    if (filters.name) {
+      const namePattern = `%${this.escapeLikeString(filters.name)}%`;
+      query.andWhere(
+        '(LOWER(user.firstName) LIKE LOWER(:namePattern) OR LOWER(user.lastName) LIKE LOWER(:namePattern))',
+        { namePattern },
+      );
     }
 
     if (filters.email) {
@@ -107,6 +109,9 @@ export class UserService {
 
   async filterUsers(filters: FilterUserDto): Promise<PaginatedResponse<User>> {
     try {
+      const page = filters.page ?? 1;
+      const limit = filters.limit ?? 10;
+
       const cacheKey = this.buildCacheKey(filters);
       const cachedData = await this.cacheManager.get<PaginatedResponse<User>>(cacheKey);
 
@@ -119,19 +124,19 @@ export class UserService {
 
       const [users, total] = await query
         .orderBy('user.createdAt', 'DESC')
-        .skip((filters.page - 1) * filters.limit)
-        .take(filters.limit)
+        .skip((page - 1) * limit)
+        .take(limit)
         .getManyAndCount();
 
-      const totalPages = Math.ceil(total / filters.limit);
+      const totalPages = Math.ceil(total / limit);
       const response: PaginatedResponse<User> = {
-        data: users,
+        items: users,
         total,
-        page: filters.page,
+        page,
         totalPages,
-        limit: filters.limit,
-        hasNextPage: filters.page < totalPages,
-        hasPreviousPage: filters.page > 1,
+        limit,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
       };
 
       await this.cacheManager.set(cacheKey, response, this.CACHE_TTL);
@@ -240,16 +245,14 @@ export class UserService {
       const user = this.userRepository.create({
         email: dto.email,
         password: hashedPassword,
-        fullName: dto.fullName,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
         roleId,
         isActive: true,
         createdAt: new Date(),
       });
 
       const savedUser = await queryRunner.manager.save(user);
-
-      this.logger.debug('User created successfully', { userId: savedUser.id });
-
       return savedUser;
     } catch (error) {
       this.logger.error('Failed to create user', {
@@ -270,7 +273,7 @@ export class UserService {
   }
 
   async updatePassword(email: string, password: string) {
-    this.logger.log('Run update password');
+    // TODO: implement password update logic
   }
   async validateUser(email: string): Promise<User> {
     const user = await this.userRepository.findOne({
@@ -323,7 +326,8 @@ export class UserService {
     return {
       id: user.id,
       email: user.email,
-      fullName: user.fullName,
+      firstName: user.firstName,
+      lastName: user.lastName,
       role: user.role?.name,
       isActive: user.isActive,
       isApproved: approvalStatus.isApproved,

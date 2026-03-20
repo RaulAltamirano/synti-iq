@@ -5,6 +5,7 @@ import { SystemRole } from 'src/shared/enums/roles.enum';
 import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.entity';
 import { DeliveryProfile } from 'src/delivery-profiles/entities/delivery_profile.entity';
 import { ProviderProfile } from 'src/provider-profile/entities/provider_profile.entity';
+import { BusinessProfile } from 'src/business-profile/entities/business_profile.entity';
 import { UserProfile } from '../entities/user_profile.entity';
 
 @Injectable()
@@ -14,6 +15,7 @@ export class ProfileApprovalService {
     SystemRole.CASHIER,
     SystemRole.DELIVERY,
     SystemRole.PROVIDER,
+    SystemRole.BUSINESS_OWNER,
   ];
 
   constructor(
@@ -25,6 +27,8 @@ export class ProfileApprovalService {
     private readonly deliveryProfileRepository: Repository<DeliveryProfile>,
     @InjectRepository(ProviderProfile)
     private readonly providerProfileRepository: Repository<ProviderProfile>,
+    @InjectRepository(BusinessProfile)
+    private readonly businessProfileRepository: Repository<BusinessProfile>,
   ) {}
 
   async getApprovalStatus(
@@ -63,7 +67,7 @@ export class ProfileApprovalService {
   private async fetchProfileForApproval(
     roleName: SystemRole,
     profileId: string,
-  ): Promise<CashierProfile | DeliveryProfile | ProviderProfile | null> {
+  ): Promise<CashierProfile | DeliveryProfile | ProviderProfile | BusinessProfile | null> {
     switch (roleName) {
       case SystemRole.CASHIER:
         return await this.cashierProfileRepository.findOne({
@@ -77,6 +81,11 @@ export class ProfileApprovalService {
 
       case SystemRole.PROVIDER:
         return await this.providerProfileRepository.findOne({
+          where: { id: profileId },
+        });
+
+      case SystemRole.BUSINESS_OWNER:
+        return await this.businessProfileRepository.findOne({
           where: { id: profileId },
         });
 

@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { TimeBlock } from 'src/time-block/entities/time-block.entity';
 import { Repository, EntityManager } from 'typeorm';
 import { CashierScheduleAssignment } from './entities/cashier-schedule-assignment.entity';
-import { AssignmentStatus } from './enums/assignment-status.dto';
+import { AssignmentStatus } from './enums/assignment-status.enum';
 import { CreateAssignmentDto, RequestShiftSwapDto } from './dto/create-assignment.dto';
 import { TimeBlockTemplate } from 'src/time-block-template/entities/time-block-template.entity';
 import { StoreSchedule } from 'src/store-schedule/entities/store-schedule.entity';
@@ -335,7 +335,7 @@ export class CashierScheduleAssignmentService {
         .getManyAndCount();
 
       const response = PaginationCacheUtil.createPaginatedResponse<CashierScheduleAssignment>({
-        data: assignments,
+        items: assignments,
         total,
         page: filters.page,
         limit: filters.limit,

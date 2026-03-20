@@ -12,11 +12,15 @@ export class SignUpDto {
 
   @IsNotEmpty()
   @IsString()
-  fullName: string;
+  firstName: string;
+
+  @IsNotEmpty()
+  @IsString()
+  lastName: string;
 
   @IsOptional()
   @IsEnum(SystemRole, {
     message: 'Role must be a valid system role',
   })
-  role?: SystemRole; // Optional - will always be forced to CUSTOMER by AuthService
+  role?: SystemRole;
 }

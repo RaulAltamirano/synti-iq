@@ -9,7 +9,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { AssignmentStatus } from '../enums/assignment-status.dto';
+import { AssignmentStatus } from '../enums/assignment-status.enum';
 
 @Entity('cashier_schedule_assignment')
 export class CashierScheduleAssignment {

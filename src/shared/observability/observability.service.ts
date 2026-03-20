@@ -1,6 +1,10 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { trace } from '@opentelemetry/api';
+import { trace, context, SpanStatusCode, Span } from '@opentelemetry/api';
 import { Counter, Histogram, Registry } from 'prom-client';
+
+export interface SpanContextOptions {
+  attributes?: Record<string, string | number | boolean>;
+}
 
 @Injectable()
 export class ObservabilityService implements OnModuleInit {
@@ -40,6 +44,28 @@ export class ObservabilityService implements OnModuleInit {
 
   startSpan(name: string, attributes?: Record<string, string | number | boolean>) {
     return this.tracer.startSpan(name, { attributes });
+  }
+
+  async withSpan<T>(
+    name: string,
+    fn: (span: Span) => Promise<T>,
+    options?: SpanContextOptions,
+  ): Promise<T> {
+    const span = this.tracer.startSpan(name, { attributes: options?.attributes });
+    try {
+      const result = await context.with(trace.setSpan(context.active(), span), () => fn(span));
+      span.setStatus({ code: SpanStatusCode.OK });
+      return result;
+    } catch (error) {
+      span.setStatus({
+        code: SpanStatusCode.ERROR,
+        message: error instanceof Error ? error.message : String(error),
+      });
+      span.recordException(error instanceof Error ? error : new Error(String(error)));
+      throw error;
+    } finally {
+      span.end();
+    }
   }
 
   getTracer() {

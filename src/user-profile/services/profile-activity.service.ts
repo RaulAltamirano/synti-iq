@@ -5,6 +5,7 @@ import { SystemRole } from 'src/shared/enums/roles.enum';
 import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.entity';
 import { DeliveryProfile } from 'src/delivery-profiles/entities/delivery_profile.entity';
 import { ProviderProfile } from 'src/provider-profile/entities/provider_profile.entity';
+import { BusinessProfile } from 'src/business-profile/entities/business_profile.entity';
 import { UserProfile } from '../entities/user_profile.entity';
 
 @Injectable()
@@ -15,6 +16,7 @@ export class ProfileActivityService {
     SystemRole.CASHIER,
     SystemRole.DELIVERY,
     SystemRole.PROVIDER,
+    SystemRole.BUSINESS_OWNER,
   ];
 
   constructor(
@@ -26,6 +28,8 @@ export class ProfileActivityService {
     private readonly deliveryProfileRepository: Repository<DeliveryProfile>,
     @InjectRepository(ProviderProfile)
     private readonly providerProfileRepository: Repository<ProviderProfile>,
+    @InjectRepository(BusinessProfile)
+    private readonly businessProfileRepository: Repository<BusinessProfile>,
   ) {}
 
   async getOnlineStatus(userId: string, roleName: SystemRole): Promise<boolean> {
@@ -107,6 +111,13 @@ export class ProfileActivityService {
         });
         return provider?.lastActivityAt || null;
 
+      case SystemRole.BUSINESS_OWNER:
+        const business = await this.businessProfileRepository.findOne({
+          where: { id: profileId },
+          select: ['id', 'lastActivityAt'],
+        });
+        return business?.lastActivityAt || null;
+
       default:
         return null;
     }
@@ -132,6 +143,12 @@ export class ProfileActivityService {
 
       case SystemRole.PROVIDER:
         await this.providerProfileRepository.update(profileId, {
+          lastActivityAt: now,
+        });
+        break;
+
+      case SystemRole.BUSINESS_OWNER:
+        await this.businessProfileRepository.update(profileId, {
           lastActivityAt: now,
         });
         break;

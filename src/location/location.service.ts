@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Point, Repository } from 'typeorm';
 import { Location } from './entities/location.entity';
@@ -9,8 +9,6 @@ import { User } from 'src/user/entities/user.entity';
 
 @Injectable()
 export class LocationService {
-  private readonly logger = new Logger(LocationService.name);
-
   constructor(
     @InjectRepository(Location)
     private readonly locationRepository: Repository<Location>,
@@ -18,12 +16,83 @@ export class LocationService {
     private readonly userRepository: Repository<User>,
   ) {}
 
+  async createLocation(input: CreateLocationDto): Promise<Location> {
+    const {
+      coordinates,
+      name,
+      fullAddress,
+      addressReference,
+      street,
+      neighborhood,
+      city,
+      state,
+      postalCode,
+      country,
+    } = input;
+
+    if (!name || !fullAddress) {
+      throw new BadRequestException('Name and fullAddress are required');
+    }
+
+    if (coordinates) {
+      if (
+        typeof coordinates.latitude !== 'number' ||
+        typeof coordinates.longitude !== 'number' ||
+        isNaN(coordinates.latitude) ||
+        isNaN(coordinates.longitude)
+      ) {
+        throw new BadRequestException('Invalid coordinates provided');
+      }
+      if (
+        coordinates.longitude < -180 ||
+        coordinates.longitude > 180 ||
+        coordinates.latitude < -90 ||
+        coordinates.latitude > 90
+      ) {
+        throw new BadRequestException('Coordinates out of valid range');
+      }
+    }
+
+    const geoPoint = coordinates
+      ? {
+          type: 'Point' as const,
+          coordinates: [coordinates.longitude, coordinates.latitude] as [number, number],
+        }
+      : null;
+
+    const location = this.locationRepository.create({
+      name,
+      fullAddress,
+      addressReference,
+      street,
+      neighborhood,
+      city,
+      state,
+      postalCode,
+      country,
+      coordinates: geoPoint,
+    });
+
+    return await this.locationRepository.save(location);
+  }
+
   async createOrFindLocation(input: CreateLocationDto): Promise<Location> {
     try {
-      const { coordinates, name, fullAddress, addressReference } = input;
+      const {
+        coordinates,
+        name,
+        fullAddress,
+        addressReference,
+        street,
+        neighborhood,
+        city,
+        state,
+        postalCode,
+        country,
+      } = input;
 
       if (!name || !fullAddress) {
-        throw new Error('Name and fullAddress are required');
+        throw new BadRequestException('Name and fullAddress are required');
       }
 
       if (coordinates) {
@@ -33,7 +102,7 @@ export class LocationService {
           isNaN(coordinates.latitude) ||
           isNaN(coordinates.longitude)
         ) {
-          throw new Error('Invalid coordinates provided');
+          throw new BadRequestException('Invalid coordinates provided');
         }
 
         if (
@@ -42,7 +111,7 @@ export class LocationService {
           coordinates.latitude < -90 ||
           coordinates.latitude > 90
         ) {
-          throw new Error('Coordinates out of valid range');
+          throw new BadRequestException('Coordinates out of valid range');
         }
 
         const geoPoint: Point = {
@@ -57,9 +126,6 @@ export class LocationService {
         });
 
         if (existing) {
-          this.logger.log(
-            `Existing location found with coordinates: [${geoPoint.coordinates.join(', ')}]`,
-          );
           return existing;
         }
 
@@ -67,6 +133,12 @@ export class LocationService {
           name,
           fullAddress,
           addressReference,
+          street,
+          neighborhood,
+          city,
+          state,
+          postalCode,
+          country,
           coordinates: geoPoint,
         });
 
@@ -81,7 +153,6 @@ export class LocationService {
       });
 
       if (existingByAddress) {
-        this.logger.log(`Existing location found with name and address.`);
         return existingByAddress;
       }
 
@@ -89,14 +160,21 @@ export class LocationService {
         name,
         fullAddress,
         addressReference,
+        street,
+        neighborhood,
+        city,
+        state,
+        postalCode,
+        country,
       });
 
       return await this.locationRepository.save(location);
     } catch (error) {
-      this.logger.error(`Error creating/finding location: ${error.message}`, error.stack);
-
-      if (error.message.includes('parse error') || error.message.includes('geometry')) {
-        throw new Error('Invalid geographic data provided');
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      if (error.message?.includes('parse error') || error.message?.includes('geometry')) {
+        throw new BadRequestException('Invalid geographic data provided');
       }
       throw error;
     }
@@ -182,6 +260,12 @@ export class LocationService {
       name: addressData.name,
       fullAddress: addressData.fullAddress,
       addressReference: addressData.addressReference,
+      street: addressData.street ?? null,
+      neighborhood: addressData.neighborhood ?? null,
+      city: addressData.city ?? null,
+      state: addressData.state ?? null,
+      postalCode: addressData.postalCode ?? null,
+      country: addressData.country ?? null,
       coordinates,
       user,
       addressType: addressData.addressType,
