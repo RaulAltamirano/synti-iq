@@ -50,14 +50,9 @@ async function main() {
 
   const embed = {
     title: `🚩 Synti-IQ Review: Pull Request #${prNumber}`,
-    description: `**Status:** ${statusText}`,
+    description: `**Status:** ${statusText}\n\n> "${safeRoast}"\n— *@${prAuthor}*`,
     color,
     fields: [
-      {
-        name: 'IA Roast',
-        value: `> "${safeRoast}"\n— *@${prAuthor}*`,
-        inline: false,
-      },
       {
         name: 'Calificación',
         value: `${stars} (${rating}/5) - ${levelLabel}`,

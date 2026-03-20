@@ -126,7 +126,7 @@ ${definitionOfDone.slice(0, 2000)}
 
 Review the following PR diff against project standards (AGENTS.md, CONVENTIONS.md, code-review prompt). Provide actionable feedback. Use this exact format:
 
-**IA Roast:** "[One funny, sarcastic one-liner in Spanish. Mention @${prAuthor}. Max 150 chars.]"
+**IA Roast:** "[One funny sarcastic one-liner in Spanish. Mention @${prAuthor}. Max 150 chars. Use phrases or style from: The Simpsons, Futurama, Lupita (Mexican humor), TikTok trends, or Oprankedy. Vary the style each time.]"
 
 **Convention Analysis:**
 - [PASS/FAIL/N/A] - Location: [file or section] - Detail: [what is wrong or correct] - Reference: [AGENTS.md/CONVENTIONS.md/DEFINITION_OF_DONE]
@@ -199,6 +199,8 @@ ${diff}
     ...sections.flatMap(([title, body]) => [`**${title}:**`, body, '']),
     `<!-- DISCORD_ROAST:${String(parsed.roast).replace(/-->/g, '')} -->`,
     `<!-- DISCORD_RATING:${parsed.rating} -->`,
+    `<!-- DISCORD_VERDICT:${String(parsed.verdict).replace(/-->/g, '')} -->`,
+    `<!-- DISCORD_SUMMARY:${[parsed.conventionAnalysis, parsed.security, parsed.verdict].join('\n---\n').replace(/-->/g, '')} -->`,
   ].join('\n');
 
   // 4. Delete previous bot comments (optional, for cleaner PRs)

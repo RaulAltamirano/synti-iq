@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
  * Notifies Discord when a new PR is opened or updated.
- * Runs AFTER ai-review (even when it fails). Shows task, links, IA roast, rating, Sonar.
+ * Runs AFTER ai-review (even when it fails). Shows task, links, resumen de hallazgos, rating, Sonar.
  * Env: DISCORD_WEBHOOK, PR_*, ISSUE_*, GEMINI_API_KEY (optional),
- *   ROAST_TEXT, RATING, SONAR_BUGS, SONAR_SECURITY_HOTSPOTS, SONAR_VULNERABILITIES
+ *   SUMMARY_TEXT, RATING, SONAR_BUGS, SONAR_SECURITY_HOTSPOTS, SONAR_VULNERABILITIES
  */
 
 const RATING_LABELS = [
@@ -97,10 +97,10 @@ async function main() {
     fields.push({ name: '🔗 Links', value: links, inline: false });
   }
 
-  // IA Roast, Calificación, Sonar (from ai-review + SonarCloud, even when they fail)
-  const roastText = (process.env.ROAST_TEXT || 'Review completed.')
-    .slice(0, 500)
-    .replace(/[\n\r]+/g, ' ');
+  // Resumen de hallazgos (no roast al abrir), Calificación, Sonar
+  const summaryText = (process.env.SUMMARY_TEXT || 'Sin hallazgos específicos.')
+    .slice(0, 900)
+    .replace(/\n{2,}/g, '\n');
   const rating = Math.min(5, Math.max(1, parseInt(process.env.RATING || '3', 10) || 3));
   const stars = '⭐'.repeat(rating) + '☆'.repeat(5 - rating);
   const levelLabel = RATING_LABELS[rating - 1] || RATING_LABELS[2];
@@ -114,7 +114,7 @@ async function main() {
   const sonarStats = sonarParts.length ? sonarParts.join(' | ') : '✅ Sin hallazgos críticos';
 
   fields.push(
-    { name: 'IA Roast', value: `> "${roastText}"\n— *@${prAuthor}*`, inline: false },
+    { name: '📋 Resumen de hallazgos', value: summaryText, inline: false },
     { name: 'Calificación', value: `${stars} (${rating}/5) - ${levelLabel}`, inline: true },
     { name: 'Sonar Stats', value: sonarStats, inline: true },
   );
