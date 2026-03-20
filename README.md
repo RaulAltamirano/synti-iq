@@ -158,6 +158,7 @@ yarn lint               # Lint and fix code
 yarn lint:check         # Check linting without fixing
 yarn format             # Format code with Prettier
 yarn format:check       # Check formatting without fixing
+yarn quality            # Full check: build + lint + test + format
 
 # Build
 yarn build              # Build for production
@@ -211,6 +212,10 @@ src/
 - **.cursor/rules/** — Cursor rules for context-aware AI assistance.
 
 For store creation behavior, SubscriptionPlan usage, and planned work (e.g. business subscriptions and max_stores limits), see [docs/STORE_AND_SUBSCRIPTION_PLANS.md](docs/STORE_AND_SUBSCRIPTION_PLANS.md).
+
+### PR Review Pipeline
+
+Pull requests trigger an automated review with SonarCloud, AI (Gemini), and Discord notifications. See [docs/PR_REVIEW_PIPELINE.md](docs/PR_REVIEW_PIPELINE.md) for setup details.
 
 ## Environment Variables
 

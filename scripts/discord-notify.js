@@ -25,10 +25,15 @@ async function main() {
   const roastText = process.env.ROAST_TEXT || 'No roast disponible.';
   const rating = Math.min(5, Math.max(1, parseInt(process.env.RATING || '3', 10) || 3));
 
-  if (!webhook) {
-    console.error('Missing DISCORD_WEBHOOK');
+  if (!webhook || webhook.trim() === '') {
+    console.error('Missing DISCORD_WEBHOOK. Check that the secret is set in Settings > Secrets.');
     process.exit(1);
   }
+
+  // Discord field value limit: 1024 chars
+  const safeRoast = String(roastText)
+    .slice(0, 500)
+    .replace(/[\n\r]+/g, ' ');
 
   const statusText = prMerged ? '🟢 MERGED' : '🔴 REJECTED / CLOSED';
   const color = prMerged ? 3066993 : 15158332; // green : red
@@ -50,7 +55,7 @@ async function main() {
     fields: [
       {
         name: 'IA Roast',
-        value: `> "${roastText}"\n— *@${prAuthor}*`,
+        value: `> "${safeRoast}"\n— *@${prAuthor}*`,
         inline: false,
       },
       {
@@ -80,12 +85,14 @@ async function main() {
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
+      const body = await res.text();
       console.error('Discord webhook failed:', res.status, res.statusText);
+      console.error('Response:', body.slice(0, 200));
       process.exit(1);
     }
     console.log('Discord notification sent');
   } catch (err) {
-    console.error('Discord webhook error:', err);
+    console.error('Discord webhook error:', err.message || err);
     process.exit(1);
   }
 }

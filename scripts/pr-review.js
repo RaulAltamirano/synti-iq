@@ -17,10 +17,18 @@ async function main() {
   const geminiKey = process.env.GEMINI_API_KEY;
   const eventPath = process.env.GITHUB_EVENT_PATH;
 
-  if (!repo || !token || !geminiKey || !eventPath) {
-    console.error(
-      'Missing required env: GITHUB_REPOSITORY, GITHUB_TOKEN, GEMINI_API_KEY, GITHUB_EVENT_PATH',
-    );
+  const missing = [];
+  if (!repo) missing.push('GITHUB_REPOSITORY');
+  if (!token) missing.push('GITHUB_TOKEN');
+  if (!geminiKey) missing.push('GEMINI_API_KEY');
+  if (!eventPath) missing.push('GITHUB_EVENT_PATH');
+  if (missing.length > 0) {
+    console.error('Missing required env:', missing.join(', '));
+    if (missing.includes('GEMINI_API_KEY')) {
+      console.error(
+        'Tip: GEMINI_API_KEY is a secret. PRs from forks do not receive secrets. Ensure the PR is from a branch in the same repo.',
+      );
+    }
     process.exit(1);
   }
 
