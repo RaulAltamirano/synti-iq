@@ -22,7 +22,7 @@ async function main() {
   const sonarBugs = process.env.SONAR_BUGS || '0';
   const sonarHotspots = process.env.SONAR_SECURITY_HOTSPOTS || '0';
   const sonarVulns = process.env.SONAR_VULNERABILITIES || '0';
-  const roastText = process.env.ROAST_TEXT || 'No roast disponible.';
+  const roastText = process.env.ROAST_TEXT || 'Review completed.';
   const rating = Math.min(5, Math.max(1, parseInt(process.env.RATING || '3', 10) || 3));
 
   if (!webhook || webhook.trim() === '') {

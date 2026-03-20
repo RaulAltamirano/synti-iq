@@ -96,20 +96,17 @@ ${definitionOfDone.slice(0, 2000)}
   const userPrompt = `
 ## Task
 
-Review the following PR diff against the project standards above. Provide your analysis in this exact format (the IA Roast is for Discord only, not for the GitHub comment):
+Review the following PR diff. Keep the review BRIEF and to the point. Use this exact format:
 
-**IA Roast:** "[One funny, sarcastic one-liner in Spanish roasting the code quality. Mention @${prAuthor}. Max 150 chars.]"
+**IA Roast:** "[One funny, sarcastic one-liner in Spanish. Mention @${prAuthor}. Max 150 chars. Used for Discord on merge/close.]"
 
-**Convention Analysis:**
-- [List specific findings: PASS/FAIL/N/A, Location, Detail, Reference. Professional tone, English.]
-- [One bullet per finding]
+**Convention Analysis:** [1-2 bullets max. PASS/FAIL/N/A, Location, brief detail.]
 
-**Security (SonarCloud):**
-- [Note any obvious security concerns from the diff. If none: "No obvious issues detected in diff." English.]
+**Security (SonarCloud):** [One line. "No obvious issues" if none.]
 
-**Verdict:** [✅ Approved / ❌ Changes Required]. [One sentence summary in English. If changes required, mention what to fix.]
+**Verdict:** [✅ Approved / ❌ Changes Required]. [One short sentence.]
 
-**Rating:** [1-5]/5 (single number, e.g. "3/5")
+**Rating:** [1-5]/5
 
 ---
 
@@ -153,7 +150,7 @@ ${diff}
 
   const parsed = parseGeminiResponse(textPart);
 
-  // GitHub comment: professional content + roast in collapsible (for Discord extraction on close)
+  // GitHub: brief professional review only. No roast at all.
   const githubComment = [
     BOT_COMMENT_PREFIX,
     '',
@@ -167,15 +164,7 @@ ${diff}
     parsed.verdict,
     '',
     '**Rating:**',
-    parsed.rating,
-    '',
-    '<details><summary>IA Roast (Discord)</summary>',
-    '',
-    `**IA Roast:** "${parsed.roast}"`,
-    '',
-    '**Calificación:** ' + parsed.rating + '/5',
-    '',
-    '</details>',
+    parsed.rating + '/5',
   ].join('\n');
 
   // 4. Delete previous bot comments (optional, for cleaner PRs)

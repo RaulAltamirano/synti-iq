@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Notifies Discord when a new PR is opened or updated.
- * Only task description (no roast). Roast is shown when PR is closed (merge/reject).
+ * Shows brief task description from linked issue (branch like 20-task-name).
  * Env: DISCORD_WEBHOOK, PR_*, ISSUE_*
  */
 
@@ -15,7 +15,7 @@ async function main() {
   const prBranch = process.env.PR_BRANCH || '';
   const issueNumber = process.env.ISSUE_NUMBER || '';
   const issueTitle = (process.env.ISSUE_TITLE || '').slice(0, 150);
-  const issueBody = (process.env.ISSUE_BODY || '').slice(0, 400);
+  const issueBody = (process.env.ISSUE_BODY || '').slice(0, 300);
   const issueUrl = process.env.ISSUE_URL || '';
 
   if (!webhook) {
@@ -26,30 +26,17 @@ async function main() {
   const status = prAction === 'synchronize' ? 'PR updated' : 'New PR';
   let description = `**${prTitle}**\n\nBy: @${prAuthor}`;
   if (prBranch) {
-    description += `\nBranch: \`${prBranch}\``;
+    description += ` • Branch: \`${prBranch}\``;
   }
 
   const fields = [];
-  if (issueNumber && issueTitle) {
+  if (issueNumber && (issueTitle || issueBody)) {
+    const taskValue = [issueTitle, issueBody].filter(Boolean).join('\n\n');
     fields.push({
       name: `📋 Task #${issueNumber}`,
-      value: issueTitle,
+      value: taskValue + (issueUrl ? `\n\n[View in GitHub](${issueUrl})` : ''),
       inline: false,
     });
-    if (issueBody) {
-      fields.push({
-        name: 'Description',
-        value: issueBody,
-        inline: false,
-      });
-    }
-    if (issueUrl) {
-      fields.push({
-        name: 'Issue',
-        value: `[View in GitHub](${issueUrl})`,
-        inline: true,
-      });
-    }
   }
 
   const embed = {

@@ -72,25 +72,18 @@ The `sonar-project.properties` file in the project root defines:
 
 ## GitHub Comment Format
 
-The bot posts a **professional comment in English**. Roast is in a collapsible section (used for Discord when PR is closed):
+The bot posts a **brief professional comment** (no roast in GitHub at all):
 
 ```
 🤖 AI Technical Assistant - Review
 
-**Convention Analysis:**
-- [findings: PASS/FAIL/N/A, Location, Detail, Reference]
+**Convention Analysis:** [1-2 bullets]
 
-**Security (SonarCloud):**
-- [observations or "No obvious issues detected in diff"]
+**Security (SonarCloud):** [one line]
 
 **Verdict:** ✅ Approved / ❌ Changes Required. [summary]
 
 **Rating:** X/5
-
-<details><summary>IA Roast (Discord)</summary>
-**IA Roast:** "..."
-**Calificación:** X/5
-</details>
 ```
 
 ---
@@ -103,7 +96,7 @@ The bot posts a **professional comment in English**. Roast is in a collapsible s
 
 - **Title:** Synti-IQ Review: Pull Request #N
 - **Status:** MERGED (green) / REJECTED (red)
-- **IA Roast:** Sarcastic quote (extracted from bot comment)
+- **IA Roast:** "Review completed." (roast not stored in GitHub; would require separate storage to show custom roast on close)
 - **Rating:** Stars (1–5) and level
 - **Sonar Stats:** Bugs, Security Hotspots, Vulnerabilities
 - **Link:** Link to PR on GitHub
