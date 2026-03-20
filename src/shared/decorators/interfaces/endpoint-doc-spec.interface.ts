@@ -15,6 +15,8 @@ export interface ParamSpec {
 
 export interface EndpointDocSpec {
   summary: string;
+  description?: string;
+  operationId?: string;
   responses?: ResponseSpec[];
   body?: Type<unknown>;
   params?: ParamSpec[];
