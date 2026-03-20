@@ -55,7 +55,7 @@ async function summarizeFindingsWithGemini(fullFindings) {
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.2,
-        maxOutputTokens: 256,
+        maxOutputTokens: 512,
       },
     }),
   });
@@ -65,8 +65,21 @@ async function summarizeFindingsWithGemini(fullFindings) {
   const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) return null;
 
-  const summary = text.trim().split(/\n+/).slice(0, 6).join('\n').slice(0, 900);
-  return summary || null;
+  const lines = text.trim().split(/\n+/).slice(0, 6);
+  const joined = lines.join('\n');
+  return truncateAtSentence(joined, 1024) || joined.slice(0, 1024);
+}
+
+function truncateAtSentence(text, maxLen) {
+  if (!text || text.length <= maxLen) return text;
+  const cut = text.slice(0, maxLen + 1);
+  const lastPeriod = cut.lastIndexOf('.');
+  const lastNewline = cut.lastIndexOf('\n');
+  const lastBreak = Math.max(lastPeriod, lastNewline);
+  if (lastBreak > maxLen * 0.5) return text.slice(0, lastBreak + 1).trim();
+  const lastSpace = cut.lastIndexOf(' ');
+  if (lastSpace > maxLen * 0.5) return text.slice(0, lastSpace).trim();
+  return text.slice(0, maxLen).trim();
 }
 
 async function main() {
@@ -129,10 +142,10 @@ async function main() {
       if (geminiSummary) {
         summaryText = geminiSummary;
       } else {
-        summaryText = rawSummary.slice(0, 900).replace(/\n{2,}/g, '\n');
+        summaryText = truncateAtSentence(rawSummary.replace(/\n{2,}/g, '\n'), 1024);
       }
     } catch (_) {
-      summaryText = rawSummary.slice(0, 900).replace(/\n{2,}/g, '\n');
+      summaryText = truncateAtSentence(rawSummary.replace(/\n{2,}/g, '\n'), 1024);
     }
   }
   const rating = Math.min(5, Math.max(1, parseInt(process.env.RATING || '3', 10) || 3));

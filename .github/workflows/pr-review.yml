@@ -13,12 +13,12 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: 'yarn'
@@ -44,10 +44,10 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
           cache: 'yarn'
@@ -73,10 +73,10 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
 
@@ -116,7 +116,7 @@ jobs:
           [ -z "$ROAST" ] && ROAST="Review completed."
           RATING=$(echo "$BODY" | grep -oP '(?<=<!-- DISCORD_RATING:)\d(?= -->)' 2>/dev/null | head -1)
           [ -z "$RATING" ] && RATING="3"
-          SUMMARY=$(echo "$BODY" | perl -0777 -ne 'print $1 if /<!-- DISCORD_SUMMARY:(.*?)-->/s' 2>/dev/null | head -c 900 | tr -d '\r')
+          SUMMARY=$(echo "$BODY" | perl -0777 -ne 'print $1 if /<!-- DISCORD_SUMMARY:(.*?)-->/s' 2>/dev/null | head -c 2000 | tr -d '\r')
           echo "roast<<ROAST_DELIM" >> $GITHUB_OUTPUT
           printf '%s' "$ROAST" >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
@@ -184,10 +184,10 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
 
