@@ -42,6 +42,33 @@ async function summarizeWithGemini(title, body) {
   return summary || null;
 }
 
+async function summarizeFindingsWithGemini(fullFindings) {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key || !fullFindings?.trim()) return null;
+
+  const prompt = `Summarize these code review findings in a maximum of 6 short lines. Keep it simple. Output only the summary in English, no preamble.\n\n---\n\n${fullFindings}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.2,
+        maxOutputTokens: 256,
+      },
+    }),
+  });
+
+  if (!res.ok) return null;
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) return null;
+
+  const summary = text.trim().split(/\n+/).slice(0, 6).join('\n').slice(0, 900);
+  return summary || null;
+}
+
 async function main() {
   const webhook = process.env.DISCORD_WEBHOOK;
   const prNumber = process.env.PR_NUMBER || '?';
@@ -93,10 +120,21 @@ async function main() {
     .map(([url, label]) => `[${label}](${url})`)
     .join(' • ');
 
-  // Findings summary (no roast on open), Rating, Sonar
-  const summaryText = (process.env.SUMMARY_TEXT || 'Sin hallazgos específicos.')
-    .slice(0, 900)
-    .replace(/\n{2,}/g, '\n');
+  // Findings summary (max 6 lines, Gemini-generated when available), Rating, Sonar
+  const rawSummary = (process.env.SUMMARY_TEXT || 'No specific findings.').trim();
+  let summaryText = rawSummary;
+  if (rawSummary && rawSummary !== 'No specific findings.') {
+    try {
+      const geminiSummary = await summarizeFindingsWithGemini(rawSummary);
+      if (geminiSummary) {
+        summaryText = geminiSummary;
+      } else {
+        summaryText = rawSummary.slice(0, 900).replace(/\n{2,}/g, '\n');
+      }
+    } catch (_) {
+      summaryText = rawSummary.slice(0, 900).replace(/\n{2,}/g, '\n');
+    }
+  }
   const rating = Math.min(5, Math.max(1, parseInt(process.env.RATING || '3', 10) || 3));
   const stars = '⭐'.repeat(rating) + '☆'.repeat(5 - rating);
   const levelLabel = RATING_LABELS[rating - 1] || RATING_LABELS[2];
