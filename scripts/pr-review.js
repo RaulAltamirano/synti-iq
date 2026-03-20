@@ -96,20 +96,20 @@ ${definitionOfDone.slice(0, 2000)}
   const userPrompt = `
 ## Task
 
-Review the following PR diff against the project standards above. Provide your analysis in this exact format:
+Review the following PR diff against the project standards above. Write the GitHub comment in professional English. Use this exact format:
 
-**IA Roast:** "[One funny, sarcastic one-liner in Spanish roasting the code quality. Mention @${prAuthor} in the roast. Keep it under 150 chars.]"
+**IA Roast:** "[One funny, sarcastic one-liner in Spanish roasting the code quality. Mention @${prAuthor}. Max 150 chars. This line is used for Discord notification.]"
 
-**Análisis de Convenciones:**
-- [List specific findings: PASS/FAIL/N/A, Location, Detail, Reference]
+**Convention Analysis:**
+- [List specific findings: PASS/FAIL/N/A, Location, Detail, Reference. Professional tone, English.]
 - [One bullet per finding]
 
-**Seguridad (SonarCloud):**
-- [Note any obvious security concerns from the diff; if none, say "No obvious issues detected in diff"]
+**Security (SonarCloud):**
+- [Note any obvious security concerns from the diff. If none: "No obvious issues detected in diff." English.]
 
-**Veredicto:** [✅ Aprobado / ❌ Cambios Requeridos]. [One sentence summary. If changes required, mention what to fix.]
+**Verdict:** [✅ Approved / ❌ Changes Required]. [One sentence summary in English. If changes required, mention what to fix.]
 
-**Calificación:** [1-5]/5 (single number, e.g. "3/5")
+**Rating:** [1-5]/5 (single number, e.g. "3/5")
 
 ---
 
