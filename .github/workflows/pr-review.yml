@@ -134,7 +134,7 @@ jobs:
           BODY=$(echo "$COMMENTS" | jq -r '[.[] | select(.body != null and (.body | startswith("🤖")))] | last | .body // ""' 2>/dev/null)
           ROAST=$(echo "$BODY" | grep -oP '(?<=\*\*IA Roast:\*\* ")[^"]*' 2>/dev/null | head -1 | tr -d '\n' | head -c 300)
           [ -z "$ROAST" ] && ROAST="Revisión completada."
-          RATING=$(echo "$BODY" | grep -oP '\*\*Calificación:\*\* [1-5]/5' 2>/dev/null | grep -oP '[1-5]' | head -1)
+          RATING=$(echo "$BODY" | grep -oP '\*\*(?:Calificación|Rating):\*\* [1-5]/5' 2>/dev/null | grep -oP '[1-5]' | head -1)
           [ -z "$RATING" ] && RATING="3"
           echo "roast<<ROAST_DELIM" >> $GITHUB_OUTPUT
           printf '%s' "$ROAST" >> $GITHUB_OUTPUT

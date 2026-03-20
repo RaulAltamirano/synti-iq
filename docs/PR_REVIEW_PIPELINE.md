@@ -1,121 +1,127 @@
-# PR Review Pipeline — SonarCloud, IA y Discord
+# PR Review Pipeline — SonarCloud, AI & Discord
 
-Pipeline de revisión automática de Pull Requests que integra SonarCloud, Gemini (IA) y notificaciones Discord.
-
----
-
-## Resumen del Flujo
-
-| Evento PR                | Acciones                                                                                  |
-| ------------------------ | ----------------------------------------------------------------------------------------- |
-| `opened` / `synchronize` | Análisis SonarCloud, revisión IA (Gemini), comentario en el PR                            |
-| `closed`                 | Notificación a Discord con status (MERGED/REJECTED), roast, calificación y métricas Sonar |
+Automated Pull Request review pipeline integrating SonarCloud, Gemini (AI), and Discord notifications.
 
 ---
 
-## Configuración Requerida
+## Flow Summary
+
+| PR Event                 | Actions                                                                              |
+| ------------------------ | ------------------------------------------------------------------------------------ |
+| `opened` / `synchronize` | SonarCloud analysis, AI review (Gemini), PR comment, Discord "New PR" notification   |
+| `closed`                 | Discord notification with status (MERGED/REJECTED), roast, rating, and Sonar metrics |
+
+**Limitation:** Jobs that use secrets (sonar, ai-review, discord) **do not run** on PRs from forks. They only run when the PR comes from a branch in the same repository.
+
+---
+
+## Required Configuration
 
 ### 1. SonarCloud
 
-1. Crear cuenta en [SonarCloud](https://sonarcloud.io).
-2. Importar el repositorio y configurar el proyecto con ID `RaulAltamirano_synti-iq`.
-3. Generar token: **My Account > Security > Generate Token**.
-4. Añadir en GitHub: **Settings > Secrets and variables > Actions** → `SONAR_TOKEN`.
+1. Create an account at [SonarCloud](https://sonarcloud.io).
+2. Import the repository and configure the project with ID `RaulAltamirano_synti-iq`.
+3. Generate a token: **My Account > Security > Generate Token**.
+4. Add to GitHub: **Settings > Secrets and variables > Actions** → `SONAR_TOKEN`.
 
-El archivo `sonar-project.properties` en la raíz define:
+The `sonar-project.properties` file in the project root defines:
 
 - `sonar.organization=RaulAltamirano`
 - `sonar.projectKey=RaulAltamirano_synti-iq`
-- Rutas de fuentes, tests y coverage.
+- Source, test, and coverage paths.
 
 ### 2. Gemini (Google AI)
 
-1. Obtener API key en [Google AI Studio](https://aistudio.google.com/apikey).
-2. Añadir en GitHub Secrets: `GEMINI_API_KEY`.
+1. Get an API key from [Google AI Studio](https://aistudio.google.com/apikey).
+2. Add to GitHub Secrets: `GEMINI_API_KEY`.
+3. Model used: `gemini-2.5-flash` (stable, good performance/cost).
 
 ### 3. Discord
 
-1. En el canal de desarrolladores: **Configuración del canal > Integraciones > Webhooks > Nuevo webhook**.
-2. Copiar la URL del webhook.
-3. Añadir en GitHub Secrets: `DISCORD_WEBHOOK`.
+1. In the developer channel: **Channel settings > Integrations > Webhooks > New webhook**.
+2. Copy the webhook URL.
+3. Add to GitHub Secrets: `DISCORD_WEBHOOK`.
 
 ---
 
-## Secrets Necesarios
+## Required Secrets
 
-| Secret            | Descripción                   |
-| ----------------- | ----------------------------- |
-| `SONAR_TOKEN`     | Token de SonarCloud           |
-| `GEMINI_API_KEY`  | API key de Google AI (Gemini) |
-| `DISCORD_WEBHOOK` | URL del webhook de Discord    |
+| Secret            | Description                |
+| ----------------- | -------------------------- |
+| `SONAR_TOKEN`     | SonarCloud token           |
+| `GEMINI_API_KEY`  | Google AI (Gemini) API key |
+| `DISCORD_WEBHOOK` | Discord webhook URL        |
 
-`GITHUB_TOKEN` se inyecta automáticamente por GitHub Actions.
+`GITHUB_TOKEN` is automatically injected by GitHub Actions.
 
-> **Nota:** Las variables del pipeline están documentadas en [.env.example](../.env.example) (sección PR Review Pipeline). Se configuran como **Secrets** en GitHub, no en `.env` local.
-
----
-
-## Archivos del Pipeline
-
-| Archivo                           | Propósito                                     |
-| --------------------------------- | --------------------------------------------- |
-| `.github/workflows/pr-review.yml` | Workflow principal                            |
-| `sonar-project.properties`        | Configuración SonarCloud                      |
-| `scripts/pr-review.js`            | Extrae diff, llama a Gemini, comenta en el PR |
-| `scripts/discord-notify.js`       | Envía embed a Discord                         |
+> **Note:** Pipeline variables are documented in [.env.example](../.env.example) (PR Review Pipeline section). They are configured as **Secrets** in GitHub, not in local `.env`.
 
 ---
 
-## Formato del Comentario en GitHub
+## Pipeline Files
 
-El bot publica un comentario con esta estructura:
+| File                               | Purpose                                                    |
+| ---------------------------------- | ---------------------------------------------------------- |
+| `.github/workflows/pr-review.yml`  | Main workflow                                              |
+| `sonar-project.properties`         | SonarCloud configuration                                   |
+| `scripts/pr-review.js`             | Extracts diff, calls Gemini, posts comment on PR           |
+| `scripts/discord-notify.js`        | Sends embed to Discord when PR is closed                   |
+| `scripts/discord-notify-new-pr.js` | Sends notification to Discord when PR is opened or updated |
+
+---
+
+## GitHub Comment Format
+
+The bot posts a **professional comment in English** with this structure:
 
 ```
 🤖 AI Technical Assistant - Review
 
-**IA Roast:** "[frase sarcástica en español]"
+**IA Roast:** "[sarcastic one-liner in Spanish — used for Discord]"
 
-**Análisis de Convenciones:**
-- [hallazgos según code-review.md]
+**Convention Analysis:**
+- [findings: PASS/FAIL/N/A, Location, Detail, Reference]
 
-**Seguridad (SonarCloud):**
-- [observaciones de seguridad]
+**Security (SonarCloud):**
+- [observations or "No obvious issues detected in diff"]
 
-**Veredicto:** ✅ Aprobado / ❌ Cambios Requeridos. [resumen]
+**Verdict:** ✅ Approved / ❌ Changes Required. [summary]
 
-**Calificación:** X/5
+**Rating:** X/5
 ```
 
 ---
 
-## Formato del Mensaje en Discord
+## Discord Message Format
 
-Embed tipo Card con:
+**On PR open/update:** Simple embed with title, description, and author.
 
-- **Título:** Synti-IQ Review: Pull Request #N
-- **Status:** MERGED (verde) / REJECTED (rojo)
-- **IA Roast:** Cita del roast extraído del comentario
-- **Calificación:** Estrellas (1–5) y nivel
+**On PR close:** Card-style embed with:
+
+- **Title:** Synti-IQ Review: Pull Request #N
+- **Status:** MERGED (green) / REJECTED (red)
+- **IA Roast:** Quote extracted from the comment (or "Review completed." if no bot comment)
+- **Rating:** Stars (1–5) and level
 - **Sonar Stats:** Bugs, Security Hotspots, Vulnerabilities
-- **Link:** Enlace al PR en GitHub
+- **Link:** Link to PR on GitHub
 
 ---
 
 ## Troubleshooting
 
-| Problema                   | Posible causa                                      | Solución                                                                                       |
-| -------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| SonarCloud falla           | Token inválido o proyecto no existe                | Verificar `SONAR_TOKEN` y `projectKey` en SonarCloud                                           |
-| Gemini no responde         | API key inválida o rate limit                      | Comprobar `GEMINI_API_KEY`; reducir frecuencia de PRs                                          |
-| Gemini 404 NOT_FOUND       | Modelo deprecado o no disponible                   | El script usa `gemini-2.5-flash`. Ver [modelos](https://ai.google.dev/gemini-api/docs/models). |
-| Discord no recibe mensaje  | Webhook incorrecto o revocado                      | Regenerar webhook y actualizar `DISCORD_WEBHOOK`                                               |
-| discord-notify exit code 1 | Webhook vacío (PR desde fork), URL inválida, 4xx   | Ver logs: "Response:" muestra error de Discord. PRs desde fork no reciben secrets.             |
-| Diff truncado              | PR muy grande                                      | El script limita a 2000 líneas / 50KB; considerar PRs más pequeños                             |
-| Roast vacío en Discord     | El comentario del bot no tiene el formato esperado | Revisar que el prompt en `pr-review.js` pida **IA Roast:** y **Calificación:**                 |
+| Issue                    | Possible cause                             | Solution                                                                                    |
+| ------------------------ | ------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| SonarCloud fails         | Invalid token or project does not exist    | Verify `SONAR_TOKEN` and `projectKey` in SonarCloud                                         |
+| Gemini does not respond  | Invalid API key or rate limit              | Check `GEMINI_API_KEY`; reduce PR frequency                                                 |
+| Gemini 404 NOT_FOUND     | Deprecated or unavailable model            | Script uses `gemini-2.5-flash`. See [models](https://ai.google.dev/gemini-api/docs/models). |
+| Discord does not receive | Invalid or revoked webhook                 | Regenerate webhook and update `DISCORD_WEBHOOK`                                             |
+| discord-notify exit 1    | Empty webhook (fork PR), invalid URL, 4xx  | Check logs: "Response:" shows Discord error. Fork PRs do not receive secrets.               |
+| Diff truncated           | PR too large                               | Script limits to 2000 lines / 50KB; consider smaller PRs                                    |
+| Empty roast in Discord   | Bot comment does not match expected format | Ensure prompt in `pr-review.js` requests **IA Roast:** and **Rating:**                      |
 
 ---
 
-## Referencias
+## References
 
 - [AGENTS.md](../AGENTS.md)
 - [docs/prompts/code-review.md](prompts/code-review.md)
