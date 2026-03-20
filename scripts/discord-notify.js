@@ -2,7 +2,7 @@
 /**
  * Discord Notify Script — Sends PR review summary to Discord webhook as embed card.
  * Run from project root. Env: DISCORD_WEBHOOK, PR_NUMBER, PR_MERGED, PR_URL, PR_AUTHOR,
- *   SONAR_BUGS, SONAR_SECURITY_HOTSPOTS, ROAST_TEXT, RATING
+ *   SONAR_BUGS, SONAR_SECURITY_HOTSPOTS, ROAST_TEXT, ROAST_FALLBACK, RATING
  */
 
 const RATING_LABELS = [
@@ -22,7 +22,13 @@ async function main() {
   const sonarBugs = process.env.SONAR_BUGS || '0';
   const sonarHotspots = process.env.SONAR_SECURITY_HOTSPOTS || '0';
   const sonarVulns = process.env.SONAR_VULNERABILITIES || '0';
-  const roastText = process.env.ROAST_TEXT || 'Review completed.';
+  const rawRoast = process.env.ROAST_TEXT || '';
+  const fallback = process.env.ROAST_FALLBACK || 'Review completed.';
+  const generic = 'Review completed.';
+  const roastText =
+    rawRoast && rawRoast.trim() && rawRoast.trim() !== generic
+      ? rawRoast.trim()
+      : fallback.trim() || generic;
   const rating = Math.min(5, Math.max(1, parseInt(process.env.RATING || '3', 10) || 3));
 
   if (!webhook || webhook.trim() === '') {

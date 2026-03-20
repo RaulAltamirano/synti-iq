@@ -212,7 +212,7 @@ jobs:
           echo "hotspots=${HOTSPOTS:-0}" >> $GITHUB_OUTPUT
           echo "vulns=${VULNS:-0}" >> $GITHUB_OUTPUT
 
-      - name: Extract rating and verdict from last PR comment
+      - name: Extract rating, verdict and roast from last PR comment
         id: roast
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -226,11 +226,16 @@ jobs:
           RATING=$(echo "$BODY" | grep -oP '(?<=<!-- DISCORD_RATING:)\d(?= -->)' 2>/dev/null | head -1)
           [ -z "$RATING" ] && RATING="3"
           VERDICT=$(echo "$BODY" | perl -0777 -ne 'print $1 if /<!-- DISCORD_VERDICT:(.*?)-->/s' 2>/dev/null | head -c 200 | tr -d '\n\r')
+          ROAST=$(echo "$BODY" | perl -0777 -ne 'print $1 if /<!-- DISCORD_ROAST:(.*?)-->/s' 2>/dev/null | head -c 300 | tr -d '\n\r')
           echo "rating=$RATING" >> $GITHUB_OUTPUT
           echo "verdict<<VERDICT_DELIM" >> $GITHUB_OUTPUT
           printf '%s' "$VERDICT" >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
           echo "VERDICT_DELIM" >> $GITHUB_OUTPUT
+          echo "roast_fallback<<ROAST_FB_DELIM" >> $GITHUB_OUTPUT
+          printf '%s' "${ROAST:-Review completed.}" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "ROAST_FB_DELIM" >> $GITHUB_OUTPUT
 
       - name: Generate roast with burla (why closed/merged)
         id: genroast
@@ -258,5 +263,6 @@ jobs:
           SONAR_SECURITY_HOTSPOTS: ${{ steps.sonar.outputs.hotspots }}
           SONAR_VULNERABILITIES: ${{ steps.sonar.outputs.vulns }}
           ROAST_TEXT: ${{ steps.genroast.outputs.roast }}
+          ROAST_FALLBACK: ${{ steps.roast.outputs.roast_fallback }}
           RATING: ${{ steps.roast.outputs.rating }}
         run: node scripts/discord-notify.js
