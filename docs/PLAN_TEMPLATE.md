@@ -22,19 +22,19 @@ When in doubt about database relations, table/entity names, key data types, erro
 
 ## Plan Sections (Mandatory Format)
 
-### Entendimiento Técnico
+### Technical Understanding
 - Architectural summary of the solution.
 - Context, boundaries, and affected modules.
 
-### PREGUNTAS BLOQUEANTES (Emergency Brake)
+### Blocking Questions (Emergency Brake)
 - If there are doubts affecting interface design or DB: list them here and **do not** generate the rest of the plan. Wait for a response.
-- If context is complete: write "**Contexto completo. Procediendo con el plan.**"
+- If context is complete: write "**Context complete. Proceeding with the plan.**"
 
-### Supuestos y Contratos
+### Assumptions and Contracts
 - Libraries to use or agreed architectural patterns.
 - Table: | Element | Decision | (e.g. Nest.js v11, TypeORM 0.3.x, validation strategy).
 
-### Plan de Implementación (Agent-Oriented)
+### Implementation Plan (Agent-Oriented)
 
 Each item MUST follow this structure:
 
@@ -56,12 +56,12 @@ Each item MUST follow this structure:
 
 **Terminology**: Use exact Nest.js terms (Controllers, Services/Providers, Guards, Interceptors, Pipes).
 
-### Plan de Testing (.spec.ts)
+### Testing Plan (.spec.ts)
 - Specific test cases the agent must code.
 - Services with business logic: unit tests required.
 - Reference: [docs/CONVENTIONS.md](CONVENTIONS.md) — Testing, [src/referral/__tests__/](../src/referral/__tests__/)
 
-### Prevención de Deuda Técnica / Riesgos
+### Technical Debt Prevention / Risks
 - Circular dependencies (prefer structural refactors over `forwardRef`)
 - Memory leaks, concurrency pitfalls in Node/Nest.js
 - Any mitigation for identified risks
