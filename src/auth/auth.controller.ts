@@ -91,6 +91,7 @@ export class AuthController {
     return { message: 'Successfully logged out' };
   }
 
+  @ApiDoc(authEndpoints, 'refresh')
   @Post('refresh')
   @HttpCode(200)
   async refreshTokens(@Req() req: Request, @Res({ passthrough: true }) res: Response) {

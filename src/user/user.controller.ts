@@ -4,8 +4,11 @@ import { FilterUserDto } from 'src/auth/dto/filter-user.dto';
 import { PaginatedResponse } from 'src/pagination/interfaces/PaginatedResponse';
 import { Auth, GetUser } from 'src/auth/decorator';
 import { User } from './entities/user.entity';
+import { UserProfileResponse } from './interfaces/user-profile-response.interface';
 import { ApiTags, ApiOperation, ApiResponse, ApiCookieAuth } from '@nestjs/swagger';
 import { HttpStatus } from '@nestjs/common';
+import { ApiDoc } from 'src/shared/decorators';
+import { userEndpoints } from 'src/docs/user.endpoints';
 
 @ApiTags('Users')
 @Controller('user')
@@ -14,12 +17,16 @@ export class UserController {
 
   @Get()
   @UsePipes(new ValidationPipe({ transform: true }))
+  @ApiDoc(userEndpoints, 'filterUsers')
+  @ApiOperation({ summary: 'List users with pagination and filters' })
+  @ApiResponse({ status: 200, description: 'Returns paginated list of users' })
   async filterUsers(@Query() filters: FilterUserDto): Promise<PaginatedResponse<User>> {
     return this.userService.filterUsers(filters);
   }
 
   @Get('me')
   @Auth('', [])
+  @ApiDoc(userEndpoints, 'getMyProfile')
   @ApiCookieAuth('access_token')
   @ApiOperation({ summary: 'Get current authenticated user profile' })
   @ApiResponse({
@@ -34,7 +41,7 @@ export class UserController {
     status: HttpStatus.NOT_FOUND,
     description: 'User not found or inactive',
   })
-  async getMyProfile(@GetUser() user: User): Promise<any> {
+  async getMyProfile(@GetUser() user: User): Promise<UserProfileResponse> {
     return this.userService.getMyProfile(user.id);
   }
 }

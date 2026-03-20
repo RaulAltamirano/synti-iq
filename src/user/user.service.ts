@@ -13,6 +13,7 @@ import { DataSource, FindOneOptions, QueryRunner, Repository, SelectQueryBuilder
 import { Cache } from 'cache-manager';
 
 import { User } from './entities/user.entity';
+import { UserProfileResponse } from './interfaces/user-profile-response.interface';
 import { DatabaseService } from 'src/database/database.service';
 import { PasswordService } from 'src/auth/services/password/password.service';
 import { RedisService } from 'src/shared/redis/redis.service';
@@ -384,7 +385,11 @@ export class UserService {
     return user.role.name;
   }
 
-  async assignRole(userId: string, roleId: number, profileData?: any): Promise<void> {
+  async assignRole(
+    userId: string,
+    roleId: number,
+    profileData?: Record<string, unknown>,
+  ): Promise<void> {
     const queryRunner = this.dataSource.createQueryRunner();
 
     await queryRunner.connect();
@@ -471,7 +476,11 @@ export class UserService {
     }
   }
 
-  async updateRole(userId: string, roleId: number, profileData?: any): Promise<void> {
+  async updateRole(
+    userId: string,
+    roleId: number,
+    profileData?: Record<string, unknown>,
+  ): Promise<void> {
     const queryRunner = this.dataSource.createQueryRunner();
 
     await queryRunner.connect();

@@ -1,8 +1,15 @@
-import { Injectable, ConflictException, BadRequestException, Logger, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  BadRequestException,
+  NotFoundException,
+  Logger,
+} from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
 import { Product } from './entities/product.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, SelectQueryBuilder } from 'typeorm';
 import { PaginationCacheUtil } from 'src/pagination/utils/PaginationCacheUtil';
 import { PaginatedResponse } from 'src/pagination/interfaces/PaginatedResponse';
 import { ProductFilterDto } from './dto/product-filter-dto';
@@ -55,7 +62,7 @@ export class ProductService {
     }
   }
 
-  private applyFilters(queryBuilder: any, filters: ProductFilterDto): void {
+  private applyFilters(queryBuilder: SelectQueryBuilder<Product>, filters: ProductFilterDto): void {
     const {
       name,
       sku,
@@ -134,14 +141,14 @@ export class ProductService {
     if (existingProducts.length > 0) {
       const duplicateSku = existingProducts.find(p => p.sku === createProductDto.sku);
       if (duplicateSku) {
-        throw new ConflictException(`Ya existe un producto con el SKU: ${createProductDto.sku}`);
+        throw new ConflictException(`A product with SKU ${createProductDto.sku} already exists`);
       }
 
       if (createProductDto.barcode) {
         const duplicateBarcode = existingProducts.find(p => p.barcode === createProductDto.barcode);
         if (duplicateBarcode) {
           throw new ConflictException(
-            `Ya existe un producto con el código de barras: ${createProductDto.barcode}`,
+            `A product with barcode ${createProductDto.barcode} already exists`,
           );
         }
       }
@@ -166,7 +173,7 @@ export class ProductService {
 
       return savedProduct;
     } catch (error) {
-      throw new BadRequestException(`Error al crear el producto: ${error.message}`);
+      throw new BadRequestException(`Error creating product: ${error.message}`);
     }
   }
 
@@ -177,13 +184,13 @@ export class ProductService {
     });
 
     if (!product) {
-      throw new BadRequestException(`Product with ID ${id} not found`);
+      throw new NotFoundException(`Product with ID ${id} not found`);
     }
 
     return product;
   }
 
-  async update(id: string, updateProductDto: any): Promise<Product> {
+  async update(id: string, updateProductDto: UpdateProductDto): Promise<Product> {
     const existingProduct = await this.findById(id);
 
     if (updateProductDto.sku || updateProductDto.barcode) {
@@ -196,11 +203,11 @@ export class ProductService {
 
       if (realDuplicates.length > 0) {
         if (updateProductDto.sku && realDuplicates.some(p => p.sku === sku)) {
-          throw new ConflictException(`Ya existe un producto con el SKU: ${sku}`);
+          throw new ConflictException(`A product with SKU ${sku} already exists`);
         }
 
         if (updateProductDto.barcode && realDuplicates.some(p => p.barcode === barcode)) {
-          throw new ConflictException(`Ya existe un producto con el código de barras: ${barcode}`);
+          throw new ConflictException(`A product with barcode ${barcode} already exists`);
         }
       }
     }
@@ -227,10 +234,11 @@ export class ProductService {
     }
 
     try {
-      await this.productRepository.update(id, updateProductDto);
+      const { storeId: _storeId, ...updatePayload } = updateProductDto;
+      await this.productRepository.update(id, updatePayload as Partial<Product>);
       return this.findById(id);
     } catch (error) {
-      throw new BadRequestException(`Error al actualizar el producto: ${error.message}`);
+      throw new BadRequestException(`Error updating product: ${error.message}`);
     }
   }
 
@@ -247,7 +255,7 @@ export class ProductService {
     const deactivatedProduct = await this.productRepository.save(product);
 
     if (!deactivatedProduct) {
-      throw new BadRequestException(`Error al desactivar el producto con ID ${id}`);
+      throw new BadRequestException(`Error deactivating product with ID ${id}`);
     }
 
     return deactivatedProduct;
