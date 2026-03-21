@@ -6,11 +6,14 @@
  * Title/message: max 3 lines (Discord embed standard)
  */
 
-function truncate(str, max) {
-  const s = str ?? '';
-  if (s.length <= max) return s;
-  return s.slice(0, max - 3).trim() + '...';
-}
+const {
+  validateWebhook,
+  truncate,
+  buildWorkflowField,
+  sendEmbed,
+  sanitizeForEmbed,
+  COLOR_INFO,
+} = require('./discord-utils');
 
 /** Takes full commit message, returns first 3 lines (max ~250 chars for embed safety) */
 function commitTitleMax3Lines(msg) {
@@ -20,26 +23,24 @@ function commitTitleMax3Lines(msg) {
   return truncate(joined, 250);
 }
 
-function main() {
+async function main() {
   const webhook = process.env.DISCORD_WEBHOOK;
+  validateWebhook(webhook);
+
   const commitSha = (process.env.COMMIT_SHA || '').slice(0, 7);
   const commitMessage = (process.env.COMMIT_MESSAGE || '').trim();
   const commitAuthor = process.env.COMMIT_AUTHOR || 'unknown';
   const commitUrl = process.env.COMMIT_URL || '';
   const commitFiles = (process.env.COMMIT_FILES || '').trim();
   const threadId = (process.env.DISCORD_THREAD_ID || '').trim();
-
-  if (!webhook) {
-    console.error('Missing DISCORD_WEBHOOK');
-    process.exit(1);
-  }
+  const useForum = process.env.DISCORD_USE_FORUM === 'true';
 
   const titleLines = commitTitleMax3Lines(commitMessage);
 
   const embed = {
-    title: `📌 Commit en \`dev\` — \`${commitSha}\``,
-    description: `\`\`\`\n${titleLines}\n\`\`\`\n*by @${commitAuthor}*`,
-    color: 3447003, // blue (distinct from PR gold)
+    title: `📌 Commit in \`dev\` — \`${commitSha}\``,
+    description: `\`\`\`\n${sanitizeForEmbed(titleLines)}\n\`\`\`\n*by @${commitAuthor}*`,
+    color: COLOR_INFO,
     url: commitUrl || undefined,
     fields: [],
     footer: { text: 'Repository activity' },
@@ -49,8 +50,8 @@ function main() {
   if (commitFiles && commitFiles.length > 0) {
     const filesDisplay = truncate(commitFiles.replaceAll(',', ', '), 500);
     embed.fields.push({
-      name: '📁 Archivos',
-      value: `\`${filesDisplay}\``,
+      name: '📁 Files',
+      value: `\`${sanitizeForEmbed(filesDisplay)}\``,
       inline: false,
     });
   }
@@ -58,47 +59,24 @@ function main() {
   if (commitUrl) {
     embed.fields.push({
       name: '🔗 Link',
-      value: `[Ver commit](${commitUrl})`,
+      value: `[View commit](${commitUrl})`,
       inline: false,
     });
   }
 
-  const workflowRunUrl = (process.env.WORKFLOW_RUN_URL || '').trim();
-  if (workflowRunUrl) {
-    embed.fields.push({
-      name: 'Workflow',
-      value: `[View run](${workflowRunUrl})`,
-      inline: false,
-    });
-  }
+  const workflowField = buildWorkflowField(process.env.WORKFLOW_RUN_URL);
+  if (workflowField) embed.fields.push(workflowField);
 
-  const payload = { embeds: [embed] };
-
-  let url = webhook;
-  if (threadId) {
-    url = webhook.includes('?')
-      ? `${webhook}&thread_id=${threadId}`
-      : `${webhook}?thread_id=${threadId}`;
-  } else if (process.env.DISCORD_USE_FORUM === 'true') {
-    payload.thread_name = `dev: ${titleLines.split('\n')[0]}`.slice(0, 100);
-  }
-
-  fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  })
-    .then(res => {
-      if (!res.ok) {
-        console.error('Discord webhook failed:', res.status, res.statusText);
-        process.exit(1);
-      }
-      console.log('Discord dev commit notification sent');
-    })
-    .catch(err => {
-      console.error('Discord webhook error:', err.message || err);
-      process.exit(1);
-    });
+  const extraPayload =
+    useForum && !threadId ? { thread_name: `dev: ${titleLines.split('\n')[0]}`.slice(0, 100) } : {};
+  await sendEmbed(webhook, embed, {
+    threadId: threadId || undefined,
+    extraPayload,
+  });
+  console.log('Discord dev commit notification sent');
 }
 
-main();
+main().catch(err => {
+  console.error('Discord webhook error:', err.message || err);
+  process.exit(1);
+});

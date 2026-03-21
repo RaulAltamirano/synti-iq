@@ -3,6 +3,7 @@
  * Generates a roast (burla) about why the PR was closed/merged.
  * Uses roast-prompt.config.js for easy customization.
  * Env: GEMINI_API_KEY, PR_AUTHOR, PR_MERGED, SONAR_BUGS, SONAR_SECURITY_HOTSPOTS, RATING, VERDICT
+ * Optional: GEMINI_MODEL (default: gemini-2.5-flash)
  */
 
 const config = require('./roast-prompt.config.js');
@@ -35,9 +36,10 @@ async function main() {
     .replace(/\{\{author\}\}/g, author)
     .replace(/\{\{maxChars\}\}/g, String(config.maxChars));
 
+  const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

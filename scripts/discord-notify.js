@@ -6,16 +6,20 @@
  * Optional: WORKFLOW_RUN_URL (link to GitHub Actions run)
  */
 
-const RATING_LABELS = [
-  'Level: Nuclear disaster',
-  'Level: Excel spreadsheet',
-  'Level: Acceptable',
-  'Level: Good',
-  'Level: Code god',
-];
+const {
+  validateWebhook,
+  formatRating,
+  formatSonarStats,
+  buildWorkflowField,
+  sendEmbed,
+  COLOR_MERGED,
+  COLOR_REJECTED,
+} = require('./discord-utils');
 
 async function main() {
   const webhook = process.env.DISCORD_WEBHOOK;
+  validateWebhook(webhook);
+
   const prNumber = process.env.PR_NUMBER || '?';
   const prMerged = process.env.PR_MERGED === 'true';
   const prUrl = process.env.PR_URL || '';
@@ -32,30 +36,20 @@ async function main() {
       : fallback.trim() || generic;
   const rating = Math.min(5, Math.max(1, parseInt(process.env.RATING || '3', 10) || 3));
 
-  if (!webhook || webhook.trim() === '') {
-    console.error('Missing DISCORD_WEBHOOK. Check that the secret is set in Settings > Secrets.');
-    process.exit(1);
-  }
-
-  // Discord field value limit: 1024 chars
   const safeRoast = String(roastText)
     .slice(0, 500)
     .replace(/[\n\r]+/g, ' ');
 
   const statusText = prMerged ? '🟢 MERGED' : '🔴 REJECTED / CLOSED';
-  const color = prMerged ? 3066993 : 15158332; // green : red
-  const stars = '⭐'.repeat(rating) + '☆'.repeat(5 - rating);
-  const levelLabel = RATING_LABELS[rating - 1] || RATING_LABELS[2];
+  const color = prMerged ? COLOR_MERGED : COLOR_REJECTED;
+  const { stars, levelLabel } = formatRating(rating);
+  const sonarStats = formatSonarStats(
+    sonarBugs,
+    sonarHotspots,
+    sonarVulns,
+    '✅ Sin hallazgos críticos',
+  );
 
-  const sonarStats = [
-    sonarBugs !== '0' && `🔴 ${sonarBugs} Bugs`,
-    sonarHotspots !== '0' && `⚠️ ${sonarHotspots} Security Hotspots`,
-    sonarVulns !== '0' && `🟠 ${sonarVulns} Vulnerabilities`,
-  ]
-    .filter(Boolean)
-    .join(' | ');
-
-  const workflowRunUrl = (process.env.WORKFLOW_RUN_URL || '').trim();
   const fields = [
     {
       name: 'Rating',
@@ -64,17 +58,12 @@ async function main() {
     },
     {
       name: 'Sonar Stats',
-      value: sonarStats || '✅ Sin hallazgos críticos',
+      value: sonarStats,
       inline: true,
     },
   ];
-  if (workflowRunUrl) {
-    fields.push({
-      name: 'Workflow',
-      value: `[View run](${workflowRunUrl})`,
-      inline: false,
-    });
-  }
+  const workflowField = buildWorkflowField(process.env.WORKFLOW_RUN_URL);
+  if (workflowField) fields.push(workflowField);
 
   const embed = {
     title: `🚩 Synti-IQ Review: Pull Request #${prNumber}`,
@@ -88,25 +77,11 @@ async function main() {
     timestamp: new Date().toISOString(),
   };
 
-  const payload = { embeds: [embed] };
-
-  try {
-    const res = await fetch(webhook, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) {
-      const body = await res.text();
-      console.error('Discord webhook failed:', res.status, res.statusText);
-      console.error('Response:', body.slice(0, 200));
-      process.exit(1);
-    }
-    console.log('Discord notification sent');
-  } catch (err) {
-    console.error('Discord webhook error:', err.message || err);
-    process.exit(1);
-  }
+  await sendEmbed(webhook, embed);
+  console.log('Discord notification sent');
 }
 
-main();
+main().catch(err => {
+  console.error('Discord webhook error:', err.message || err);
+  process.exit(1);
+});
