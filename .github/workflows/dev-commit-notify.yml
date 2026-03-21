@@ -1,8 +1,16 @@
 name: Discord — Commit to dev
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   push:
     branches: [dev]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -46,6 +54,7 @@ jobs:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           DISCORD_THREAD_ID: ${{ secrets.DISCORD_THREAD_ID }}
           DISCORD_USE_FORUM: ${{ vars.DISCORD_USE_FORUM }}
+          WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           COMMIT_SHA: ${{ steps.commit.outputs.sha }}
           COMMIT_MESSAGE: ${{ steps.commit.outputs.message }}
           COMMIT_AUTHOR: ${{ steps.commit.outputs.author }}

@@ -1,5 +1,8 @@
 name: PR Review Pipeline
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   pull_request:
     types: [opened, synchronize, closed]
@@ -71,7 +74,7 @@ jobs:
 
       - name: SonarCloud Quality Gate check
         id: sonarqube-quality-gate-check
-        uses: sonarsource/sonarqube-quality-gate-action@v2
+        uses: sonarsource/sonarqube-quality-gate-action@v1.2.0
         with:
           pollingTimeoutSec: 600
         env:
@@ -131,6 +134,7 @@ jobs:
             "https://api.github.com/repos/${{ github.repository }}/commits/${HEAD_SHA}" 2>/dev/null || echo "{}")
           COMMIT_MSG=$(echo "$COMMIT" | jq -r '.commit.message // ""' 2>/dev/null)
           COMMIT_AUTHOR=$(echo "$COMMIT" | jq -r '.commit.author.name // .author.login // "unknown"' 2>/dev/null)
+          COMMIT_URL=$(echo "$COMMIT" | jq -r '.html_url // ""' 2>/dev/null)
           COMMENTS=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
@@ -141,6 +145,7 @@ jobs:
           echo "" >> $GITHUB_OUTPUT
           echo "MSG_EOF" >> $GITHUB_OUTPUT
           echo "author=$COMMIT_AUTHOR" >> $GITHUB_OUTPUT
+          echo "url=${COMMIT_URL:-}" >> $GITHUB_OUTPUT
           echo "comments<<COMMENTS_DELIM" >> $GITHUB_OUTPUT
           echo "$COMMENTS" >> $GITHUB_OUTPUT
           echo "COMMENTS_DELIM" >> $GITHUB_OUTPUT
@@ -158,6 +163,7 @@ jobs:
           COMMIT_SHA: ${{ steps.fetch.outputs.sha }}
           COMMIT_MESSAGE: ${{ steps.fetch.outputs.message }}
           COMMIT_AUTHOR: ${{ steps.fetch.outputs.author }}
+          COMMIT_URL: ${{ steps.fetch.outputs.url }}
           COMMENTS_JSON: ${{ steps.fetch.outputs.comments }}
         run: node scripts/discord-notify-commit.js
 
@@ -253,6 +259,7 @@ jobs:
           echo "url=${ISSUE_URL:-}" >> $GITHUB_OUTPUT
 
       - name: Notify Discord - New PR (after AI + Sonar)
+        if: github.event.pull_request != null
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -263,6 +270,7 @@ jobs:
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           PR_ACTION: ${{ github.event.action }}
           PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
           ISSUE_NUMBER: ${{ steps.issue.outputs.number }}
           ISSUE_TITLE: ${{ steps.issue.outputs.title }}
           ISSUE_BODY: ${{ steps.issue.outputs.body }}
@@ -336,6 +344,7 @@ jobs:
         id: genroast
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           PR_MERGED: ${{ github.event.pull_request.merged }}
           SONAR_BUGS: ${{ steps.sonar.outputs.bugs }}
