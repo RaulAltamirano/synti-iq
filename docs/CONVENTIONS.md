@@ -345,7 +345,7 @@ Plans are executed by AI coding agents (Cursor, Windsurf, Graviti). They require
 - **Frontmatter** (Cursor plans): `name`, `overview`, `todos`, `isProject`
 - **Golden Rule**: Stop and ask before assuming DB relations, entity names, or third-party behavior
 
-**Structure**: `Entendimiento Técnico` | `PREGUNTAS BLOQUEANTES` | `Supuestos y Contratos` | `Plan de Implementación` (file-oriented) | `Plan de Testing` | `Prevención de Deuda Técnica`
+**Structure**: `Technical Understanding` | `Blocking Questions` | `Assumptions and Contracts` | `Implementation Plan` (file-oriented) | `Testing Plan` | `Technical Debt Prevention`
 
 **Order of implementation**: Interfaces/DTOs → Entities → Services → Controllers → Module registration (avoids compilation errors).
 
