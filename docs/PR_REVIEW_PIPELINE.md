@@ -2,6 +2,8 @@
 
 Automated Pull Request review pipeline integrating SonarCloud, Gemini (AI), and Discord notifications.
 
+**Quick reference:** On PR open/update → SonarCloud scan, AI review, Discord notification. On PR close → Discord embed with roast, rating, Sonar stats. Required secrets: `SONAR_TOKEN`, `GEMINI_API_KEY`, `DISCORD_WEBHOOK`.
+
 ---
 
 ## Flow Summary
@@ -14,9 +16,30 @@ Automated Pull Request review pipeline integrating SonarCloud, Gemini (AI), and 
 
 **Limitation:** Jobs that use secrets (sonar, ai-review, discord) **do not run** on PRs from forks. They only run when the PR comes from a branch in the same repository.
 
-**CI Quality Gate:** A separate [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) workflow runs on all PRs (main, master, dev) and on push to main/master. It runs `yarn lint`, `yarn format:check`, `yarn build`, and `yarn test`. Configure **Branch Protection** to require the `quality` job to pass before merge.
+**CI Quality Gate:** A separate [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) workflow runs on all PRs (main, master, dev) and on push to main/master. It runs `yarn audit`, `yarn lint`, `yarn format:check`, `yarn build`, and `yarn test:cov` in parallel jobs. See **Branch Protection** below for required status checks.
 
-**Sonar job steps:** The `sonar` job in `pr-review.yml` runs: lint → format:check → build → test:cov → SonarCloud scan → **Quality Gate check**. If the Quality Gate fails, the job fails and blocks merge (when required by Branch Protection).
+**Sonar job steps:** The `quality-fast` and `quality-build` jobs in `pr-review.yml` run in parallel (audit/lint/format vs build/test:cov). The `sonar` job then runs: SonarCloud scan → **Quality Gate check**. If the Quality Gate fails, the job fails and blocks merge (when required by Branch Protection).
+
+---
+
+## Branch Protection
+
+Configure **Settings > Branches > Branch protection rules** for `main`, `master`, and `dev` to enforce quality gates before merge:
+
+| Setting                                  | Recommendation                                                                                                                                                                                                           |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Require status checks before merging** | Enable. Require both workflows to pass: `CI — Quality Gate` and `PR Review Pipeline`. This ensures `yarn audit`, `yarn lint`, `yarn format:check`, `yarn build`, and `yarn test:cov` pass, plus SonarCloud quality gate. |
+| **Require branches to be up to date**    | Optional but recommended — ensures the latest base branch is tested.                                                                                                                                                     |
+| **Do not allow bypassing**               | Prevent administrators from bypassing (unless necessary).                                                                                                                                                                |
+| **Restrict who can push**                | Block direct push to `main`/`master`; require PRs.                                                                                                                                                                       |
+| **Require pull request reviews**         | Require at least 1 approval before merge.                                                                                                                                                                                |
+
+**Required status checks (exact names depend on GitHub UI):**
+
+- `CI — Quality Gate` (workflow) — or its jobs: `quality-fast`, `quality-build`
+- `PR Review Pipeline` (workflow) — or its jobs: `quality-fast`, `quality-build`
+
+Without both required, a PR could merge with high-severity vulnerabilities (if only pr-review is required) or without SonarCloud/AI review (if only CI is required).
 
 ---
 
@@ -69,31 +92,31 @@ The `sonar-project.properties` file in the project root defines:
 
 ## Pipeline Files
 
-| File                                      | Purpose                                                         |
-| ----------------------------------------- | --------------------------------------------------------------- |
-| `.github/workflows/ci.yml`                | Quality gate: lint, format:check, build, test on PR/push        |
-| `.github/workflows/pr-review.yml`         | Main workflow: SonarCloud, AI review, Discord                   |
-| `sonar-project.properties`                | SonarCloud configuration                                        |
-| `scripts/pr-review.js`                    | Extracts diff, calls Gemini, posts comment on PR                |
-| `scripts/discord-notify.js`               | Sends embed to Discord when PR is closed                        |
-| `scripts/discord-notify-new-pr.js`        | Sends notification to Discord when PR is opened or updated      |
-| `scripts/discord-notify-commit.js`        | Sends commit + comments to Discord on each push (synchronize)   |
-| `scripts/discord-notify-dev-commit.js`    | Sends notification when commit is pushed directly to `dev`      |
-| `.github/workflows/dev-commit-notify.yml` | Discord notification on push to dev branch                      |
-| `scripts/roast-prompt.config.js`          | Config del roast (idioma, estilos, prompt) — fácil de modificar |
+| File                                      | Purpose                                                                                                   |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `.github/workflows/ci.yml`                | Quality gate: audit, lint, format (quality-fast) + build, test:cov (quality-build) in parallel on PR/push |
+| `.github/workflows/pr-review.yml`         | Main workflow: SonarCloud, AI review, Discord                                                             |
+| `sonar-project.properties`                | SonarCloud configuration                                                                                  |
+| `scripts/pr-review.js`                    | Extracts diff, calls Gemini, posts comment on PR                                                          |
+| `scripts/discord-notify.js`               | Sends embed to Discord when PR is closed                                                                  |
+| `scripts/discord-notify-new-pr.js`        | Sends notification to Discord when PR is opened or updated                                                |
+| `scripts/discord-notify-commit.js`        | Sends commit + comments to Discord on each push (synchronize)                                             |
+| `scripts/discord-notify-dev-commit.js`    | Sends notification when commit is pushed directly to `dev`                                                |
+| `.github/workflows/dev-commit-notify.yml` | Discord notification on push to dev branch                                                                |
+| `scripts/roast-prompt.config.js`          | Roast config (language, styles, prompt) — easy to customize                                               |
 
 ---
 
-## Roast (al cerrar PR)
+## Roast (on PR Close)
 
-El roast se genera al cerrar el PR mediante `scripts/generate-close-roast.js`, que llama a Gemini con el contexto del PR (rating, Sonar, merge/reject). Se configura en `scripts/roast-prompt.config.js`:
+The roast is generated when the PR is closed via `scripts/generate-close-roast.js`, which calls Gemini with the PR context (rating, Sonar, merge/reject). Configuration is in `scripts/roast-prompt.config.js`:
 
 - **language**: `'es'` | `'en'`
-- **styles**: referencias de humor (Los Simpson, Lupita, etc.) — añade las que quieras
-- **promptTemplate**: plantilla con `{{action}}`, `{{context}}`, `{{style}}`, `{{author}}`, `{{maxChars}}`
-- **fallback**: mensaje cuando Gemini falla o no hay API key
+- **styles**: humor references (e.g. TV shows) — add your own
+- **promptTemplate**: template with `{{action}}`, `{{context}}`, `{{style}}`, `{{author}}`, `{{maxChars}}`
+- **fallback**: message when Gemini fails or no API key is configured
 
-**Fallback:** Si Gemini falla o `GEMINI_API_KEY` no está configurado, se usa el roast extraído del comentario del bot en el PR (bloque oculto `<!-- DISCORD_ROAST:... -->`), o el mensaje por defecto de `roast-prompt.config.js`.
+**Fallback:** If Gemini fails or `GEMINI_API_KEY` is not set, the roast is extracted from the bot comment on the PR (hidden block `<!-- DISCORD_ROAST:... -->`), or the default message from `roast-prompt.config.js`.
 
 ---
 
@@ -181,6 +204,7 @@ All Discord embeds include a **Workflow** field with a link to the GitHub Action
 
 ## References
 
+- [DEVELOPMENT_WORKFLOW.md](DEVELOPMENT_WORKFLOW.md) — Full flow from issue creation to merge
 - [AGENTS.md](../AGENTS.md)
 - [docs/prompts/code-review.md](prompts/code-review.md)
 - [SonarCloud GitHub Actions](https://docs.sonarsource.com/sonarcloud/advanced-setup/ci-based-analysis/github-actions-for-sonarcloud/)

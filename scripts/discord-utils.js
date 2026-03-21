@@ -89,14 +89,17 @@ function formatSonarStats(bugs, hotspots, vulns, fallback = '✅ No critical fin
 /**
  * Builds a Workflow field for embed.
  * @param {string} url
+ * @param {string} [duration] - optional duration (e.g. "3m 42s")
  * @returns {{ name: string, value: string, inline: boolean } | null}
  */
-function buildWorkflowField(url) {
+function buildWorkflowField(url, duration) {
   const u = (url || '').trim();
   if (!u) return null;
+  const parts = [`[View run](${u})`];
+  if (duration && duration.trim()) parts.push(` • ${duration.trim()}`);
   return {
     name: 'Workflow',
-    value: `[View run](${u})`,
+    value: parts.join(''),
     inline: false,
   };
 }

@@ -1,0 +1,6 @@
+# Ignore draft files (ephemeral, local-only).
+# Keep: README.md, draft-template.md, canonical task docs
+*.md
+!README.md
+!draft-template.md
+!ci-cd-pipeline-review-task.md

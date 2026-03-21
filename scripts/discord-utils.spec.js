@@ -118,6 +118,12 @@ describe('discord-utils', () => {
         inline: false,
       });
     });
+
+    it('includes duration when provided', () => {
+      const field = buildWorkflowField('https://github.com/owner/repo/actions/runs/123', '3m 42s');
+      expect(field.value).toContain('[View run]');
+      expect(field.value).toContain('3m 42s');
+    });
   });
 
   describe('validateWebhook', () => {
