@@ -1,11 +1,13 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import type { Repository } from 'typeorm';
 import { ProfileApprovalService } from './profile-approval.service';
 import { UserProfile } from '../entities/user_profile.entity';
 import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.entity';
 import { DeliveryProfile } from 'src/delivery-profiles/entities/delivery_profile.entity';
 import { ProviderProfile } from 'src/provider-profile/entities/provider_profile.entity';
+import { BusinessProfile } from 'src/business-profile/entities/business_profile.entity';
 import { SystemRole } from 'src/shared/enums/roles.enum';
 
 describe('ProfileApprovalService', () => {
@@ -37,6 +39,12 @@ describe('ProfileApprovalService', () => {
         },
         {
           provide: getRepositoryToken(ProviderProfile),
+          useValue: {
+            findOne: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(BusinessProfile),
           useValue: {
             findOne: jest.fn(),
           },
