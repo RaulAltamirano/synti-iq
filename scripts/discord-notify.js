@@ -3,6 +3,7 @@
  * Discord Notify Script — Sends PR review summary to Discord webhook as embed card.
  * Run from project root. Env: DISCORD_WEBHOOK, PR_NUMBER, PR_MERGED, PR_URL, PR_AUTHOR,
  *   SONAR_BUGS, SONAR_SECURITY_HOTSPOTS, ROAST_TEXT, ROAST_FALLBACK, RATING
+ * Optional: WORKFLOW_RUN_URL (link to GitHub Actions run)
  */
 
 const RATING_LABELS = [
@@ -54,22 +55,33 @@ async function main() {
     .filter(Boolean)
     .join(' | ');
 
+  const workflowRunUrl = (process.env.WORKFLOW_RUN_URL || '').trim();
+  const fields = [
+    {
+      name: 'Rating',
+      value: `${stars} (${rating}/5) - ${levelLabel}`,
+      inline: true,
+    },
+    {
+      name: 'Sonar Stats',
+      value: sonarStats || '✅ Sin hallazgos críticos',
+      inline: true,
+    },
+  ];
+  if (workflowRunUrl) {
+    fields.push({
+      name: 'Workflow',
+      value: `[View run](${workflowRunUrl})`,
+      inline: false,
+    });
+  }
+
   const embed = {
     title: `🚩 Synti-IQ Review: Pull Request #${prNumber}`,
     description: `**Status:** ${statusText}\n\n> "${safeRoast}"\n— *@${prAuthor}*`,
     color,
-    fields: [
-      {
-        name: 'Rating',
-        value: `${stars} (${rating}/5) - ${levelLabel}`,
-        inline: true,
-      },
-      {
-        name: 'Sonar Stats',
-        value: sonarStats || '✅ Sin hallazgos críticos',
-        inline: true,
-      },
-    ],
+    url: prUrl || undefined,
+    fields,
     footer: {
       text: 'Repository activity',
     },

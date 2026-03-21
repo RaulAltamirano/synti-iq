@@ -4,6 +4,7 @@
  * Runs AFTER ai-review (even when it fails). Shows task, links, resumen de hallazgos, rating, Sonar.
  * Env: DISCORD_WEBHOOK, PR_*, ISSUE_*, GEMINI_API_KEY (optional),
  *   SUMMARY_TEXT, RATING, SONAR_BUGS, SONAR_SECURITY_HOTSPOTS, SONAR_VULNERABILITIES
+ * Optional: WORKFLOW_RUN_URL (link to GitHub Actions run)
  */
 
 const RATING_LABELS = [
@@ -168,6 +169,15 @@ async function main() {
 
   if (links) {
     fields.push({ name: '🔗 Links', value: links, inline: false });
+  }
+
+  const workflowRunUrl = (process.env.WORKFLOW_RUN_URL || '').trim();
+  if (workflowRunUrl) {
+    fields.push({
+      name: 'Workflow',
+      value: `[View run](${workflowRunUrl})`,
+      inline: false,
+    });
   }
 
   const embed = {

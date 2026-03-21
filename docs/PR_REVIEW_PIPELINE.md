@@ -67,16 +67,18 @@ The `sonar-project.properties` file in the project root defines:
 
 ## Pipeline Files
 
-| File                               | Purpose                                                         |
-| ---------------------------------- | --------------------------------------------------------------- |
-| `.github/workflows/ci.yml`         | Quality gate: lint, format:check, build, test on PR/push        |
-| `.github/workflows/pr-review.yml`  | Main workflow: SonarCloud, AI review, Discord                   |
-| `sonar-project.properties`         | SonarCloud configuration                                        |
-| `scripts/pr-review.js`             | Extracts diff, calls Gemini, posts comment on PR                |
-| `scripts/discord-notify.js`        | Sends embed to Discord when PR is closed                        |
-| `scripts/discord-notify-new-pr.js` | Sends notification to Discord when PR is opened or updated      |
-| `scripts/discord-notify-commit.js` | Sends commit + comments to Discord on each push (synchronize)   |
-| `scripts/roast-prompt.config.js`   | Config del roast (idioma, estilos, prompt) — fácil de modificar |
+| File                                      | Purpose                                                         |
+| ----------------------------------------- | --------------------------------------------------------------- |
+| `.github/workflows/ci.yml`                | Quality gate: lint, format:check, build, test on PR/push        |
+| `.github/workflows/pr-review.yml`         | Main workflow: SonarCloud, AI review, Discord                   |
+| `sonar-project.properties`                | SonarCloud configuration                                        |
+| `scripts/pr-review.js`                    | Extracts diff, calls Gemini, posts comment on PR                |
+| `scripts/discord-notify.js`               | Sends embed to Discord when PR is closed                        |
+| `scripts/discord-notify-new-pr.js`        | Sends notification to Discord when PR is opened or updated      |
+| `scripts/discord-notify-commit.js`        | Sends commit + comments to Discord on each push (synchronize)   |
+| `scripts/discord-notify-dev-commit.js`    | Sends notification when commit is pushed directly to `dev`      |
+| `.github/workflows/dev-commit-notify.yml` | Discord notification on push to dev branch                      |
+| `scripts/roast-prompt.config.js`          | Config del roast (idioma, estilos, prompt) — fácil de modificar |
 
 ---
 
@@ -126,24 +128,30 @@ The bot posts a **brief professional comment** with emojis for readability (no r
 
 ## Discord Message Format
 
+All Discord embeds include a **Workflow** field with a link to the GitHub Actions run that sent the notification (`[View run](url)`). This allows quick navigation from Discord to the workflow logs.
+
 **On PR open/update:** Brief embed with PR title, author, branch, task summary (3-line Gemini summary when `GEMINI_API_KEY` is set), and links (View MR, View requirement).
 
 **Data source:** When branch matches `N-task-name`, fetches issue #N from GitHub API. Gemini summarizes the issue in 3 lines for readability. Fallback: truncated title + body.
 
 **On PR close (merge/reject):** Card-style embed with roast:
 
-- **Title:** Synti-IQ Review: Pull Request #N
+- **Title:** Synti-IQ Review: Pull Request #N (clickable, links to PR)
 - **Status:** MERGED (green) / REJECTED (red)
 - **IA Roast:** Extracted from the AI review comment (hidden block `<!-- DISCORD_ROAST:... -->`)
 - **Rating:** Stars (1–5) and level
 - **Sonar Stats:** Bugs, Security Hotspots, Vulnerabilities
 - **Link:** Link to PR on GitHub
+- **Workflow:** Link to the GitHub Actions run
 
 **On each new commit (synchronize):** Separate notification with:
 
 - Commit hash, message, author, branch
 - Recent human comments on the PR (excludes bot comments)
 - Link to PR
+- **Workflow:** Link to the GitHub Actions run
+
+**Discord job behavior:** Discord jobs use `continue-on-error: true` so that a webhook failure (invalid URL, rate limit, etc.) does not block PR merge. Failed notifications are visible in the workflow logs; check the Actions run if Discord does not receive a message.
 
 **Thread options (optional):**
 

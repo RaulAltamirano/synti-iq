@@ -2,7 +2,7 @@
 /**
  * Notifies Discord when a commit is pushed directly to the dev branch.
  * Env: DISCORD_WEBHOOK, COMMIT_*, COMMIT_FILES
- * Optional: DISCORD_THREAD_ID, DISCORD_USE_FORUM=true
+ * Optional: DISCORD_THREAD_ID, DISCORD_USE_FORUM=true, WORKFLOW_RUN_URL (link to GitHub Actions run)
  * Title/message: max 3 lines (Discord embed standard)
  */
 
@@ -59,6 +59,15 @@ function main() {
     embed.fields.push({
       name: '🔗 Link',
       value: `[Ver commit](${commitUrl})`,
+      inline: false,
+    });
+  }
+
+  const workflowRunUrl = (process.env.WORKFLOW_RUN_URL || '').trim();
+  if (workflowRunUrl) {
+    embed.fields.push({
+      name: 'Workflow',
+      value: `[View run](${workflowRunUrl})`,
       inline: false,
     });
   }

@@ -2,7 +2,8 @@
 /**
  * Notifies Discord when new commits are pushed to a PR branch.
  * Env: DISCORD_WEBHOOK, PR_*, COMMIT_*, COMMENTS_JSON
- * Optional: DISCORD_THREAD_ID (post to existing thread), DISCORD_USE_FORUM=true (create forum post per commit)
+ * Optional: DISCORD_THREAD_ID (post to existing thread), DISCORD_USE_FORUM=true (create forum post per commit),
+ *   WORKFLOW_RUN_URL (link to GitHub Actions run)
  */
 
 const BOT_PREFIX = '🤖';
@@ -72,6 +73,15 @@ function main() {
     value: `[View PR #${prNumber}](${prUrl})`,
     inline: false,
   });
+
+  const workflowRunUrl = (process.env.WORKFLOW_RUN_URL || '').trim();
+  if (workflowRunUrl) {
+    embed.fields.push({
+      name: 'Workflow',
+      value: `[View run](${workflowRunUrl})`,
+      inline: false,
+    });
+  }
 
   const payload = { embeds: [embed] };
 
