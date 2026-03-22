@@ -18,17 +18,26 @@ async function getAuth() {
   const privateKey = process.env.GH_APP_PRIVATE_KEY || process.env.GITHUB_PRIVATE_KEY;
 
   if (appId && installationId && privateKey) {
-    const { createAppAuth } = require('@octokit/auth-app');
-    const { Octokit } = require('octokit');
+    try {
+      const { createAppAuth } = require('@octokit/auth-app');
+      const { Octokit } = require('octokit');
 
-    const key = String(privateKey).replace(/\\n/g, '\n');
-    const auth = createAppAuth({
-      appId: Number(appId),
-      privateKey: key,
-      installationId: Number(installationId),
-    });
-    const { token } = await auth({ type: 'installation' });
-    return { token, octokit: new Octokit({ auth: token }) };
+      const key = String(privateKey).replace(/\\n/g, '\n');
+      const auth = createAppAuth({
+        appId: Number(appId),
+        privateKey: key,
+        installationId: Number(installationId),
+      });
+      const { token } = await auth({ type: 'installation' });
+      console.log('PR Review: Using GitHub App for comments and approval');
+      return { token, octokit: new Octokit({ auth: token }) };
+    } catch (err) {
+      console.warn(
+        'GitHub App auth failed:',
+        err.message,
+        '- falling back to GITHUB_TOKEN (comments will show as github-actions)',
+      );
+    }
   }
 
   const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
@@ -39,6 +48,7 @@ async function getAuth() {
   }
 
   const { Octokit } = require('octokit');
+  console.log('PR Review: Using GITHUB_TOKEN (comments will show as github-actions[bot])');
   return { token, octokit: new Octokit({ auth: token }) };
 }
 

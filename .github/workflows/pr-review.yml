@@ -51,6 +51,9 @@ jobs:
         run: yarn audit --level high
 
       - name: Lint
+        env:
+          # 4GB — runners have ~7GB RAM; 8GB heap caused OOM
+          NODE_OPTIONS: --max-old-space-size=4096
         run: yarn lint
 
       - name: Check formatting
@@ -172,6 +175,9 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_EVENT_PATH: ${{ github.event_path }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_APP_ID: ${{ secrets.GH_APP_ID }}
+          GH_INSTALLATION_ID: ${{ secrets.GH_INSTALLATION_ID }}
+          GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

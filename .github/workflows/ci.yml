@@ -54,6 +54,9 @@ jobs:
         run: yarn audit --level high
 
       - name: Lint
+        env:
+          # 4GB — runners have ~7GB RAM; 8GB heap caused OOM
+          NODE_OPTIONS: --max-old-space-size=4096
         run: yarn lint
 
       - name: Check formatting
