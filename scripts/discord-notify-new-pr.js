@@ -2,10 +2,9 @@
 /**
  * Notifies Discord when a new PR is opened or updated.
  * Runs AFTER ai-review (even when it fails). Shows task, links, resumen de hallazgos, rating, Sonar.
- * Env: DISCORD_WEBHOOK, PR_*, ISSUE_*, GEMINI_API_KEY (optional),
- *   SUMMARY_TEXT, RATING, SONAR_BUGS, SONAR_SECURITY_HOTSPOTS, SONAR_VULNERABILITIES
- * Optional: WORKFLOW_RUN_URL (link to GitHub Actions run), PR_BASE_BRANCH (target branch),
- *   GEMINI_MODEL (default: gemini-2.5-flash)
+ * Uses Router+Specialist: Groq (orchestrator) for summarizations, Gemini fallback. See docs/adr/0001-ai-router-specialist-strategy.md
+ * Env: DISCORD_WEBHOOK, PR_*, ISSUE_*, SUMMARY_TEXT, RATING, SONAR_*
+ * Optional: GROQ_API_KEY (primary), GEMINI_API_KEY (fallback), WORKFLOW_RUN_URL, PR_BASE_BRANCH
  */
 
 const {
@@ -18,68 +17,7 @@ const {
   COLOR_INFO,
   FIELD_VALUE_LIMIT,
 } = require('./discord-utils');
-
-function getGeminiModel() {
-  return process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-}
-
-async function summarizeWithGemini(title, body) {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key || (!title && !body)) return null;
-
-  const model = getGeminiModel();
-  const input = [title, body].filter(Boolean).join('\n\n');
-  const prompt = `Summarize this GitHub issue/task in exactly 3 short lines. Be concise. Output only the summary, no preamble.\n\n---\n\n${input}`;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.2,
-        maxOutputTokens: 256,
-      },
-    }),
-  });
-
-  if (!res.ok) return null;
-  const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) return null;
-
-  const summary = text.trim().split(/\n+/).slice(0, 3).join('\n').slice(0, 900);
-  return summary || null;
-}
-
-async function summarizeFindingsWithGemini(fullFindings) {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key || !fullFindings?.trim()) return null;
-
-  const model = getGeminiModel();
-  const prompt = `Summarize these code review findings in a maximum of 6 short lines. Keep it simple. Output only the summary in English, no preamble.\n\n---\n\n${fullFindings}`;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.2,
-        maxOutputTokens: 512,
-      },
-    }),
-  });
-
-  if (!res.ok) return null;
-  const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) return null;
-
-  const lines = text.trim().split(/\n+/).slice(0, 6);
-  const joined = lines.join('\n');
-  return truncateAtSentence(joined, FIELD_VALUE_LIMIT) || joined.slice(0, FIELD_VALUE_LIMIT);
-}
+const { summarizeIssue, summarizeFindings } = require('./lib/ai-agents');
 
 async function main() {
   const webhook = process.env.DISCORD_WEBHOOK;
@@ -117,7 +55,7 @@ async function main() {
   if (issueNumber && (issueTitle || issueBody)) {
     let taskValue = null;
     try {
-      taskValue = await summarizeWithGemini(issueTitle, issueBody);
+      taskValue = await summarizeIssue(issueTitle, issueBody);
     } catch (_) {
       /* ignore */
     }
@@ -140,14 +78,15 @@ async function main() {
     .map(([url, label]) => `[${label}](${url})`)
     .join(' • ');
 
-  // Findings summary (max 6 lines, Gemini-generated when available), Rating, Sonar
+  // Findings summary (max 6 lines, Groq/Gemini when available), Rating, Sonar
   const rawSummary = (process.env.SUMMARY_TEXT || 'No specific findings.').trim();
   let summaryText = rawSummary;
   if (rawSummary && rawSummary !== 'No specific findings.') {
     try {
-      const geminiSummary = await summarizeFindingsWithGemini(rawSummary);
-      if (geminiSummary) {
-        summaryText = geminiSummary;
+      const aiSummary = await summarizeFindings(rawSummary, FIELD_VALUE_LIMIT);
+      if (aiSummary) {
+        summaryText =
+          truncateAtSentence(aiSummary, FIELD_VALUE_LIMIT) || aiSummary.slice(0, FIELD_VALUE_LIMIT);
       } else {
         summaryText = truncateAtSentence(rawSummary.replace(/\n{2,}/g, '\n'), FIELD_VALUE_LIMIT);
       }

@@ -51,7 +51,6 @@ try {
 const ISSUES_DIR = path.join(ROOT, 'docs', 'issues');
 const DEFAULT_FILE = path.join(ISSUES_DIR, 'draft.md');
 const TEMPLATE_ISSUES = path.join(ISSUES_DIR, 'draft-template.md');
-const TEMPLATE_PROMPTS = path.join(ROOT, 'docs', 'prompts', 'issue-draft.example.md');
 
 const LABEL_ALIASES = { docs: 'documentation' };
 const LABEL_COLORS = {
@@ -349,9 +348,9 @@ function getTemplatePath(requestedPath) {
   if (!requestedPath) return null;
   const absPath = path.isAbsolute(requestedPath) ? requestedPath : path.join(ROOT, requestedPath);
   const baseName = path.basename(absPath);
-  const isDraft = /^draft/i.test(baseName) || absPath.startsWith(ISSUES_DIR);
-  if (isDraft && fs.existsSync(TEMPLATE_ISSUES)) return TEMPLATE_ISSUES;
-  return fs.existsSync(TEMPLATE_PROMPTS) ? TEMPLATE_PROMPTS : null;
+  const isDraft =
+    /^draft/i.test(baseName) || absPath.startsWith(ISSUES_DIR) || baseName === 'issue-draft.md';
+  return isDraft && fs.existsSync(TEMPLATE_ISSUES) ? TEMPLATE_ISSUES : null;
 }
 
 async function main() {
@@ -385,7 +384,7 @@ async function main() {
       filePath = DEFAULT_FILE;
       if (!fs.existsSync(filePath)) {
         ensureIssuesDir();
-        const template = fs.existsSync(TEMPLATE_ISSUES) ? TEMPLATE_ISSUES : TEMPLATE_PROMPTS;
+        const template = fs.existsSync(TEMPLATE_ISSUES) ? TEMPLATE_ISSUES : null;
         if (template) {
           fs.copyFileSync(template, filePath);
           console.log(`Created ${path.relative(ROOT, filePath)} from template.`);
@@ -421,7 +420,7 @@ Generate content with the prompt in docs/prompts/new-issue.md`);
   const placeholderPattern = /^\[.*(replace|reemplaza|título|title|descriptivo|description).*\]$/i;
   if (placeholderPattern.test(title)) {
     console.error(
-      'Error: The title appears to be a placeholder. Use a real title (format: type(scope): imperative description)',
+      'Error: The title appears to be a placeholder. Use a real title: [TYPE] prefix (e.g. [TASK], [STORY]) or type(scope): imperative description',
     );
     process.exit(1);
   }
