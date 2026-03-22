@@ -1,6 +1,7 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import type { Repository } from 'typeorm';
 import { ProfileActivityService } from './profile-activity.service';
 import { UserProfile } from '../entities/user_profile.entity';
 import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.entity';

@@ -1,4 +1,4 @@
-import { ReferralCode } from '../../entities/referral_code.entity';
+import type { ReferralCode } from '../../entities/referral_code.entity';
 
 export interface ReferralCodeFixtureOverrides {
   id?: string;

@@ -1,4 +1,4 @@
-import { PlanFeatures, PlanLimits } from '../entities/subscription-plan.entity';
+import type { PlanFeatures, PlanLimits } from '../entities/subscription-plan.entity';
 
 export class SubscriptionPlanResponseDto {
   id: string;

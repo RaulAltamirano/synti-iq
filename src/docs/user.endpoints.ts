@@ -1,4 +1,4 @@
-import { EndpointDocSpec } from 'src/shared/decorators/interfaces/endpoint-doc-spec.interface';
+import type { EndpointDocSpec } from 'src/shared/decorators/interfaces/endpoint-doc-spec.interface';
 import { getStandardErrorResponses } from 'src/shared/decorators/standard-error-responses';
 
 const apiErrorSchema = { $ref: '#/components/schemas/ApiErrorDto' };

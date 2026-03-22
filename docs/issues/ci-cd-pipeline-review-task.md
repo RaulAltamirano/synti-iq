@@ -1,4 +1,4 @@
-TITLE: chore(ci): review and document CI/CD pipeline changes
+TITLE: [TASK] Review and document CI/CD pipeline changes
 LABELS: documentation, chore
 
 ---

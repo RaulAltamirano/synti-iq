@@ -1,4 +1,4 @@
-import { ReferralStatsDto } from '../dto/referral-record.dto';
+import type { ReferralStatsDto } from '../dto/referral-record.dto';
 
 export function buildBenefitsDescription(
   trialDays?: number,

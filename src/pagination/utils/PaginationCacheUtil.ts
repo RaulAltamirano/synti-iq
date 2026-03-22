@@ -1,8 +1,8 @@
 import { createHash } from 'crypto';
 import { Logger } from '@nestjs/common';
-import { PaginatedResponse } from '../interfaces/PaginatedResponse';
-import { BasePaginationParams } from '../dtos/base-pagination-params';
-import { CacheService } from 'src/cache/cache.service';
+import type { PaginatedResponse } from '../interfaces/PaginatedResponse';
+import type { BasePaginationParams } from '../dtos/base-pagination-params';
+import type { CacheService } from 'src/cache/cache.service';
 
 export class PaginationCacheUtil {
   static buildCacheKey(prefix: string, filters: Record<string, any>): string {

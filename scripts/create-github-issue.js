@@ -38,21 +38,19 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync, spawnSync } = require('child_process');
+const { parseIssueContent, inferLabelFromTitle, resolveLabel } = require('./lib/issue-parser');
 
 const ROOT = path.resolve(__dirname, '..');
 
-// Load .env if available (e.g. from @nestjs/config's dotenv or dotenv package)
 try {
-  const dotenv = require('dotenv');
-  dotenv.config({ path: path.join(ROOT, '.env') });
+  require('dotenv').config({ path: path.join(ROOT, '.env') });
 } catch {
-  // dotenv not installed — rely on env vars from shell/export
+  /* dotenv not installed */
 }
 const ISSUES_DIR = path.join(ROOT, 'docs', 'issues');
 const DEFAULT_FILE = path.join(ISSUES_DIR, 'draft.md');
 const TEMPLATE_ISSUES = path.join(ISSUES_DIR, 'draft-template.md');
 
-const LABEL_ALIASES = { docs: 'documentation' };
 const LABEL_COLORS = {
   documentation: '0075ca',
   enhancement: 'a2eeef',
@@ -61,18 +59,6 @@ const LABEL_COLORS = {
   refactor: 'fef2c0',
   test: 'bfdadc',
   'tech-debt': 'fbca04',
-};
-
-/** Maps conventional commit type (from title) to GitHub label. */
-const TYPE_TO_LABEL = {
-  feat: 'enhancement',
-  fix: 'bug',
-  docs: 'documentation',
-  chore: 'chore',
-  refactor: 'refactor',
-  test: 'enhancement',
-  style: 'chore',
-  perf: 'enhancement',
 };
 
 function getStdin() {
@@ -88,93 +74,6 @@ function getStdin() {
     });
     process.stdin.on('end', () => resolve(data));
   });
-}
-
-/** Parse YAML frontmatter (minimal: title, labels, assignee). */
-function parseFrontmatter(content) {
-  const trimmed = content.trim();
-  if (!trimmed.startsWith('---')) return null;
-  const endIdx = trimmed.indexOf('\n---', 3);
-  if (endIdx === -1) return null;
-  const fm = trimmed.slice(3, endIdx).trim();
-  const body = trimmed.slice(endIdx + 4).trim();
-  const result = { title: '', labels: [], assignee: '', body };
-
-  for (const line of fm.split('\n')) {
-    const colon = line.indexOf(':');
-    if (colon === -1) continue;
-    const key = line.slice(0, colon).trim().toLowerCase();
-    let val = line.slice(colon + 1).trim();
-    if (val.startsWith('[') && val.endsWith(']')) {
-      val = val
-        .slice(1, -1)
-        .split(',')
-        .map(s => s.trim())
-        .filter(Boolean);
-    } else if (
-      (val.startsWith('"') && val.endsWith('"')) ||
-      (val.startsWith("'") && val.endsWith("'"))
-    ) {
-      val = val.slice(1, -1);
-    }
-    if (key === 'title') result.title = String(val);
-    else if (key === 'labels') result.labels = Array.isArray(val) ? val : val ? [val] : [];
-    else if (key === 'assignee') result.assignee = String(val).replace(/^@/, '');
-  }
-  return result.title ? result : null;
-}
-
-function parseIssueContent(content) {
-  let raw = content.trim();
-  raw = raw.replace(/^```[\w]*\n?/, '').replace(/\n?```\s*$/, '');
-  const fm = parseFrontmatter(raw);
-  if (fm) return fm;
-
-  const lines = raw.split('\n');
-  let title = '';
-  let labels = [];
-  let assignee = '';
-  let bodyStart = 0;
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (line.startsWith('TITLE:')) {
-      title = line.replace(/^TITLE:\s*/i, '').trim();
-    } else if (line.startsWith('LABELS:')) {
-      let labelStr = line.replace(/^LABELS:\s*/i, '').trim();
-      if (labelStr) {
-        if (labelStr.startsWith('[') && labelStr.endsWith(']')) {
-          labelStr = labelStr.slice(1, -1).trim();
-        }
-        labels = labelStr
-          .split(/[,\s]+/)
-          .map(l => l.trim())
-          .filter(Boolean);
-      }
-    } else if (line.startsWith('ASSIGNEE:')) {
-      assignee = line
-        .replace(/^ASSIGNEE:\s*/i, '')
-        .trim()
-        .replace(/^@/, '');
-    } else if (line.trim() === '---') {
-      bodyStart = i + 1;
-      break;
-    } else if (title && bodyStart === 0 && line.trim()) {
-      bodyStart = i;
-      break;
-    }
-  }
-
-  const body = lines.slice(bodyStart).join('\n').trim();
-  return { title, labels, assignee, body };
-}
-
-/** Infers label from conventional commit type in title. */
-function inferLabelFromTitle(title) {
-  const match = title.match(/^(\w+)(?:\([^)]+\))?:\s*/);
-  if (!match) return null;
-  const type = match[1].toLowerCase();
-  return TYPE_TO_LABEL[type] || null;
 }
 
 function checkGhInstalled() {
@@ -231,7 +130,7 @@ async function createIssueViaApi(title, body, labels, assignee, owner, repo) {
   const installationAuth = await auth({ type: 'installation' });
   const octokit = new Octokit({ auth: installationAuth.token });
 
-  const resolvedLabels = labels.map(l => LABEL_ALIASES[l.toLowerCase()] || l);
+  const resolvedLabels = labels.map(l => resolveLabel(l));
 
   // Ensure labels exist
   if (resolvedLabels.length > 0) {
@@ -288,7 +187,7 @@ function getExistingLabels() {
 function ensureLabels(labels) {
   if (labels.length === 0) return;
   const existing = getExistingLabels();
-  const resolved = labels.map(l => LABEL_ALIASES[l.toLowerCase()] || l);
+  const resolved = labels.map(l => resolveLabel(l));
   for (const name of resolved) {
     const key = name.toLowerCase();
     if (existing.has(key)) continue;
@@ -315,7 +214,7 @@ function createIssue(title, body, labels, assignee) {
   }
 
   const withLabels = [...baseArgs];
-  const resolvedLabels = labels.map(l => LABEL_ALIASES[l.toLowerCase()] || l);
+  const resolvedLabels = labels.map(l => resolveLabel(l));
   for (const label of resolvedLabels) {
     withLabels.push('--label', label);
   }

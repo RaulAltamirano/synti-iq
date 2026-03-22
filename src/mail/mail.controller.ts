@@ -1,11 +1,4 @@
-import {
-  Controller,
-  Post,
-  Body,
-  HttpCode,
-  HttpStatus,
-  NotFoundException,
-} from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, NotFoundException } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { MailService } from './mail.service';
 import { TestWelcomeDto } from './dto/test-welcome.dto';

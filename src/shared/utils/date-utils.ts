@@ -1,6 +1,6 @@
 import { RRule, Frequency } from 'rrule';
 import { isSameDay } from 'date-fns';
-import { RecurrenceRuleDto } from 'src/recurring-schedule-template/entities/recurring-rules.dto';
+import type { RecurrenceRuleDto } from 'src/recurring-schedule-template/entities/recurring-rules.dto';
 export class DateUtils {
   static addMinutesToDate(date: Date, minutes: number): Date {
     const result = new Date(date);

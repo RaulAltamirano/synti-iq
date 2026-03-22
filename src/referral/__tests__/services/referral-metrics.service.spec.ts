@@ -1,4 +1,5 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { ReferralMetricsService } from '../../services/referral-metrics.service';
 import { ObservabilityService } from 'src/shared/observability/observability.service';
 

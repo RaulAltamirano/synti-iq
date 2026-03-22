@@ -38,7 +38,7 @@ Full details: [docs/issues/README.md](issues/README.md)
 
 1. Use a prompt:
    - **Generic:** [docs/prompts/new-issue.md](prompts/new-issue.md) — replace `<TASK_DESCRIPTION>` with your requirement.
-   - **Task-specific:** [docs/prompts/requirement-translate-docs-to-english.md](prompts/requirement-translate-docs-to-english.md) — copy, paste into AI, customize.
+   - **Task-specific:** [docs/prompts/requirement-canonical.md](prompts/requirement-canonical.md) — copy, paste into AI, customize.
 2. Paste into Gemini, ChatGPT, Claude, or Cursor and get the output.
 3. Save to `docs/issues/<descriptive-name>.md` (e.g. `docs/issues/store-stats-endpoint.md`).
 4. Create the issue:
@@ -53,6 +53,8 @@ Full details: [docs/issues/README.md](issues/README.md)
 1. Create an issue on GitHub.
 2. Use a conventional title: `feat(scope): imperative description` (max 72 chars).
 3. Include: Purpose, Scope (in/out), Technical context, Acceptance criteria.
+
+If creating directly on GitHub, follow [docs/issues/TEMPLATES.md](issues/TEMPLATES.md) and Draft Quality Standards in [docs/issues/README.md](issues/README.md).
 
 ### Issue creation script (`yarn issue:create`)
 
@@ -265,16 +267,16 @@ Configure in **Settings → Branches → Branch protection rules**:
 
 ## Internal References
 
-| Document                                                                                             | Purpose                                                |
-| ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| [AGENTS.md](../AGENTS.md)                                                                            | Conventions, verification, canonical contracts         |
-| [CONVENTIONS.md](CONVENTIONS.md)                                                                     | DTOs, REST, Swagger, testing                           |
-| [DEFINITION_OF_DONE.md](../DEFINITION_OF_DONE.md)                                                    | PR readiness checklist                                 |
-| [PR_REVIEW_PIPELINE.md](PR_REVIEW_PIPELINE.md)                                                       | CI, SonarCloud, AI review, Discord                     |
-| [QUALITY_METRICS.md](QUALITY_METRICS.md)                                                             | Coverage, thresholds, measurement                      |
-| [issues/README.md](issues/README.md)                                                                 | Issue drafts folder, quick commands, format            |
-| [prompts/new-issue.md](prompts/new-issue.md)                                                         | AI prompt for issue creation                           |
-| [prompts/requirement-translate-docs-to-english.md](prompts/requirement-translate-docs-to-english.md) | Real requirement example                               |
-| [prompts/pre-pr-review.md](prompts/pre-pr-review.md)                                                 | Pre-PR verification prompt                             |
-| [prompts/code-review.md](prompts/code-review.md)                                                     | AI review categories                                   |
-| [scripts/create-github-issue.js](../scripts/create-github-issue.js)                                  | Issue creation script (auto-label, GH_TOKEN, assignee) |
+| Document                                                             | Purpose                                                |
+| -------------------------------------------------------------------- | ------------------------------------------------------ |
+| [AGENTS.md](../AGENTS.md)                                            | Conventions, verification, canonical contracts         |
+| [CONVENTIONS.md](CONVENTIONS.md)                                     | DTOs, REST, Swagger, testing                           |
+| [DEFINITION_OF_DONE.md](../DEFINITION_OF_DONE.md)                    | PR readiness checklist                                 |
+| [PR_REVIEW_PIPELINE.md](PR_REVIEW_PIPELINE.md)                       | CI, SonarCloud, AI review, Discord                     |
+| [QUALITY_METRICS.md](QUALITY_METRICS.md)                             | Coverage, thresholds, measurement                      |
+| [issues/README.md](issues/README.md)                                 | Issue drafts folder, quick commands, format            |
+| [prompts/new-issue.md](prompts/new-issue.md)                         | AI prompt for issue creation                           |
+| [prompts/requirement-canonical.md](prompts/requirement-canonical.md) | Real requirement example                               |
+| [prompts/pre-pr-review.md](prompts/pre-pr-review.md)                 | Pre-PR verification prompt                             |
+| [prompts/code-review.md](prompts/code-review.md)                     | AI review categories                                   |
+| [scripts/create-github-issue.js](../scripts/create-github-issue.js)  | Issue creation script (auto-label, GH_TOKEN, assignee) |

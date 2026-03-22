@@ -23,14 +23,17 @@ When in doubt about database relations, table/entity names, key data types, erro
 ## Plan Sections (Mandatory Format)
 
 ### Technical Understanding
+
 - Architectural summary of the solution.
 - Context, boundaries, and affected modules.
 
-### Blocking Questions (Emergency Brake)
+### BLOCKING QUESTIONS (Emergency Brake)
+
 - If there are doubts affecting interface design or DB: list them here and **do not** generate the rest of the plan. Wait for a response.
 - If context is complete: write "**Context complete. Proceeding with the plan.**"
 
 ### Assumptions and Contracts
+
 - Libraries to use or agreed architectural patterns.
 - Table: | Element | Decision | (e.g. Nest.js v11, TypeORM 0.3.x, validation strategy).
 
@@ -47,6 +50,7 @@ Each item MUST follow this structure:
 ```
 
 **Execution order** (must avoid compilation errors):
+
 1. Interfaces / types
 2. DTOs (with class-validator)
 3. Entities (TypeORM with `@Entity()`)
@@ -57,11 +61,13 @@ Each item MUST follow this structure:
 **Terminology**: Use exact Nest.js terms (Controllers, Services/Providers, Guards, Interceptors, Pipes).
 
 ### Testing Plan (.spec.ts)
+
 - Specific test cases the agent must code.
 - Services with business logic: unit tests required.
-- Reference: [docs/CONVENTIONS.md](CONVENTIONS.md) — Testing, [src/referral/__tests__/](../src/referral/__tests__/)
+- Reference: [docs/CONVENTIONS.md](CONVENTIONS.md) — Testing, [src/referral/**tests**/](../src/referral/__tests__/)
 
 ### Technical Debt Prevention / Risks
+
 - Circular dependencies (prefer structural refactors over `forwardRef`)
 - Memory leaks, concurrency pitfalls in Node/Nest.js
 - Any mitigation for identified risks
@@ -70,13 +76,13 @@ Each item MUST follow this structure:
 
 ## File Path Conventions
 
-| Element | Convention | Example |
-|--------|------------|---------|
-| DTOs | `src/<module>/dto/<type>-<entity>.dto.ts` | `src/store/dto/create-store.dto.ts` |
-| Entities | `src/<module>/entities/<entity>.entity.ts` | `src/user/entities/user.entity.ts` |
-| Services | `src/<module>/<module>.service.ts` | `src/auth/auth.service.ts` |
-| Controllers | `src/<module>/<module>.controller.ts` | `src/store/store.controller.ts` |
-| Specs | Colocated `*.spec.ts` or `__tests__/` | `src/referral/__tests__/referral.service.spec.ts` |
+| Element     | Convention                                 | Example                                           |
+| ----------- | ------------------------------------------ | ------------------------------------------------- |
+| DTOs        | `src/<module>/dto/<type>-<entity>.dto.ts`  | `src/store/dto/create-store.dto.ts`               |
+| Entities    | `src/<module>/entities/<entity>.entity.ts` | `src/user/entities/user.entity.ts`                |
+| Services    | `src/<module>/<module>.service.ts`         | `src/auth/auth.service.ts`                        |
+| Controllers | `src/<module>/<module>.controller.ts`      | `src/store/store.controller.ts`                   |
+| Specs       | Colocated `*.spec.ts` or `__tests__/`      | `src/referral/__tests__/referral.service.spec.ts` |
 
 Consult [AGENTS.md](../AGENTS.md) — Canonical Contracts for shared interfaces.
 

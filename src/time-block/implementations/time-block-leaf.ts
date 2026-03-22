@@ -1,9 +1,10 @@
-import { EntityManager, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
+import type { EntityManager } from 'typeorm';
+import { LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
 import { TimeBlock } from '../entities/time-block.entity';
-import { ITimeBlockComponent } from '../interface/time-block-component.interface.ts';
+import type { ITimeBlockComponent } from '../interface/time-block-component.interface.ts';
 import { CashierScheduleAssignment } from 'src/cashier-schedule-assignment/entities/cashier-schedule-assignment.entity';
 import { AssignmentStatus } from 'src/cashier-schedule-assignment/enums/assignment-status.enum';
-import { RecurringScheduleTemplate } from 'src/recurring-schedule-template/entities/recurring-schedule-template.entity';
+import type { RecurringScheduleTemplate } from 'src/recurring-schedule-template/entities/recurring-schedule-template.entity';
 
 export class TimeBlockLeaf implements ITimeBlockComponent {
   constructor(

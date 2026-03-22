@@ -59,6 +59,16 @@ async function getOctokit() {
 }
 
 /**
+ * Get the current authenticated user's login (e.g. "github-actions[bot]" or "my-app[bot]").
+ * @param {Octokit} octokit
+ * @returns {Promise<string>}
+ */
+async function getAuthenticatedLogin(octokit) {
+  const { data } = await octokit.rest.users.getAuthenticated();
+  return data.login;
+}
+
+/**
  * List issue comments (PR comments).
  * @param {Octokit} octokit
  * @param {{ owner: string; repo: string; issueNumber: number }} params
@@ -118,6 +128,7 @@ async function createReview(octokit, { owner, repo, pullNumber, event, body }) {
 
 module.exports = {
   getAuth,
+  getAuthenticatedLogin,
   getOctokit,
   listComments,
   deleteComment,

@@ -11,13 +11,15 @@ Before proceeding, read and internalize:
 - [AGENTS.md](../../AGENTS.md) — TypeScript strictness, anti-patterns
 - [docs/CONVENTIONS.md](../CONVENTIONS.md) — DTOs, error handling, logging
 - [.eslintrc.js](../../.eslintrc.js) — ESLint rules (max-lines, complexity, etc.)
-- [src/_template/](../../src/_template/) — Reference implementation
+- [src/\_template/](../../src/_template/) — Reference implementation
 
 ---
 
 ## Task
 
 Fix all quality issues in `<path-to-file>`. Apply the following fixes.
+
+**Placeholder:** Replace `<path-to-file>` with the actual file path (e.g. `src/store/store.service.ts`).
 
 ### 1. Remove `any` Types
 

@@ -1,4 +1,4 @@
-import { SubscriptionStatus } from '../enums/subscription-status.enum';
+import type { SubscriptionStatus } from '../enums/subscription-status.enum';
 
 export class SubscriptionResponseDto {
   id: string;

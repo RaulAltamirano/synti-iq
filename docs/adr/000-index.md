@@ -45,12 +45,15 @@ What other options were evaluated? Why were they rejected?
 ## Consequences
 
 ### Positive
+
 - ...
 
 ### Negative
+
 - ...
 
 ### Neutral
+
 - ...
 
 ## References
@@ -62,12 +65,12 @@ What other options were evaluated? Why were they rejected?
 
 ## Status Lifecycle
 
-| Status | Meaning |
-|--------|---------|
-| **Proposed** | Under discussion; not yet adopted |
-| **Active** | Accepted and in use |
+| Status         | Meaning                                            |
+| -------------- | -------------------------------------------------- |
+| **Proposed**   | Under discussion; not yet adopted                  |
+| **Active**     | Accepted and in use                                |
 | **Deprecated** | No longer recommended; may still exist in codebase |
-| **Superseded** | Replaced by another ADR (link to the new ADR) |
+| **Superseded** | Replaced by another ADR (link to the new ADR)      |
 
 ---
 
@@ -81,9 +84,9 @@ What other options were evaluated? Why were they rejected?
 
 ## Index of ADRs
 
-| ADR | Title | Status |
-|-----|-------|--------|
-| — | *(No ADRs yet)* | — |
+| ADR                                           | Title                                           | Status |
+| --------------------------------------------- | ----------------------------------------------- | ------ |
+| [0001](0001-ai-router-specialist-strategy.md) | AI Router + Specialist Strategy (Groq + Gemini) | Active |
 
 <!-- When adding ADRs, append rows:
 | [0001](0001-use-typeorm.md) | Use TypeORM as ORM | Active |

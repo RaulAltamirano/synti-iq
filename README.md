@@ -1,5 +1,7 @@
 # SyntiIQ
 
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=RaulAltamirano_synti-iq&metric=coverage)](https://sonarcloud.io/summary/new_code?id=RaulAltamirano_synti-iq)
+
 Enterprise-grade multi-channel e-commerce platform built with NestJS for managing sales, inventory, and operations across multiple channels.
 
 ## Features
@@ -205,6 +207,7 @@ src/
 
 ### Conventions & Guides
 
+- **[docs/DEVELOPMENT_WORKFLOW.md](docs/DEVELOPMENT_WORKFLOW.md)** — Full flow from issue creation to merge (AI-assisted issues, branches, PR, review, merge).
 - **[AGENTS.md](AGENTS.md)** — Agent and developer guide (naming, structure, validation, executable commands).
 - **[docs/CONVENTIONS.md](docs/CONVENTIONS.md)** — Detailed technical conventions (DTOs, Swagger, error handling, tests).
 - **.cursor/rules/** — Cursor rules for context-aware AI assistance.

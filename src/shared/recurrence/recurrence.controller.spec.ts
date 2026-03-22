@@ -1,4 +1,5 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { RecurrenceController } from './recurrence.controller';
 import { RecurrenceService } from './recurrence.service';
 

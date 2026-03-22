@@ -69,13 +69,7 @@ export function WelcomeBusiness({
         <Container style={styles.container}>
           {/* Hero */}
           <Section style={styles.heroSection}>
-            <Img
-              src={logoSrc}
-              alt="Synti-IQ"
-              width={56}
-              height={56}
-              style={styles.logo}
-            />
+            <Img src={logoSrc} alt="Synti-IQ" width={56} height={56} style={styles.logo} />
 
             <Heading style={styles.heroTitle}>Welcome, {firstName}</Heading>
 
@@ -88,9 +82,7 @@ export function WelcomeBusiness({
               Go to dashboard
             </Button>
 
-            <Text style={styles.heroFootnote}>
-              Sign in with the email you used to register.
-            </Text>
+            <Text style={styles.heroFootnote}>Sign in with the email you used to register.</Text>
 
             <Text style={styles.signature}>
               Best regards,

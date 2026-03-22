@@ -2,6 +2,8 @@
 
 Technical conventions for developers and AI agents. Complements [AGENTS.md](../AGENTS.md).
 
+**Summary:** TypeScript strict mode, class-validator DTOs, REST + Swagger, pagination via `PaginatedResponse<T>`, NestJS Logger, observability with `withSpan`, module structure per [src/\_template/](../src/_template/).
+
 ---
 
 ## TypeScript
@@ -17,12 +19,12 @@ Technical conventions for developers and AI agents. Complements [AGENTS.md](../A
 
 ### DTO Types
 
-| Type | File Pattern | Purpose |
-|------|--------------|---------|
-| Create | `create-<entity>.dto.ts` | Required fields for creation |
-| Update | `update-<entity>.dto.ts` | Optional fields; use `PartialType(CreateXDto)` |
-| Filter | `filter-<entity>.dto.ts` | Query params for listings (pagination, sorting) |
-| Response | `*-response.dto.ts` | Response payload shape |
+| Type     | File Pattern             | Purpose                                         |
+| -------- | ------------------------ | ----------------------------------------------- |
+| Create   | `create-<entity>.dto.ts` | Required fields for creation                    |
+| Update   | `update-<entity>.dto.ts` | Optional fields; use `PartialType(CreateXDto)`  |
+| Filter   | `filter-<entity>.dto.ts` | Query params for listings (pagination, sorting) |
+| Response | `*-response.dto.ts`      | Response payload shape                          |
 
 ### Mapped Types
 
@@ -146,13 +148,13 @@ export const storeEndpoints: Record<string, EndpointDocSpec> = {
 
 ## Guards, Pipes, Interceptors, Filters
 
-| Type | File Pattern | Class Pattern |
-|------|--------------|---------------|
-| Guard | `kebab-case.guard.ts` | PascalCase + Guard |
-| Pipe | `kebab-case.pipe.ts` | PascalCase + Pipe |
-| Interceptor | `kebab-case.interceptor.ts` | PascalCase + Interceptor |
-| Exception Filter | `kebab-case.filter.ts` | PascalCase + Filter |
-| Decorator | `kebab-case.decorator.ts` | PascalCase (no suffix) |
+| Type             | File Pattern                | Class Pattern            |
+| ---------------- | --------------------------- | ------------------------ |
+| Guard            | `kebab-case.guard.ts`       | PascalCase + Guard       |
+| Pipe             | `kebab-case.pipe.ts`        | PascalCase + Pipe        |
+| Interceptor      | `kebab-case.interceptor.ts` | PascalCase + Interceptor |
+| Exception Filter | `kebab-case.filter.ts`      | PascalCase + Filter      |
+| Decorator        | `kebab-case.decorator.ts`   | PascalCase (no suffix)   |
 
 Examples: `jwt-auth.guard.ts` → `JwtAuthGuard`, `parse-uuid.pipe.ts` → `ParseUuidPipe`.
 
@@ -161,16 +163,19 @@ Examples: `jwt-auth.guard.ts` → `JwtAuthGuard`, `parse-uuid.pipe.ts` → `Pars
 ## Repository Pattern
 
 **When to use**:
+
 - `@InjectRepository(Entity)`: simple CRUD, no custom query logic.
 - Custom repository: complex queries, domain-specific finders, or abstractions over multiple entities.
 
 **Custom repository**:
+
 - Location: `repositories/` within the module (e.g. `src/user-session/user-session.repository.ts`, `src/cashier-schedule-assignment/repositories/`).
 - Class extends or implements a repository interface.
 - Register in module: `TypeOrmModule.forFeature([Entity])` plus explicit provider if using interface injection.
 - Define interface in `interfaces/` when injecting by contract (e.g. `IInventoryRepository`).
 
 **References**:
+
 - `src/store/store.service.ts` — uses `@InjectRepository` and store repository
 - `src/user-session/user-session.repository.ts` — custom repository
 - `src/cashier-schedule-assignment/repositories/` — custom repository pattern
@@ -216,7 +221,7 @@ Shared utilities: `src/shared/` (pagination, logger, decorators, interceptors, o
 
 **Barrel files**: Use `index.ts` in `fixtures/`, `mocks/`, `constants/` to re-export. Do not barrel-export from `dto/` or `entities/` (avoid circular imports).
 
-**Canonical template**: [src/_template/](../src/_template/) — Reference module with observability, pagination, DTOs, metrics service, `__tests__/` structure, and endpoint docs. Use when creating new modules with pagination, filtered queries, or observability.
+**Canonical template**: [src/\_template/](../src/_template/) — Reference module with observability, pagination, DTOs, metrics service, `__tests__/` structure, and endpoint docs. Use when creating new modules with pagination, filtered queries, or observability.
 
 ---
 
@@ -264,7 +269,7 @@ return this.observabilityService.withSpan(SPAN_NAMES.OPERATION, async span => {
 
 - Define span and attribute names in `constants/<module>-span.constants.ts`
 - Follow OpenTelemetry semconv: `module.operationName`, `module.attribute_name`
-- Reference: [src/_template/constants/template-span.constants.ts](../src/_template/constants/template-span.constants.ts)
+- Reference: [src/\_template/constants/template-span.constants.ts](../src/_template/constants/template-span.constants.ts)
 
 ### Metrics
 
@@ -297,15 +302,15 @@ src/<module>/
 └── utils/
 ```
 
-**Rule**: New modules with domain logic → start with colocated spec; migrate to `__tests__/` when adding 3+ specs or shared fixtures. Reference: [src/_template/__tests__/](../src/_template/__tests__/)
+**Rule**: New modules with domain logic → start with colocated spec; migrate to `__tests__/` when adding 3+ specs or shared fixtures. Reference: [src/\_template/**tests**/](../src/_template/__tests__/)
 
 ### Naming
 
-| Context | Pattern | Example |
-|---------|---------|---------|
-| Colocated | `{source-basename}.spec.ts` | `cache.service.spec.ts`, `create-store.dto.spec.ts` |
-| `__tests__/` | Same pattern, mirror path | `__tests__/referral.service.spec.ts`, `__tests__/utils/format-user-name.util.spec.ts` |
-| e2e | `*.e2e-spec.ts` in `test/` | `test/auth.e2e-spec.ts` |
+| Context      | Pattern                     | Example                                                                               |
+| ------------ | --------------------------- | ------------------------------------------------------------------------------------- |
+| Colocated    | `{source-basename}.spec.ts` | `cache.service.spec.ts`, `create-store.dto.spec.ts`                                   |
+| `__tests__/` | Same pattern, mirror path   | `__tests__/referral.service.spec.ts`, `__tests__/utils/format-user-name.util.spec.ts` |
+| e2e          | `*.e2e-spec.ts` in `test/`  | `test/auth.e2e-spec.ts`                                                               |
 
 - `describe('ServiceName')`, `it('returns X when Y')`
 - Fixtures: `createUserFixture({ email: 'test@example.com' })`
@@ -318,7 +323,7 @@ src/<module>/
 - **Utils**: Pure functions in `utils/` — unit tests required.
 - In tests, `any` is allowed with `// eslint-disable-next-line @typescript-eslint/no-explicit-any` when needed for mocks; prefer typed mocks.
 
-Reference: [src/_template/__tests__/](../src/_template/__tests__/)
+Reference: [src/\_template/**tests**/](../src/_template/__tests__/)
 
 ---
 
@@ -331,7 +336,7 @@ Reference: [src/_template/__tests__/](../src/_template/__tests__/)
 - Levels: `error` (failures), `warn` (recoverable), `log` (info), `debug` (dev only)
 - Error signature: `this.logger.error(message, stack?, context?)` — third param is context string (class name), not an object
 - In catch blocks: log context and stack; never log sensitive data (PII: emails, names, tokens)
-- Reference module: [src/_template/](../src/_template/)
+- Reference module: [src/\_template/](../src/_template/)
 
 ---
 
@@ -358,4 +363,4 @@ Plans are executed by AI coding agents (Cursor, Windsurf, Graviti). They require
 - [AGENTS.md](../AGENTS.md) — Quick reference for agents
 - [PLAN_TEMPLATE.md](PLAN_TEMPLATE.md) — Technical plan creation template
 - [STORE_AND_SUBSCRIPTION_PLANS.md](STORE_AND_SUBSCRIPTION_PLANS.md) — Subscription limits and store behavior
-- [src/_template/__tests__/README.md](../src/_template/__tests__/README.md) — Example test structure
+- [src/\_template/**tests**/README.md](../src/_template/__tests__/README.md) — Example test structure

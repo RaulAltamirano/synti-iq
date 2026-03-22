@@ -1,4 +1,5 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { PermissionGroupController } from './permission-group.controller';
 import { PermissionGroupService } from './permission-group.service';
 

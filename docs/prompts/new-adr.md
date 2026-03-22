@@ -58,12 +58,15 @@ What other options were evaluated? Why were they rejected?
 ## Consequences
 
 ### Positive
+
 - ...
 
 ### Negative
+
 - ...
 
 ### Neutral
+
 - ...
 
 ## References
@@ -85,6 +88,8 @@ What other options were evaluated? Why were they rejected?
 
 ### Example Entry in Index
 
-| ADR | Title | Status |
-|-----|-------|--------|
-| [0001](../adr/0001-use-typeorm.md) | Use TypeORM as ORM | Active |
+| ADR                         | Title       | Status |
+| --------------------------- | ----------- | ------ |
+| [NNNN](NNNN-short-title.md) | Short Title | Active |
+
+Replace `NNNN-short-title.md` with your actual ADR filename (e.g. `0001-use-typeorm.md`).

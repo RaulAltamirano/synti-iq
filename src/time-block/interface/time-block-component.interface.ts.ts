@@ -1,4 +1,4 @@
-import { CashierScheduleAssignment } from 'src/cashier-schedule-assignment/entities/cashier-schedule-assignment.entity';
+import type { CashierScheduleAssignment } from 'src/cashier-schedule-assignment/entities/cashier-schedule-assignment.entity';
 
 export interface ITimeBlockComponent {
   getId(): string;

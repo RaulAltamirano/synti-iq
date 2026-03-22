@@ -1,4 +1,5 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { TemplateMetricsService } from '../../services/template-metrics.service';
 import { ObservabilityService } from 'src/shared/observability/observability.service';
 

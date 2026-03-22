@@ -140,9 +140,9 @@ Then: `yarn issue:create docs/issues/store-stats-endpoint.md`
 
 ## Real requirement examples
 
-| Requirement                                  | Prompt file                                                                            |
-| -------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Translate docs to English + latest standards | [requirement-translate-docs-to-english.md](./requirement-translate-docs-to-english.md) |
+| Requirement           | Prompt file                                            |
+| --------------------- | ------------------------------------------------------ |
+| Canonical / reference | [requirement-canonical.md](./requirement-canonical.md) |
 
 ---
 

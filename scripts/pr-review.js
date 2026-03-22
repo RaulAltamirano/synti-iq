@@ -17,6 +17,7 @@ const path = require('path');
 const { callGemini, condenseDiff, TOKEN_LIMITS } = require('./lib/ai-agents');
 const {
   getAuth,
+  getAuthenticatedLogin,
   listComments,
   deleteComment,
   createComment,
@@ -277,14 +278,15 @@ ${diff}
     ].join('\n');
   }
 
-  // 4. Delete previous bot comments (Octokit)
+  // 4. Delete previous bot comments (only our own — App can't delete github-actions comments)
+  const currentLogin = await getAuthenticatedLogin(octokit);
   const comments = await listComments(octokit, {
     owner,
     repo: repoName,
     issueNumber: prNumber,
   });
   for (const c of comments) {
-    if (c.body && c.body.startsWith(BOT_COMMENT_PREFIX)) {
+    if (c.body && c.body.startsWith(BOT_COMMENT_PREFIX) && c.user?.login === currentLogin) {
       await deleteComment(octokit, { owner, repo: repoName, commentId: c.id });
     }
   }

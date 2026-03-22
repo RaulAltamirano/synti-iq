@@ -1,4 +1,4 @@
-import { ReferralUsage } from '../../entities/referral_usage.entity';
+import type { ReferralUsage } from '../../entities/referral_usage.entity';
 
 export interface ReferralUsageFixtureOverrides {
   id?: string;

@@ -1,4 +1,4 @@
-import { ResponseSpec } from './interfaces/endpoint-doc-spec.interface';
+import type { ResponseSpec } from './interfaces/endpoint-doc-spec.interface';
 
 const API_ERROR_SCHEMA = { $ref: '#/components/schemas/ApiErrorDto' };
 

@@ -1,4 +1,5 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { CashierScheduleAssignmentController } from './cashier-schedule-assignment.controller';
 import { CashierScheduleAssignmentService } from './cashier-schedule-assignment.service';
 
