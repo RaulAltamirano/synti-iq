@@ -48,7 +48,11 @@
     "multer": "2.1.1",
     "serialize-javascript": "7.0.3",
     "flatted": "3.4.2",
-    "undici": "6.24.0"
+    "undici": "6.24.0",
+    "eslint/**/ajv": "6.14.0",
+    "@nestjs/cli/**/ajv": "8.18.0",
+    "fork-ts-checker-webpack-plugin/**/ajv": "6.14.0",
+    "qs": "6.14.2"
   },
   "dependencies": {
     "@elastic/elasticsearch": "^8.19.1",
