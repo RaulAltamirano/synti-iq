@@ -222,13 +222,6 @@ ${diff}
 
   let parsed = parseGeminiResponse(textPart);
 
-  // Truncate Convention Analysis if too verbose (GitHub limit 65536; target ~4k for readability)
-  const MAX_CONVENTION_CHARS = 1200;
-  if (parsed.conventionAnalysis.length > MAX_CONVENTION_CHARS) {
-    parsed.conventionAnalysis =
-      parsed.conventionAnalysis.slice(0, MAX_CONVENTION_CHARS) + '\n\n...[truncated for brevity]';
-  }
-
   // GitHub: professional review format. Verdict first, then findings. Hidden blocks for Discord.
   const sections = [
     ['Verdict', parsed.verdict],

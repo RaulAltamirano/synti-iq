@@ -1,43 +1,43 @@
-# CI/CD — Antes y Después
+# CI/CD — Before and After
 
-Documentación breve del audit de pipeline y cambios implementados.
-
----
-
-## Calificación
-
-| Fase        | Score   | Veredicto                                                                             |
-| ----------- | ------- | ------------------------------------------------------------------------------------- |
-| **Antes**   | 72/100  | Brechas críticas: sin audit en pr-review, sin paralelismo, tests de scripts excluidos |
-| **Después** | ~79/100 | Audit en ambas workflows, paralelismo, suite completa, branch protection documentada  |
+Brief documentation of the pipeline audit and implemented changes.
 
 ---
 
-## Antes
+## Scoring
 
-- **Completitud:** 14/20 — Audit solo en ci.yml; scripts Jest fuera de CI
-- **Velocidad:** 12/20 — Un solo job secuencial
-- **Coverage:** 18/20 — Threshold 70% ok
-- **Seguridad:** 18/25 — Audit ausente en pr-review
-- **Fiabilidad:** 10/15 — Sin guía de branch protection
-
-**Gaps críticos:** pr-review no ejecutaba `yarn audit`; `test:cov` no corría `jest --config scripts/jest.config.js`.
+| Phase      | Score   | Verdict                                                                        |
+| ---------- | ------- | ------------------------------------------------------------------------------ |
+| **Before** | 72/100  | Critical gaps: no audit in pr-review, no parallelism, script tests excluded    |
+| **After**  | ~79/100 | Audit in both workflows, parallelism, full suite, branch protection documented |
 
 ---
 
-## Después
+## Before
 
-| Cambio                                        | Archivo                           |
-| --------------------------------------------- | --------------------------------- |
-| Audit en pr-review                            | `.github/workflows/pr-review.yml` |
-| test:cov incluye scripts                      | `package.json`                    |
-| Jobs paralelos (quality-fast + quality-build) | `.github/workflows/ci.yml`        |
-| Recomendaciones branch protection             | `docs/PR_REVIEW_PIPELINE.md`      |
+- **Completeness:** 14/20 — Audit only in ci.yml; Jest scripts outside CI
+- **Speed:** 12/20 — Single sequential job
+- **Coverage:** 18/20 — 70% threshold ok
+- **Security:** 18/25 — Audit missing in pr-review
+- **Reliability:** 10/15 — No branch protection guide
 
-- **Completitud:** ~16/20 — Audit + suite completa
-- **Velocidad:** ~16/20 — quality-fast y quality-build en paralelo
-- **Seguridad:** ~21/25 — Audit en ambas workflows
+**Critical gaps:** pr-review did not run `yarn audit`; `test:cov` did not run `jest --config scripts/jest.config.js`.
 
 ---
 
-## Última calificación: 72 → ~79/100
+## After
+
+| Change                                       | File                              |
+| -------------------------------------------- | --------------------------------- |
+| Audit in pr-review                           | `.github/workflows/pr-review.yml` |
+| test:cov includes scripts                    | `package.json`                    |
+| Parallel jobs (quality-fast + quality-build) | `.github/workflows/ci.yml`        |
+| Branch protection recommendations            | `docs/PR_REVIEW_PIPELINE.md`      |
+
+- **Completeness:** ~16/20 — Audit + full suite
+- **Speed:** ~16/20 — quality-fast and quality-build in parallel
+- **Security:** ~21/25 — Audit in both workflows
+
+---
+
+## Final score: 72 → ~79/100
