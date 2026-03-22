@@ -26,6 +26,8 @@ const {
 const MAX_DIFF_LINES = 2500;
 const MAX_DIFF_BYTES = 60 * 1024;
 const BOT_COMMENT_PREFIX = '🤖 AI Technical Assistant - Review';
+/** GitHub API limit 65536; use 65000 for safe margin. */
+const GITHUB_COMMENT_MAX = 65000;
 
 async function main() {
   const repo = process.env.GITHUB_REPOSITORY;
@@ -222,6 +224,12 @@ ${diff}
 
   let parsed = parseGeminiResponse(textPart);
 
+  // Ensure comment stays under GitHub API limit (65536)
+  if (parsed.conventionAnalysis.length > 8000) {
+    parsed.conventionAnalysis =
+      parsed.conventionAnalysis.slice(0, 8000) + '\n\n...[truncated for length]';
+  }
+
   // GitHub: professional review format. Verdict first, then findings. Hidden blocks for Discord.
   const sections = [
     ['Verdict', parsed.verdict],
@@ -232,7 +240,7 @@ ${diff}
     sections.push(['SonarCloud', sonarStats]);
   }
   sections.push(['Rating', parsed.rating + '/5']);
-  const githubComment = [
+  let githubComment = [
     BOT_COMMENT_PREFIX,
     '',
     ...sections.flatMap(([title, body]) => [`**${title}**`, body, '']),
@@ -241,6 +249,33 @@ ${diff}
     `<!-- DISCORD_VERDICT:${String(parsed.verdict).replace(/-->/g, '')} -->`,
     `<!-- DISCORD_SUMMARY:${[parsed.conventionAnalysis, parsed.security, parsed.verdict].join('\n---\n').replace(/-->/g, '')} -->`,
   ].join('\n');
+
+  if (githubComment.length > GITHUB_COMMENT_MAX) {
+    const excess = githubComment.length - GITHUB_COMMENT_MAX;
+    const truncateSuffix = '\n\n...[truncated for GitHub limit]';
+    let findings = parsed.conventionAnalysis
+      .replace(/\n\n\.\.\.\[truncated for length\]\s*$/, '')
+      .replace(/\n\n\.\.\.\[truncated for GitHub limit\]\s*$/, '');
+    findings =
+      findings.slice(0, Math.max(0, findings.length - excess - truncateSuffix.length)) +
+      truncateSuffix;
+    const sections2 = [
+      ['Verdict', parsed.verdict],
+      ['Findings', findings],
+      ['Security', parsed.security],
+    ];
+    if (sonarStats) sections2.push(['SonarCloud', sonarStats]);
+    sections2.push(['Rating', parsed.rating + '/5']);
+    githubComment = [
+      BOT_COMMENT_PREFIX,
+      '',
+      ...sections2.flatMap(([t, b]) => [`**${t}**`, b, '']),
+      `<!-- DISCORD_ROAST:${String(parsed.roast).replace(/-->/g, '')} -->`,
+      `<!-- DISCORD_RATING:${parsed.rating} -->`,
+      `<!-- DISCORD_VERDICT:${String(parsed.verdict).replace(/-->/g, '')} -->`,
+      `<!-- DISCORD_SUMMARY:${[findings, parsed.security, parsed.verdict].join('\n---\n').replace(/-->/g, '')} -->`,
+    ].join('\n');
+  }
 
   // 4. Delete previous bot comments (Octokit)
   const comments = await listComments(octokit, {
@@ -255,12 +290,22 @@ ${diff}
   }
 
   // 5. Post new comment (Octokit — bot identity when GH_APP_* set)
-  await createComment(octokit, {
-    owner,
-    repo: repoName,
-    issueNumber: prNumber,
-    body: githubComment,
-  });
+  try {
+    await createComment(octokit, {
+      owner,
+      repo: repoName,
+      issueNumber: prNumber,
+      body: githubComment,
+    });
+  } catch (err) {
+    console.error('Failed to post PR comment:', err.message);
+    if (err.message && err.message.includes('too long')) {
+      console.error(
+        'Comment exceeded GitHub limit (65536 chars). Consider reducing maxTokens or Findings length.',
+      );
+    }
+    process.exit(1);
+  }
 
   // 6. Approve PR when verdict passes (Octokit can approve; branch protection may still require manual merge)
   const isApproved = /✅\s*Approved|Approved\s*[.—]|^Approved\b/i.test(parsed.verdict);
