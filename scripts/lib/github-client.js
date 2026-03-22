@@ -60,12 +60,20 @@ async function getOctokit() {
 
 /**
  * Get the current authenticated user's login (e.g. "github-actions[bot]" or "my-app[bot]").
+ * Returns null when the API is not accessible (e.g. GitHub App installation tokens).
  * @param {Octokit} octokit
- * @returns {Promise<string>}
+ * @returns {Promise<string|null>}
  */
 async function getAuthenticatedLogin(octokit) {
-  const { data } = await octokit.rest.users.getAuthenticated();
-  return data.login;
+  try {
+    const { data } = await octokit.rest.users.getAuthenticated();
+    return data.login;
+  } catch (err) {
+    if (err?.status === 403 || err?.response?.data?.message?.includes('integration')) {
+      return null;
+    }
+    throw err;
+  }
 }
 
 /**

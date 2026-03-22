@@ -279,15 +279,18 @@ ${diff}
   }
 
   // 4. Delete previous bot comments (only our own — App can't delete github-actions comments)
+  // Note: GitHub App tokens cannot call GET /user (403); currentLogin is null → skip delete
   const currentLogin = await getAuthenticatedLogin(octokit);
-  const comments = await listComments(octokit, {
-    owner,
-    repo: repoName,
-    issueNumber: prNumber,
-  });
-  for (const c of comments) {
-    if (c.body && c.body.startsWith(BOT_COMMENT_PREFIX) && c.user?.login === currentLogin) {
-      await deleteComment(octokit, { owner, repo: repoName, commentId: c.id });
+  if (currentLogin) {
+    const comments = await listComments(octokit, {
+      owner,
+      repo: repoName,
+      issueNumber: prNumber,
+    });
+    for (const c of comments) {
+      if (c.body && c.body.startsWith(BOT_COMMENT_PREFIX) && c.user?.login === currentLogin) {
+        await deleteComment(octokit, { owner, repo: repoName, commentId: c.id });
+      }
     }
   }
 
