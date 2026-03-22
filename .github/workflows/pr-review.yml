@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
 
       - name: Cache node_modules
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        uses: actions/cache@v5
         with:
           path: node_modules
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
@@ -63,7 +63,7 @@ jobs:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
 
       - name: Cache node_modules
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        uses: actions/cache@v5
         with:
           path: node_modules
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
@@ -71,7 +71,7 @@ jobs:
             ${{ runner.os }}-yarn-
 
       - name: Cache Jest
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        uses: actions/cache@v5
         with:
           path: .jest-cache
           key: ${{ runner.os }}-jest-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('src/**/*.ts') }}
@@ -97,7 +97,7 @@ jobs:
         run: yarn test:cov
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@26f4bf8c2fe23f702cb64e1bb5e61dfa35b2cb3f
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: coverage/
@@ -148,7 +148,7 @@ jobs:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
 
       - name: Cache node_modules
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        uses: actions/cache@v5
         with:
           path: node_modules
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
@@ -173,6 +173,7 @@ jobs:
           GITHUB_EVENT_PATH: ${{ github.event_path }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: node scripts/pr-review.js
 
@@ -324,6 +325,7 @@ jobs:
         if: github.event.pull_request != null
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -405,6 +407,7 @@ jobs:
       - name: Generate roast with burla (why closed/merged)
         id: genroast
         env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
