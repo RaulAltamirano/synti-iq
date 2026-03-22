@@ -1,6 +1,6 @@
 # Issue Drafts
 
-Store issue drafts here before creating them on GitHub. Drafts are local-only and not committed (see root `.gitignore`).
+Store issue drafts here before creating them on GitHub. Drafts are local-only and not committed. Exclusion is handled by `docs/issues/.gitignore` (`.md` files with whitelisted exceptions) and root `.gitignore` (`draft*.md`).
 
 ## Language
 
@@ -8,13 +8,21 @@ Store issue drafts here before creating them on GitHub. Drafts are local-only an
 
 ## Quick Start
 
-1. **Define requirement** — Use [docs/prompts/new-issue.md](../prompts/new-issue.md) or a task-specific prompt (e.g. `requirement-translate-docs-to-english.md`).
-2. **Generate with AI** — Paste the prompt into Gemini, ChatGPT, Claude, or Cursor. Copy the output.
+1. **Define requirement** — Use [docs/prompts/new-issue.md](../prompts/new-issue.md) or a task-specific prompt (e.g. [requirement-canonical.md](../prompts/requirement-canonical.md)).
+2. **Generate with AI** — Paste the prompt into Gemini, ChatGPT, Claude, or Cursor. Review the AI output before saving. Copy the output.
 3. **Save draft** — Save the AI output to `docs/issues/<descriptive-name>.md` (e.g. `docs/issues/store-stats-endpoint.md`).
 4. **Create on GitHub** — Run:
    ```bash
    yarn issue:create docs/issues/store-stats-endpoint.md
    ```
+
+### Before creating
+
+Before `yarn issue:create`, verify:
+
+- [ ] TITLE is present and not a placeholder
+- [ ] Acceptance criteria are binary (yes/no outcomes)
+- [ ] Out of scope is explicit (if applicable)
 
 ## Commands
 
@@ -40,7 +48,7 @@ To have the **bot** create issues (instead of your user account), configure a Gi
 
 **Flow:** When all three App vars are set (either naming), the script uses the REST API as the App; otherwise it falls back to `gh` CLI (or `GH_TOKEN`).
 
-**App permissions:** Issues (read & write), Metadata (read). See [GitHub App setup](https://docs.github.com/en/apps/creating-github-apps/setting-up-a-github-app).
+**App permissions:** Issues (read & write), Metadata (read) for issue creation. For PR comments and approval (pr-review.js), also add **Pull requests (read & write)**. See [GitHub App setup](https://docs.github.com/en/apps/creating-github-apps/setting-up-a-github-app).
 
 ## Issue Types
 
@@ -83,7 +91,15 @@ assignee: username  (optional)
 ...
 ```
 
-If `LABELS` is omitted, the script infers from the title: `docs`→documentation, `feat`→enhancement, `fix`→bug, `chore`→chore.
+**Label inference:** If `LABELS` is omitted, the script infers a label from the **conventional commit type** in the title: `feat`→enhancement, `fix`→bug, `docs`→documentation, `chore`→chore. Type-prefixed titles like `[TASK]` or `[STORY]` do not trigger inference — include `LABELS` explicitly in those cases.
+
+### Title conventions
+
+Use the type prefix (`[TASK]`, `[STORY]`, `[BUG]`, etc.) — matches [TEMPLATES.md](./TEMPLATES.md).
+
+| Format                   | Example                   |
+| ------------------------ | ------------------------- |
+| **Type prefix** `[TYPE]` | `[TASK] Audit auth roles` |
 
 ## Draft Quality Standards
 
@@ -99,12 +115,26 @@ Sections vary by type. See [TEMPLATES.md](./TEMPLATES.md) for per-type structure
 
 **Acceptance criteria:** Binary outcomes only. Use Given-When-Then for complex flows. Include happy path, edge cases, error states. Avoid vague language ("should work correctly" → "GET /users returns 403 when caller lacks manage_users permission").
 
-**Example drafts:** [auth-roles-decorators-audit.md](./auth-roles-decorators-audit.md), [docs/prompts/new-issue.md](../prompts/new-issue.md) (expected output).
+**Creating directly on GitHub?** Follow [TEMPLATES.md](./TEMPLATES.md) and the Draft Quality Standards above.
+
+**Example drafts:** [ci-cd-pipeline-review-task.md](./ci-cd-pipeline-review-task.md) (canonical TASK, committed), [store-stats-endpoint-example.md](./store-stats-endpoint-example.md) (canonical STORY, committed), [docs/prompts/new-issue.md](../prompts/new-issue.md) (expected output).
+
+**Canonical vs ad-hoc:** The whitelist in `docs/issues/.gitignore` keeps canonical examples (e.g. `ci-cd-pipeline-review-task.md`, `store-stats-endpoint-example.md`) in the repo. All other draft files are local-only and not committed.
+
+### Troubleshooting
+
+| Error                                            | Cause                                                             | Fix                                                                                                |
+| ------------------------------------------------ | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| No TITLE found                                   | Draft missing `TITLE:` or `title:` in frontmatter                 | Add `TITLE: [TYPE] ...` or YAML `title:` before `---`                                              |
+| Title appears to be a placeholder                | TITLE contains `[replace]`, `[title]`, etc.                       | Use a real title: `[TASK] ...` or `feat(scope): ...`                                               |
+| gh not installed                                 | GitHub CLI missing                                                | Install from [cli.github.com](https://cli.github.com/) or configure GitHub App credentials         |
+| Draft has wrong template (TASK instead of STORY) | File did not exist; script copied `draft-template.md` (TASK-only) | Create the file first with correct structure (from TEMPLATES.md) or paste AI output before running |
 
 ## References
 
 - [draft-template.md](./draft-template.md) — Default template (TASK)
 - [TEMPLATES.md](./TEMPLATES.md) — All five type-specific templates
+- [ISSUE_FLOW_AUDIT_REPORT.md](./ISSUE_FLOW_AUDIT_REPORT.md) — Audit of this flow (methodology: docs/prompts/audit-requirement.md)
 - [DEVELOPMENT_WORKFLOW.md](../DEVELOPMENT_WORKFLOW.md) — Full flow: Issue → Branch → PR → Merge
 - [prompts/new-issue.md](../prompts/new-issue.md) — AI prompt for issue creation
 - [PLAN_TEMPLATE.md](../PLAN_TEMPLATE.md) — For complex features requiring implementation plans

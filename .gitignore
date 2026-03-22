@@ -16,6 +16,7 @@ lerna-debug.log*
 .DS_Store
 
 /coverage
+/coverage-scripts
 /.nyc_output
 
 /.idea
@@ -59,6 +60,7 @@ keys/
 
 # Cache directories
 .cache
+.jest-cache
 .parcel-cache
 .eslintcache
 *.tsbuildinfo
@@ -68,3 +70,8 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# Issue drafts (ephemeral, local-only)
+issue-draft.md
+docs/issues/draft*.md
+!docs/issues/draft-template.md

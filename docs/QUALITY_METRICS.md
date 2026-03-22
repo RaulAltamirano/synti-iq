@@ -8,31 +8,31 @@ Thresholds, measurement commands, and review triggers for code quality.
 
 ## Thresholds Table
 
-| Metric | Minimum | Target | Measurement |
-|--------|---------|--------|-------------|
-| Test coverage (statements) | 70% | 80% | `yarn test:cov` |
-| `any` in production code | 0 | 0 | ESLint, manual review |
-| ESLint errors | 0 | 0 | `yarn lint` |
-| ESLint warnings | 0 | 0 | `yarn lint` (target: upgrade key rules to error) |
-| File length (production) | ≤ 400 | ≤ 300 | ESLint `max-lines` |
-| File length (spec) | ≤ 300 | ≤ 200 | ESLint `max-lines` override |
-| Cyclomatic complexity | ≤ 10 | ≤ 8 | ESLint `complexity` |
-| Build time | — | < 60s | `yarn build` |
-| Test run time | — | < 120s | `yarn test` |
+| Metric                     | Minimum | Target | Measurement                                      |
+| -------------------------- | ------- | ------ | ------------------------------------------------ |
+| Test coverage (statements) | 70%     | 80%    | `yarn test:cov`                                  |
+| `any` in production code   | 0       | 0      | ESLint, manual review                            |
+| ESLint errors              | 0       | 0      | `yarn lint`                                      |
+| ESLint warnings            | 0       | 0      | `yarn lint` (target: upgrade key rules to error) |
+| File length (production)   | ≤ 400   | ≤ 300  | ESLint `max-lines`                               |
+| File length (spec)         | ≤ 300   | ≤ 200  | ESLint `max-lines` override                      |
+| Cyclomatic complexity      | ≤ 10    | ≤ 8    | ESLint `complexity`                              |
+| Build time                 | —       | < 60s  | `yarn build`                                     |
+| Test run time              | —       | < 120s | `yarn test`                                      |
 
 ---
 
 ## Measurement Commands
 
-| Command | Purpose |
-|---------|---------|
-| `yarn build` | TypeScript compilation; fails on type errors |
-| `yarn lint` | ESLint; reports errors and warnings |
-| `yarn lint:check` | ESLint without --fix |
-| `yarn test` | Jest unit tests |
-| `yarn test:cov` | Jest with coverage report (coverage/ folder) |
-| `yarn format:check` | Prettier; fails if files need formatting |
-| `yarn quality` | build + lint + test + format:check |
+| Command             | Purpose                                      |
+| ------------------- | -------------------------------------------- |
+| `yarn build`        | TypeScript compilation; fails on type errors |
+| `yarn lint`         | ESLint; reports errors and warnings          |
+| `yarn lint:check`   | ESLint without --fix                         |
+| `yarn test`         | Jest unit tests                              |
+| `yarn test:cov`     | Jest with coverage report (coverage/ folder) |
+| `yarn format:check` | Prettier; fails if files need formatting     |
+| `yarn quality`      | build + lint + test + format:check           |
 
 ---
 
@@ -60,10 +60,13 @@ A quality review is triggered when:
 
 ## Coverage Configuration
 
-Jest coverage is configured in `package.json` under `jest.collectCoverageFrom`:
+Jest uses **v8 coverage** (`coverageProvider: 'v8'`) — no babel instrumentation, faster runs.
 
-- Pattern: `**/*.(t|j)s` (excludes .spec.ts by default in many setups)
-- Output: `coverage/` directory
+`test:cov` runs src + scripts tests, merges coverage into one report:
+
+- **src** → `coverage/` (default)
+- **scripts** → `coverage-scripts/` → merged into `coverage/` via `scripts/merge-coverage.js`
+- Output: `coverage/coverage-final.json`, `coverage/lcov.info`
 - View: Open `coverage/lcov-report/index.html` after `yarn test:cov`
 
 ---
