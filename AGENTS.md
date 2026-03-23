@@ -29,12 +29,14 @@ Before generating or modifying code in a module:
 
 ## Executable Commands (Run First)
 
-| Command             | Purpose                              |
-| ------------------- | ------------------------------------ |
-| `yarn build`        | Verify compilation after changes     |
-| `yarn lint`         | Lint and auto-fix; run before commit |
-| `yarn test`         | Run unit tests                       |
-| `yarn format:check` | Verify Prettier formatting           |
+| Command                 | Purpose                                                                          |
+| ----------------------- | -------------------------------------------------------------------------------- |
+| `yarn build`            | Verify compilation after changes                                                 |
+| `yarn lint`             | Lint and auto-fix; run before commit                                             |
+| `yarn test`             | Run unit tests                                                                   |
+| `yarn format:check`     | Verify Prettier formatting                                                       |
+| `yarn validate:commits` | Validate commits (CI)                                                            |
+| `npm version patch`     | Manual release fallback — see [docs/RELEASE_PROCESS.md](docs/RELEASE_PROCESS.md) |
 
 ---
 
@@ -210,6 +212,12 @@ See [docs/CONVENTIONS.md](docs/CONVENTIONS.md) for full specs:
 2. **Colocated spec vs **tests**/?** → 1–2 specs: colocated. 3+ specs or shared fixtures/mocks: `__tests__/`.
 3. **New shared utility?** → If used by 2+ modules: `src/shared/`. If module-specific: `src/<module>/utils/`.
 4. **Validation in service vs DTO?** → Format and presence: DTO with class-validator. Business rules (e.g. "store must be open"): service.
+
+---
+
+## Architecture Decisions (ADRs)
+
+Create an ADR when: (a) introducing new technology or dependency, (b) changing a documented pattern, (c) making a multi-module decision. Use [docs/prompts/adr-checklist.md](docs/prompts/adr-checklist.md) to decide. Template: [docs/adr/000-index.md](docs/adr/000-index.md).
 
 ---
 

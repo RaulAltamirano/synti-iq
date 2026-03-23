@@ -18,12 +18,19 @@
 
 See [DEFINITION_OF_DONE.md](../DEFINITION_OF_DONE.md) for full checklist.
 
+- [ ] **PR title** follows Conventional Commits: `type(scope): description` (max 72 chars)
+- [ ] **Link issue:** Body includes `Closes #N` or `Fixes #N` to auto-close on merge
 - [ ] Code passes `yarn quality` (build, lint, test, format:check)
 - [ ] No `any` in production code; explicit return types on service methods
 - [ ] Unit tests for new/changed business logic
 - [ ] Swagger docs updated for API changes
 - [ ] No unresolved TODO comments
-- [ ] ADR created if architectural decision was made ([docs/adr/000-index.md](../docs/adr/000-index.md))
+- [ ] **ADR created** if architectural decision was made ([docs/adr/000-index.md](../docs/adr/000-index.md)) — checkbox below if applicable
+
+## Architectural Decision
+
+- [ ] No architectural decision in this PR
+- [ ] ADR created and linked: [docs/adr/NNNN-short-title.md](../docs/adr/)
 
 ## AI Assistance Disclosure
 

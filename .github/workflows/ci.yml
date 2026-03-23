@@ -30,6 +30,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          fetch-depth: 0
 
       - name: Cache node_modules
         uses: actions/cache@v5
@@ -50,6 +52,19 @@ jobs:
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
+
+      - name: Secrets scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate commit messages
+        if: github.event_name == 'pull_request'
+        run: npx commitlint --from origin/${{ github.event.pull_request.base.ref }} --to HEAD
+
+      - name: Validate PR title
+        if: github.event_name == 'pull_request'
+        run: echo "${{ github.event.pull_request.title }}" | npx commitlint
 
       - name: Audit dependencies
         run: yarn audit --level high
