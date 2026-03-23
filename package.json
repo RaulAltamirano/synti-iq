@@ -34,6 +34,7 @@
     "seed:users": "ts-node -r tsconfig-paths/register src/database/scripts/seed-runner.ts users",
     "seed:subscription_plans": "ts-node -r tsconfig-paths/register src/database/scripts/seed-runner.ts subscription_plans",
     "postman:build": "node postman/build.js",
+    "mail:generate-logo": "rsvg-convert -w 168 -h 168 src/mail/assets/logo.svg -o src/mail/assets/logo.png",
     "quality": "yarn build && yarn lint && yarn test && yarn format:check",
     "pre-pr": "yarn quality"
   },
