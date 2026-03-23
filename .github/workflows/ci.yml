@@ -20,9 +20,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Least privilege: contents: read for checkout only; no write access needed
+# Least privilege: contents: read for checkout; pull-requests: read for Discord thread-per-PR
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   quality-fast:
@@ -141,6 +142,16 @@ jobs:
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
 
+      - name: Resolve Discord thread for PR
+        id: thread
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          THREAD=$(node scripts/get-pr-discord-thread.js 2>/dev/null || true)
+          echo "id=${THREAD:-}" >> $GITHUB_OUTPUT
+
       - name: Compute workflow duration
         id: duration
         env:
@@ -161,6 +172,7 @@ jobs:
         continue-on-error: true
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DISCORD_THREAD_ID: ${{ steps.thread.outputs.id }}
           WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           WORKFLOW_DURATION: ${{ steps.duration.outputs.duration }}
           EVENT_NAME: ${{ github.event_name }}
@@ -179,6 +191,7 @@ jobs:
         continue-on-error: true
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DISCORD_THREAD_ID: ${{ steps.thread.outputs.id }}
           WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           WORKFLOW_DURATION: ${{ steps.duration.outputs.duration }}
           EVENT_NAME: ${{ github.event_name }}

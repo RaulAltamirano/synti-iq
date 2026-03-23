@@ -5,6 +5,8 @@
  * Uses Router+Specialist: Groq (orchestrator) for summarizations, Gemini fallback. See docs/adr/0001-ai-router-specialist-strategy.md
  * Env: DISCORD_WEBHOOK, PR_*, ISSUE_*, SUMMARY_TEXT, RATING, SONAR_*
  * Optional: GROQ_API_KEY (primary), GEMINI_API_KEY (fallback), WORKFLOW_RUN_URL, PR_BASE_BRANCH
+ * Always creates one thread per PR (webhook must be in a forum channel). Thread ID stored in PR comment.
+ * Env: GITHUB_TOKEN, GITHUB_REPOSITORY (auto-set in Actions)
  */
 
 const {
@@ -18,6 +20,7 @@ const {
   FIELD_VALUE_LIMIT,
 } = require('./discord-utils');
 const { summarizeIssue, summarizeFindings } = require('./lib/ai-agents');
+const { getPrThreadId, savePrThreadId } = require('./lib/discord-pr-thread');
 
 async function main() {
   const webhook = process.env.DISCORD_WEBHOOK;
@@ -125,7 +128,32 @@ async function main() {
     ...(fields.length > 0 && { fields }),
   };
 
-  await sendEmbed(webhook, embed);
+  // Resolve thread: from PR comments, or create new (always use forum — one thread per PR)
+  const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
+  const repo = process.env.GITHUB_REPOSITORY || '';
+  const prNum = parseInt(process.env.PR_NUMBER || '0', 10) || null;
+  let threadId = (process.env.DISCORD_THREAD_ID || '').trim() || null;
+
+  if (token && repo && prNum) {
+    const stored = await getPrThreadId(token, repo, prNum);
+    if (stored) threadId = stored;
+  }
+
+  if (threadId) {
+    await sendEmbed(webhook, embed, { threadId });
+  } else if (token && repo && prNum) {
+    const threadName = `PR #${prNumber}: ${prTitle}`.slice(0, 100);
+    const msg = await sendEmbed(webhook, embed, {
+      extraPayload: { thread_name: threadName },
+      wait: true,
+    });
+    const createdId = msg?.channel_id;
+    if (createdId) {
+      await savePrThreadId(token, repo, prNum, String(createdId), prUrl);
+    }
+  } else {
+    await sendEmbed(webhook, embed);
+  }
   console.log('Discord notification sent');
 }
 

@@ -4,6 +4,7 @@
  * Env: DISCORD_WEBHOOK
  * Optional: WORKFLOW_RUN_URL, WORKFLOW_DURATION, PR_NUMBER, PR_TITLE, PR_URL,
  *   PR_AUTHOR, PR_BRANCH, BRANCH, COMMIT_SHA, COMMIT_MSG, EVENT_NAME
+ * Optional: DISCORD_THREAD_ID (from PR comment when thread-per-PR)
  */
 
 const {
@@ -63,7 +64,8 @@ async function main() {
   );
   if (workflowField) embed.fields.push(workflowField);
 
-  await sendEmbed(webhook, embed);
+  const threadId = (process.env.DISCORD_THREAD_ID || '').trim() || undefined;
+  await sendEmbed(webhook, embed, threadId ? { threadId } : {});
   console.log('Discord CI failed notification sent');
 }
 

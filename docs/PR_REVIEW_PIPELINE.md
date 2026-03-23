@@ -113,8 +113,10 @@ The `sonar-project.properties` file in the project root defines:
 | `scripts/pr-review.js`                    | Extracts diff, condenses via Groq if large, Gemini reviews, posts comment                                 |
 | `scripts/lib/ai-agents.js`                | Router+Specialist: Groq (orchestrator), Gemini (specialist)                                               |
 | `scripts/discord-notify.js`               | Sends embed to Discord when PR is closed                                                                  |
-| `scripts/discord-notify-new-pr.js`        | Sends notification to Discord when PR is opened or updated                                                |
+| `scripts/discord-notify-new-pr.js`        | Sends notification to Discord when PR is opened or updated; creates thread when `DISCORD_USE_FORUM=true`  |
 | `scripts/discord-notify-commit.js`        | Sends commit + comments to Discord on each push (synchronize)                                             |
+| `scripts/lib/discord-pr-thread.js`        | Resolves or persists Discord thread ID per PR (stored in PR comment)                                      |
+| `scripts/get-pr-discord-thread.js`        | Outputs thread ID for PR (used by CI workflow)                                                            |
 | `scripts/discord-notify-dev-commit.js`    | Sends notification when commit is pushed directly to `dev`                                                |
 | `.github/workflows/dev-commit-notify.yml` | Discord notification on push to dev branch                                                                |
 | `scripts/roast-prompt.config.js`          | Roast config (language, styles, prompt) — easy to customize                                               |
@@ -194,10 +196,15 @@ All Discord embeds include a **Workflow** field with a link to the GitHub Action
 
 **Discord job behavior:** Discord jobs use `continue-on-error: true` so that a webhook failure (invalid URL, rate limit, etc.) does not block PR merge. Failed notifications are visible in the workflow logs; check the Actions run if Discord does not receive a message.
 
-**Thread options (optional):**
+**Thread per PR (required):**
 
-- `DISCORD_THREAD_ID` (secret): Post all commit updates to this thread. Create a thread in Discord, enable Developer Mode, right-click the thread → Copy Thread ID.
-- `DISCORD_USE_FORUM` (variable, `true`): If the webhook is in a **forum channel**, each commit creates a new forum post (thread). Set in **Settings > Variables**.
+The webhook **must** be in a Discord **forum channel**. When a PR is opened:
+
+1. The first notification creates a Discord thread with name `PR #N: Title`.
+2. The thread ID is stored in a PR comment (`<!-- DISCORD_THREAD_ID:... -->`).
+3. All subsequent notifications (CI, AI review, new commits, PR closed) go to that same thread.
+
+**Fallback:** `DISCORD_THREAD_ID` (secret) — single thread for all PRs (legacy). Create a thread in Discord, enable Developer Mode, right-click → Copy Thread ID.
 
 ---
 

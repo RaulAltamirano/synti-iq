@@ -3,9 +3,10 @@
  * Discord Notify Script — Sends PR review summary to Discord webhook as embed card.
  * Run from project root. Env: DISCORD_WEBHOOK, PR_NUMBER, PR_MERGED, PR_URL, PR_AUTHOR,
  *   SONAR_BUGS, SONAR_SECURITY_HOTSPOTS, ROAST_TEXT, ROAST_FALLBACK, RATING
- * Optional: WORKFLOW_RUN_URL (link to GitHub Actions run)
+ * Optional: WORKFLOW_RUN_URL, GITHUB_TOKEN, GITHUB_REPOSITORY (for thread-per-PR)
  */
 
+const { getPrThreadId } = require('./lib/discord-pr-thread');
 const {
   validateWebhook,
   formatRating,
@@ -77,7 +78,18 @@ async function main() {
     timestamp: new Date().toISOString(),
   };
 
-  await sendEmbed(webhook, embed);
+  let threadId = (process.env.DISCORD_THREAD_ID || '').trim();
+  if (!threadId) {
+    const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
+    const repo = process.env.GITHUB_REPOSITORY || '';
+    const prNum = parseInt(prNumber, 10);
+    if (token && repo && prNum) {
+      const stored = await getPrThreadId(token, repo, prNum);
+      if (stored) threadId = stored;
+    }
+  }
+
+  await sendEmbed(webhook, embed, threadId ? { threadId } : {});
   console.log('Discord notification sent');
 }
 

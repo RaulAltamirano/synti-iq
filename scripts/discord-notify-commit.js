@@ -2,11 +2,12 @@
 /**
  * Notifies Discord when new commits are pushed to a PR branch.
  * Env: DISCORD_WEBHOOK, PR_*, COMMIT_*, COMMENTS_JSON
- * Optional: DISCORD_THREAD_ID (post to existing thread), DISCORD_USE_FORUM=true (create forum post per commit),
- *   WORKFLOW_RUN_URL (link to GitHub Actions run), COMMIT_URL (link to commit - makes hash clickable)
+ * Optional: DISCORD_THREAD_ID (manual or from PR comment when thread-per-PR), GITHUB_TOKEN, GITHUB_REPOSITORY
+ * Optional: DISCORD_USE_FORUM (ignored here; thread resolved from PR comment)
  */
 
 const BOT_PREFIX = '🤖';
+const { getPrThreadId } = require('./lib/discord-pr-thread');
 const {
   validateWebhook,
   truncate,
@@ -29,8 +30,7 @@ async function main() {
   const commitUrl = (process.env.COMMIT_URL || '').trim();
   const commitMessage = (process.env.COMMIT_MESSAGE || 'No message').trim();
   const commitAuthor = process.env.COMMIT_AUTHOR || 'unknown';
-  const threadId = (process.env.DISCORD_THREAD_ID || '').trim();
-  const useForum = process.env.DISCORD_USE_FORUM === 'true';
+  let threadId = (process.env.DISCORD_THREAD_ID || '').trim();
 
   let comments = [];
   try {
@@ -82,12 +82,17 @@ async function main() {
   const workflowField = buildWorkflowField(process.env.WORKFLOW_RUN_URL);
   if (workflowField) embed.fields.push(workflowField);
 
-  const extraPayload =
-    useForum && !threadId ? { thread_name: `PR #${prNumber}: ${commitTitle}`.slice(0, 100) } : {};
-  await sendEmbed(webhook, embed, {
-    threadId: threadId || undefined,
-    extraPayload,
-  });
+  if (!threadId) {
+    const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
+    const repo = process.env.GITHUB_REPOSITORY || '';
+    const prNum = parseInt(prNumber, 10);
+    if (token && repo && prNum) {
+      const stored = await getPrThreadId(token, repo, prNum);
+      if (stored) threadId = stored;
+    }
+  }
+
+  await sendEmbed(webhook, embed, threadId ? { threadId } : {});
   console.log('Discord commit notification sent');
 }
 
