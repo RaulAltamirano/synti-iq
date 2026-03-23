@@ -7,7 +7,7 @@
  */
 
 const BOT_PREFIX = '🤖';
-const { getPrThreadId } = require('./lib/discord-pr-thread');
+const { getPrThreadId, savePrThreadId } = require('./lib/discord-pr-thread');
 const {
   validateWebhook,
   truncate,
@@ -92,7 +92,23 @@ async function main() {
     }
   }
 
-  await sendEmbed(webhook, embed, threadId ? { threadId } : {});
+  // Forum channel requires thread_id or thread_name. If no thread yet (race: we run before discord-notify-new-pr), create it.
+  if (threadId) {
+    await sendEmbed(webhook, embed, { threadId });
+  } else {
+    const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
+    const repo = process.env.GITHUB_REPOSITORY || '';
+    const prNum = parseInt(prNumber, 10);
+    const threadName = `PR #${prNumber}: ${prTitle}`.slice(0, 100);
+    const msg = await sendEmbed(webhook, embed, {
+      extraPayload: { thread_name: threadName },
+      wait: true,
+    });
+    const createdId = msg?.channel_id;
+    if (createdId && token && repo && prNum) {
+      await savePrThreadId(token, repo, prNum, String(createdId), prUrl);
+    }
+  }
   console.log('Discord commit notification sent');
 }
 
