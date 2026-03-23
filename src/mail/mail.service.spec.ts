@@ -65,9 +65,15 @@ describe('MailService', () => {
       const call = mockResend.emails.send.mock.calls[0][0];
       expect(call.from).toBe('onboarding@resend.dev');
       expect(call.to).toBe('owner@business.com');
-      expect(call.subject).toBe('Bienvenido a Synti-IQ - Tu cuenta de negocio está lista');
+      expect(call.subject).toBe('Welcome to Synti-IQ - Your business account is ready');
       expect(call.html).toBeDefined();
       expect(typeof call.html).toBe('string');
+      expect(call.attachments).toHaveLength(1);
+      expect(call.attachments?.[0]).toMatchObject({
+        filename: 'logo.png',
+        contentId: 'logo-image',
+        contentType: 'image/png',
+      });
     });
 
     it('strips +suffix from email for Resend sandbox compatibility', async () => {
