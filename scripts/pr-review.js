@@ -17,7 +17,6 @@ const path = require('path');
 const { callGemini, condenseDiff, TOKEN_LIMITS } = require('./lib/ai-agents');
 const {
   getAuth,
-  getAuthenticatedLogin,
   listComments,
   deleteComment,
   createComment,
@@ -278,18 +277,21 @@ ${diff}
     ].join('\n');
   }
 
-  // 4. Delete previous bot comments (only our own — App can't delete github-actions comments)
-  // Note: GitHub App tokens cannot call GET /user (403); currentLogin is null → skip delete
-  const currentLogin = await getAuthenticatedLogin(octokit);
-  if (currentLogin) {
-    const comments = await listComments(octokit, {
-      owner,
-      repo: repoName,
-      issueNumber: prNumber,
-    });
-    for (const c of comments) {
-      if (c.body && c.body.startsWith(BOT_COMMENT_PREFIX) && c.user?.login === currentLogin) {
+  // 4. Delete previous bot comments. Try to delete any comment with our prefix;
+  // delete succeeds only for comments we own (GITHUB_TOKEN or App). 403 when not ours.
+  const comments = await listComments(octokit, {
+    owner,
+    repo: repoName,
+    issueNumber: prNumber,
+  });
+  for (const c of comments) {
+    if (c.body && c.body.startsWith(BOT_COMMENT_PREFIX)) {
+      try {
         await deleteComment(octokit, { owner, repo: repoName, commentId: c.id });
+      } catch (err) {
+        if (err?.status !== 403 && err?.response?.status !== 403) {
+          console.warn('Could not delete comment', c.id, err?.message);
+        }
       }
     }
   }
@@ -312,10 +314,10 @@ ${diff}
     process.exit(1);
   }
 
-  // 6. Approve PR when verdict passes (Octokit can approve; branch protection may still require manual merge)
+  // 6. Submit review: APPROVE or REQUEST_CHANGES. Always submit so previous approval is reset when new commit changes verdict.
   const isApproved = /✅\s*Approved|Approved\s*[.—]|^Approved\b/i.test(parsed.verdict);
-  if (isApproved) {
-    try {
+  try {
+    if (isApproved) {
       await createReview(octokit, {
         owner,
         repo: repoName,
@@ -324,12 +326,21 @@ ${diff}
         body: '🤖 AI Technical Assistant — Review passed. See comment above for details.',
       });
       console.log('PR approved by bot');
-    } catch (err) {
-      console.warn(
-        'Could not approve PR (check token permissions: pull_requests write):',
-        err.message,
-      );
+    } else {
+      await createReview(octokit, {
+        owner,
+        repo: repoName,
+        pullNumber: prNumber,
+        event: 'REQUEST_CHANGES',
+        body: '🤖 AI Technical Assistant — Changes requested. See comment above for findings and action items.',
+      });
+      console.log('PR changes requested by bot');
     }
+  } catch (err) {
+    console.warn(
+      'Could not submit review (check token permissions: pull_requests write):',
+      err.message,
+    );
   }
 
   console.log('PR review comment posted successfully');

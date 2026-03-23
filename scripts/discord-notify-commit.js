@@ -1,12 +1,10 @@
 #!/usr/bin/env node
 /**
  * Notifies Discord when new commits are pushed to a PR branch.
- * Env: DISCORD_WEBHOOK, PR_*, COMMIT_*, COMMENTS_JSON
+ * Env: DISCORD_WEBHOOK, PR_*, COMMIT_*
  * Optional: DISCORD_THREAD_ID (manual or from PR comment when thread-per-PR), GITHUB_TOKEN, GITHUB_REPOSITORY
- * Optional: DISCORD_USE_FORUM (ignored here; thread resolved from PR comment)
  */
 
-const BOT_PREFIX = '🤖';
 const { getPrThreadId, savePrThreadId } = require('./lib/discord-pr-thread');
 const {
   validateWebhook,
@@ -15,7 +13,6 @@ const {
   sendEmbed,
   sanitizeForEmbed,
   COLOR_GOLD,
-  FIELD_VALUE_LIMIT,
 } = require('./discord-utils');
 
 async function main() {
@@ -32,24 +29,6 @@ async function main() {
   const commitAuthor = process.env.COMMIT_AUTHOR || 'unknown';
   let threadId = (process.env.DISCORD_THREAD_ID || '').trim();
 
-  let comments = [];
-  try {
-    const raw = process.env.COMMENTS_JSON || '[]';
-    comments = JSON.parse(raw);
-  } catch (_) {
-    /* ignore */
-  }
-
-  // Filter out bot comments, take last 5, format
-  const humanComments = comments
-    .filter(c => c?.body && !String(c.body).startsWith(BOT_PREFIX))
-    .slice(-5)
-    .map(c => {
-      const author = c.user?.login || 'unknown';
-      const body = truncate(sanitizeForEmbed(String(c.body).replace(/\n/g, ' ')), 150);
-      return `**@${author}:** ${body}`;
-    });
-
   const commitTitle = truncate(sanitizeForEmbed(commitMessage.split('\n')[0]), 80);
   const commitDisplay = commitUrl
     ? `[${commitSha}](${commitUrl}) ${commitTitle}`
@@ -60,24 +39,16 @@ async function main() {
     description: `**${sanitizeForEmbed(prTitle)}**\n\n${commitDisplay}\n*by @${commitAuthor}* on \`${prBranch}\``,
     color: COLOR_GOLD,
     url: prUrl,
-    fields: [],
+    fields: [
+      {
+        name: '🔗 Link',
+        value: `[View PR #${prNumber}](${prUrl})`,
+        inline: false,
+      },
+    ],
     footer: { text: 'Repository activity' },
     timestamp: new Date().toISOString(),
   };
-
-  if (humanComments.length > 0) {
-    embed.fields.push({
-      name: '💬 Recent comments',
-      value: humanComments.join('\n').slice(0, FIELD_VALUE_LIMIT),
-      inline: false,
-    });
-  }
-
-  embed.fields.push({
-    name: '🔗 Link',
-    value: `[View PR #${prNumber}](${prUrl})`,
-    inline: false,
-  });
 
   const workflowField = buildWorkflowField(process.env.WORKFLOW_RUN_URL);
   if (workflowField) embed.fields.push(workflowField);

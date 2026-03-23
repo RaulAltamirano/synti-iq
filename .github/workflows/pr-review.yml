@@ -191,12 +191,11 @@ jobs:
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
 
-      - name: Fetch commit and comments
+      - name: Fetch commit details
         id: fetch
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PR_NUM="${{ github.event.pull_request.number }}"
           HEAD_SHA="${{ github.event.pull_request.head.sha }}"
           COMMIT=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
@@ -205,10 +204,6 @@ jobs:
           COMMIT_MSG=$(echo "$COMMIT" | jq -r '.commit.message // ""' 2>/dev/null)
           COMMIT_AUTHOR=$(echo "$COMMIT" | jq -r '.commit.author.name // .author.login // "unknown"' 2>/dev/null)
           COMMIT_URL=$(echo "$COMMIT" | jq -r '.html_url // ""' 2>/dev/null)
-          COMMENTS=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/${{ github.repository }}/issues/${PR_NUM}/comments" 2>/dev/null || echo "[]")
           echo "sha=${HEAD_SHA}" >> $GITHUB_OUTPUT
           echo "message<<MSG_EOF" >> $GITHUB_OUTPUT
           printf '%s' "$COMMIT_MSG" >> $GITHUB_OUTPUT
@@ -216,9 +211,6 @@ jobs:
           echo "MSG_EOF" >> $GITHUB_OUTPUT
           echo "author=$COMMIT_AUTHOR" >> $GITHUB_OUTPUT
           echo "url=${COMMIT_URL:-}" >> $GITHUB_OUTPUT
-          echo "comments<<COMMENTS_DELIM" >> $GITHUB_OUTPUT
-          echo "$COMMENTS" >> $GITHUB_OUTPUT
-          echo "COMMENTS_DELIM" >> $GITHUB_OUTPUT
 
       - name: Notify Discord - New commit
         env:
@@ -234,7 +226,6 @@ jobs:
           COMMIT_MESSAGE: ${{ steps.fetch.outputs.message }}
           COMMIT_AUTHOR: ${{ steps.fetch.outputs.author }}
           COMMIT_URL: ${{ steps.fetch.outputs.url }}
-          COMMENTS_JSON: ${{ steps.fetch.outputs.comments }}
         run: node scripts/discord-notify-commit.js
 
   discord-notify-new-pr:
