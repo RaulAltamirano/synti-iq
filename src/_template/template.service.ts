@@ -69,11 +69,15 @@ export class TemplateService {
     };
   }
 
-  async findById(id: string): Promise<TemplateItemResponseDto | null> {
+  async findById(id: string): Promise<TemplateItemResponseDto> {
     return this.observabilityService.withSpan(TEMPLATE_SPAN_NAMES.FIND_BY_ID, async span => {
       span.setAttribute(TEMPLATE_SPAN_ATTRIBUTES.ITEM_ID, id);
       const item = await this.templateItemRepository.findOne({ where: { id } });
-      return item ? this.toResponseDto(item) : null;
+      if (!item) {
+        this.logger.warn('Template item not found', TemplateService.name);
+        throw new NotFoundException('Template item not found');
+      }
+      return this.toResponseDto(item);
     });
   }
 

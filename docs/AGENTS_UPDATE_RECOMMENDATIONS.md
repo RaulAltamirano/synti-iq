@@ -8,15 +8,15 @@ Copy-paste these blocks into [AGENTS.md](../AGENTS.md) to integrate the new qual
 
 Add this row to the "Executable Commands (Run First)" table (after the `format:check` row):
 
-| Command | Purpose |
-|---------|---------|
+| Command        | Purpose                                                   |
+| -------------- | --------------------------------------------------------- |
 | `yarn quality` | Run build, lint, test, format:check (pre-PR verification) |
 
 ---
 
 ## 2. Add to References Section
 
-Add these lines to the "References" section at the end of AGENTS.md:
+Add these lines to the "References" section at the end of AGENTS.md. (Links are relative to repo root, where AGENTS.md lives.)
 
 ```markdown
 - **Definition of Done**: [DEFINITION_OF_DONE.md](DEFINITION_OF_DONE.md) — Checklist for PR readiness
