@@ -1,13 +1,6 @@
-import {
-  IsString,
-  IsOptional,
-  IsDate,
-  IsNumber,
-  IsObject,
-  IsIn,
-  ValidateNested,
-} from 'class-validator';
+import { IsString, IsOptional, IsDate, IsNumber, IsIn, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 class TotalBenefitsEarnedDto {
   @IsOptional()
@@ -24,22 +17,28 @@ class TotalBenefitsEarnedDto {
 }
 
 export class ReferralRecordDto {
+  @ApiProperty({ description: 'User UUID' })
   @IsString()
   userId: string;
 
+  @ApiProperty()
   @IsString()
   firstName: string;
 
+  @ApiProperty()
   @IsString()
   lastName: string;
 
+  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   email?: string;
 
+  @ApiProperty({ description: 'Registration date' })
   @IsDate()
   registeredAt: Date;
 
+  @ApiProperty({ enum: ['active', 'inactive'] })
   @IsIn(['active', 'inactive'])
   status: 'active' | 'inactive';
 }
