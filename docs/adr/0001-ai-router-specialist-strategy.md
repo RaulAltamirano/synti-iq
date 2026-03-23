@@ -1,5 +1,7 @@
 # ADR-0001: AI Router + Specialist Strategy (Groq + Gemini)
 
+---
+
 ## Status
 
 Active

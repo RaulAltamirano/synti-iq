@@ -2,6 +2,8 @@
 
 Store issue drafts here before creating them on GitHub. Drafts are local-only and not committed. Exclusion is handled by `docs/issues/.gitignore` (`.md` files with whitelisted exceptions) and root `.gitignore` (`draft*.md`).
 
+---
+
 ## Language
 
 **Use English strictly** for all issue drafts (title, body, acceptance criteria, etc.). This keeps issues consistent and accessible to all contributors.
@@ -134,7 +136,7 @@ Sections vary by type. See [TEMPLATES.md](./TEMPLATES.md) for per-type structure
 
 - [draft-template.md](./draft-template.md) — Default template (TASK)
 - [TEMPLATES.md](./TEMPLATES.md) — All five type-specific templates
-- [ISSUE_FLOW_AUDIT_REPORT.md](./ISSUE_FLOW_AUDIT_REPORT.md) — Audit of this flow (methodology: docs/prompts/audit-requirement.md)
+- Pending: ISSUE_FLOW_AUDIT_REPORT (audit of this flow; methodology: [docs/prompts/audit-requirement.md](../prompts/audit-requirement.md))
 - [DEVELOPMENT_WORKFLOW.md](../DEVELOPMENT_WORKFLOW.md) — Full flow: Issue → Branch → PR → Merge
 - [prompts/new-issue.md](../prompts/new-issue.md) — AI prompt for issue creation
 - [PLAN_TEMPLATE.md](../PLAN_TEMPLATE.md) — For complex features requiring implementation plans

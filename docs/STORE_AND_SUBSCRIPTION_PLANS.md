@@ -2,6 +2,8 @@
 
 This document describes the relationship between subscription plans, store creation limits, and business logic.
 
+**Pending implementation:** Plan–BusinessProfile association and max_stores enforcement (see Code References and Planned sections below).
+
 ---
 
 ## Subscription Plans Entity

@@ -2,7 +2,7 @@
 
 Automated Pull Request review pipeline integrating SonarCloud, AI (Groq + Gemini), and Discord notifications.
 
-**Architecture:** [Router + Specialist](../adr/0001-ai-router-specialist-strategy.md) — Groq (orchestrator) handles summarizations, roast, diff condensation; Gemini (specialist) performs code quality review.
+**Architecture:** [Router + Specialist](adr/0001-ai-router-specialist-strategy.md) — Groq (orchestrator) handles summarizations, roast, diff condensation; Gemini (specialist) performs code quality review.
 
 **Quick reference:** On PR open/update → SonarCloud scan, AI review, Discord notification. On PR close → Discord embed with roast, rating, Sonar stats. Required secrets: `SONAR_TOKEN`, `GEMINI_API_KEY`, `GROQ_API_KEY`, `DISCORD_WEBHOOK`.
 
@@ -125,7 +125,7 @@ The `sonar-project.properties` file in the project root defines:
 
 ## Roast (on PR Close)
 
-The roast is generated when the PR is closed via `scripts/generate-close-roast.js`. Uses Groq (orchestrator) primary, Gemini fallback. Configuration is in `scripts/roast-prompt.config.js`:
+The roast is generated when the PR is closed via `scripts/generate-close-roast.js`. Uses Groq (orchestrator) primary, Gemini fallback. Roast language is configurable (`es` or `en`) in `scripts/roast-prompt.config.js`. Configuration details:
 
 - **language**: `'es'` | `'en'`
 - **styles**: humor references (e.g. TV shows) — add your own
