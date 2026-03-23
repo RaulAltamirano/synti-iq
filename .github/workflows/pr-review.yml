@@ -140,11 +140,42 @@ jobs:
       - name: SonarCloud Quality Gate check
         id: sonarqube-quality-gate-check
         uses: sonarsource/sonarqube-quality-gate-action@cf038b0e0cdecfa9e56c198bbb7d21d751d62c3b
+        continue-on-error: true
         with:
           pollingTimeoutSec: 600
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io
+
+      - name: Resolve Discord thread for PR
+        id: discord-thread
+        if: steps.sonarqube-quality-gate-check.outcome == 'failure'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: echo "id=$(node scripts/get-pr-discord-thread.js 2>/dev/null || true)" >> $GITHUB_OUTPUT
+
+      - name: Post Sonar failure summary (PR + Discord)
+        if: steps.sonarqube-quality-gate-check.outcome == 'failure'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          SONAR_PROJECT_KEY: RaulAltamirano_synti-iq
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DISCORD_THREAD_ID: ${{ steps.discord-thread.outputs.id }}
+          WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node scripts/sonar-failure-pr-comment.js
+
+      - name: Fail if Quality Gate did not pass
+        if: steps.sonarqube-quality-gate-check.outcome == 'failure'
+        run: exit 1
 
   ai-review:
     if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
