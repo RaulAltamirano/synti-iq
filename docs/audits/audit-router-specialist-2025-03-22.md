@@ -1,5 +1,7 @@
 # Requirement Audit: AI Router + Specialist Strategy Implementation
 
+---
+
 ## 1. Audit Scope
 
 - **Requirement:** Implementation of Router + Specialist AI architecture (Groq orchestrator, Gemini specialist) to reduce Gemini quota exhaustion in the PR review pipeline.

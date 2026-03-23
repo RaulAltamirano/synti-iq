@@ -20,7 +20,9 @@ Create a complete NestJS module for `<ENTITY>` with the following structure.
 
 **Placeholders:** Replace `<ENTITY>` with the entity name (e.g. Product, Store). Replace `<module-name>` and `<entity>` with the corresponding kebab-case names.
 
-### Required Files
+### Steps
+
+#### Required Files
 
 1. **Module** — `src/<module-name>/<module-name>.module.ts`
    - Register TypeOrmModule.forFeature, controllers, providers

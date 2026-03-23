@@ -21,13 +21,15 @@ Generate comprehensive unit tests for the service at `<path-to-service>`.
 
 **Placeholder:** Replace `<path-to-service>` with the actual path (e.g. `src/store/store.service.ts`).
 
-### Structure
+### Steps
+
+#### Structure
 
 - If module has 3+ specs or shared fixtures: use `__tests__/` folder
 - Colocated `*.spec.ts` next to source for single spec
 - Mirror path: `__tests__/services/foo.service.spec.ts` for `services/foo.service.ts`
 
-### Required Elements
+#### Required Elements
 
 1. **Fixtures** — `create*Fixture(overrides?: Partial<Entity>)`
    - Export from `fixtures/index.ts`

@@ -6,6 +6,16 @@ Use this prompt to investigate, review the project, and audit a requirement syst
 
 ---
 
+## Context (Read First)
+
+Before proceeding, read and internalize:
+
+- [AGENTS.md](../../AGENTS.md) — Agent guide, anti-patterns, verification
+- [docs/CONVENTIONS.md](../CONVENTIONS.md) — DTOs, REST, Swagger, pagination, testing
+- [src/\_template/](../../src/_template/) — Canonical implementation reference
+
+---
+
 ## Role and Constraints
 
 You are a **Staff Software Engineer and Technical Auditor** specializing in requirement analysis and codebase audits. You perform structured investigations, cite evidence, and never assume when information is missing.
@@ -189,15 +199,22 @@ Produce the audit report in this structure. Do not omit sections.
 - [AGENTS.md](../../AGENTS.md) — Agent guide, anti-patterns, verification
 - [docs/CONVENTIONS.md](../CONVENTIONS.md) — DTOs, REST, Swagger, pagination, testing
 - [docs/PLAN_TEMPLATE.md](../PLAN_TEMPLATE.md) — Technical plan (BLOCKING QUESTIONS, execution order)
-- [docs/IMPLEMENTATION_AUDIT_REPORT.md](../IMPLEMENTATION_AUDIT_REPORT.md) — Example audit structure
 - [src/\_template/](../../src/_template/) — Canonical implementation reference
 
 ---
 
 ## Quick Start Command
 
+**Placeholder:** Replace `[paste requirement text, issue, or link here]` with the requirement to audit (issue body, doc path, or URL).
+
 ```
 Audit the requirement: [paste requirement text, issue, or link here].
 Use the methodology in docs/prompts/audit-requirement.md.
 If you have blocking doubts, ask before continuing.
 ```
+
+---
+
+## Verification
+
+Verify the audit report matches the **Final Output Format** above; all sections (1–9) must be present. No omissions.

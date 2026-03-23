@@ -6,9 +6,23 @@ Use this prompt in **Gemini**, **ChatGPT**, **Claude**, or **Cursor** to generat
 
 ---
 
-## How to Use
+## Context (Read First)
 
-1. **Copy the generic prompt** (section below) and replace `<TASK_DESCRIPTION>` with your requirement.
+Before proceeding, reference:
+
+- [DEVELOPMENT_WORKFLOW.md](../DEVELOPMENT_WORKFLOW.md) — Full flow: Issue → Branch → PR → Merge
+- [docs/issues/TEMPLATES.md](../issues/TEMPLATES.md) — Type-specific issue templates
+- [AGENTS.md](../../AGENTS.md) — Project conventions and contracts
+
+---
+
+## Task
+
+Generate a well-structured GitHub issue; then create it via `yarn issue:create`.
+
+### Steps
+
+1. **Copy the generic prompt** (section below) and replace `<TASK_DESCRIPTION>` with your requirement (1–2 sentences).
 2. **Paste into the AI** (Gemini, ChatGPT, etc.) and get the output.
 3. **Save the output** to `docs/issues/<descriptive-name>.md` (e.g. `docs/issues/store-stats-endpoint.md`).
 4. **Run the script** to create the issue on GitHub:
@@ -153,3 +167,9 @@ Then: `yarn issue:create docs/issues/store-stats-endpoint.md`
 - [PLAN_TEMPLATE.md](../PLAN_TEMPLATE.md) — Technical plan structure
 - [AGENTS.md](../../AGENTS.md) — Project conventions and contracts
 - [CONVENTIONS.md](../CONVENTIONS.md) — DTOs, REST, Swagger
+
+---
+
+## Verification
+
+Run `yarn issue:create docs/issues/<file>.md` and verify the issue was created on GitHub with the expected title, labels, and body.

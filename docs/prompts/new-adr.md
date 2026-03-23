@@ -17,7 +17,11 @@ Before proceeding, read and internalize:
 
 Create a new ADR for the following decision.
 
-### When to Create an ADR
+**Placeholder:** Replace the decision description with your specific architectural decision.
+
+### Steps
+
+#### 1. When to Create an ADR
 
 Create an ADR when the decision:
 
@@ -27,13 +31,13 @@ Create an ADR when the decision:
 - Has significant trade-offs or consequences
 - Future developers would benefit from understanding the rationale
 
-### File Naming
+#### 2. File Naming
 
 - Format: `NNNN-short-title.md` (e.g. `0001-use-typeorm.md`, `0002-add-redis-cache.md`)
 - Use the next available number (check existing ADRs in docs/adr/)
 - Title: kebab-case, descriptive
 
-### Required Sections
+#### 3. Required Sections
 
 ```markdown
 # ADR-NNNN: Short Title
@@ -93,3 +97,10 @@ What other options were evaluated? Why were they rejected?
 | [NNNN](NNNN-short-title.md) | Short Title | Active |
 
 Replace `NNNN-short-title.md` with your actual ADR filename (e.g. `0001-use-typeorm.md`).
+
+---
+
+## Verification
+
+1. Add the new ADR to the index table in [docs/adr/000-index.md](../adr/000-index.md).
+2. Verify the ADR format matches the template; all required sections are present.
