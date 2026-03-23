@@ -79,6 +79,7 @@ Also: `PickType()`, `OmitType()`, `IntersectionType()`.
 - Properties: `summary`, `responses`, `body`, `params`, `query`, `cookieAuth`
 - Spec files: `src/docs/<module>.endpoints.ts` with `Record<string, EndpointDocSpec>`
 - Apply via `ApiDoc(docs, endpointId)` on controller methods
+- **List endpoints (query params)**: `query` uses a manual array of `ParamSpec` (`name`, `description`, `type`). The Filter DTO is used at runtime by the controller; the spec documents each query param explicitly. Reference: [src/docs/template.endpoints.ts](../src/docs/template.endpoints.ts) `list` endpoint.
 
 ```typescript
 export const storeEndpoints: Record<string, EndpointDocSpec> = {
@@ -342,7 +343,7 @@ Reference: [src/\_template/**tests**/](../src/_template/__tests__/)
 - Levels: `error` (failures), `warn` (recoverable), `log` (info), `debug` (dev only)
 - Error signature: `this.logger.error(message, stack?, context?)` — third param is context string (class name), not an object
 - In catch blocks: log context and stack; never log sensitive data (PII: emails, names, tokens)
-- Reference module: [src/\_template/](../src/_template/)
+- **Canonical reference**: [src/\_template/template.service.ts](../src/_template/template.service.ts); [src/referral/referral.service.ts](../src/referral/referral.service.ts) for advanced patterns (debug, ForbiddenException)
 
 ---
 

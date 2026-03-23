@@ -1,7 +1,9 @@
 import { NestFactory } from '@nestjs/core';
+import type { INestApplication } from '@nestjs/common';
 import { AppModule } from './core/app.module';
 import { Logger as NestLogger, ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { PaginatedResponseDto } from 'src/pagination/dtos/paginated-response.dto';
 import * as cookieParser from 'cookie-parser';
 import { Logger, LoggerErrorInterceptor } from 'nestjs-pino';
 import { initializeOpenTelemetry } from './shared/observability/opentelemetry.config';
@@ -9,21 +11,9 @@ import { RequestIdMiddleware } from './shared/interceptors/request-id.middleware
 
 initializeOpenTelemetry();
 
-async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
-    bufferLogs: true,
-  });
-
-  app.useLogger(app.get(Logger));
-  app.useGlobalInterceptors(new LoggerErrorInterceptor());
-
-  app.use(cookieParser());
-
-  const requestIdMiddleware = new RequestIdMiddleware();
-  app.use(requestIdMiddleware.use.bind(requestIdMiddleware));
-
+function createSwaggerConfig(): ReturnType<DocumentBuilder['build']> {
   const apiUrl = process.env.API_URL || 'http://localhost:3000/api';
-  const config = new DocumentBuilder()
+  return new DocumentBuilder()
     .setTitle('Synti IQ E-commerce API')
     .setDescription(
       'API for managing store schedules, cashiers, products, inventory, statistics, and shipping operations',
@@ -43,36 +33,31 @@ async function bootstrap() {
     .addTag('Statistics', 'Sales analytics and reporting')
     .addTag('Shipping', 'Order fulfillment and delivery tracking')
     .addCookieAuth('access_token')
-    .addSecurity('api_key', {
-      type: 'apiKey',
-      name: 'x-api-key',
-      in: 'header',
-    })
-
+    .addSecurity('api_key', { type: 'apiKey', name: 'x-api-key', in: 'header' })
     .build();
+}
 
-  const document = SwaggerModule.createDocument(app, config);
+function setupSwagger(app: INestApplication): void {
+  const config = createSwaggerConfig();
+  const document = SwaggerModule.createDocument(app, config, {
+    extraModels: [PaginatedResponseDto],
+  });
   SwaggerModule.setup('api/docs', app, document, {
-    swaggerOptions: {
-      persistAuthorization: false,
-      tagsSorter: 'alpha',
-      operationsSorter: 'alpha',
-    },
+    swaggerOptions: { persistAuthorization: false, tagsSorter: 'alpha', operationsSorter: 'alpha' },
     customSiteTitle: 'Synti IQ API Documentation',
   });
+}
 
+function applyGlobalConfig(app: INestApplication): void {
   app.setGlobalPrefix('api');
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
-      transformOptions: {
-        enableImplicitConversion: true,
-      },
+      transformOptions: { enableImplicitConversion: true },
     }),
   );
-
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
   app.enableCors({
     origin: frontendUrl,
@@ -81,7 +66,17 @@ async function bootstrap() {
     allowedHeaders: ['Content-Type', 'X-Requested-With', 'X-Request-ID'],
     exposedHeaders: ['Set-Cookie', 'X-Request-ID', 'Trace-Id', 'Span-Id'],
   });
+}
 
+async function bootstrap(): Promise<void> {
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  app.useLogger(app.get(Logger));
+  app.useGlobalInterceptors(new LoggerErrorInterceptor());
+  app.use(cookieParser());
+  const requestIdMiddleware = new RequestIdMiddleware();
+  app.use(requestIdMiddleware.use.bind(requestIdMiddleware));
+  setupSwagger(app);
+  applyGlobalConfig(app);
   await app.listen(3000);
   const logger = new NestLogger('Bootstrap');
   logger.log(`🚀 Application is running on: ${await app.getUrl()}`);

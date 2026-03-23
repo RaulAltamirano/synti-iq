@@ -1,6 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Index } from 'typeorm';
 
 @Entity('template_items')
+@Index(['status'])
 export class TemplateItem {
   @PrimaryGeneratedColumn('uuid')
   id: string;

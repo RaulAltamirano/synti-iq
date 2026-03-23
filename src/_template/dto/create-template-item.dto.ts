@@ -7,6 +7,7 @@ export class CreateTemplateItemDto {
   @MinLength(1)
   name: string;
 
+  /** Optional. Default 'active' applied in service when omitted (class-validator does not apply TS defaults). */
   @ApiPropertyOptional({
     description: 'Item status',
     enum: ['active', 'inactive'],

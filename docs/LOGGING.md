@@ -32,12 +32,12 @@ export class MyService {
 
 ## Log Levels
 
-| Level | When to Use | Example |
-|-------|-------------|---------|
+| Level   | When to Use                                        | Example                                                                                 |
+| ------- | -------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | `error` | Unrecoverable failures, exceptions in catch blocks | `this.logger.error('Failed to save referral usage', error.stack, ReferralService.name)` |
-| `warn` | Recoverable or anomalous situations | `this.logger.warn('Access denied: business owner role required', ReferralService.name)` |
-| `log` | Important business events (e.g. audit) | `this.logger.log('Referral usage recorded', ReferralService.name)` |
-| `debug` | Development-only, verbose validation failures | `this.logger.debug('Referral code not found', ReferralService.name)` |
+| `warn`  | Recoverable or anomalous situations                | `this.logger.warn('Access denied: business owner role required', ReferralService.name)` |
+| `log`   | Important business events (e.g. audit)             | `this.logger.log('Referral usage recorded', ReferralService.name)`                      |
+| `debug` | Development-only, verbose validation failures      | `this.logger.debug('Referral code not found', ReferralService.name)`                    |
 
 ---
 
@@ -62,7 +62,7 @@ this.logger.error(`Error during signUp: ${error.message}`, error.stack, AuthServ
 **Incorrect:**
 
 ```typescript
-this.logger.error('msg', stack, { userId })  // Object as context — avoid
+this.logger.error('msg', stack, { userId }); // Object as context — avoid
 ```
 
 ---
@@ -95,21 +95,20 @@ this.logger.error('msg', stack, { userId })  // Object as context — avoid
 
 ## Reference Implementation
 
-See [src/referral/referral.service.ts](../src/referral/referral.service.ts) for the canonical logging pattern:
+**Canonical reference:** [src/\_template/template.service.ts](../src/_template/template.service.ts)
 
 ```typescript
-// After successful recordUsage
-this.logger.log('Referral usage recorded', ReferralService.name);
+// After successful create
+this.logger.log('Template item created', TemplateService.name);
 
-// After successful createCode
-this.logger.log('Referral code created for business profile', ReferralService.name);
+// After successful update
+this.logger.log('Template item updated', TemplateService.name);
 
-// Before ForbiddenException
-this.logger.warn('Access denied: business owner role required', ReferralService.name);
-
-// Validation failures (debug level)
-this.logger.debug('Referral code validation failed: invalid format', ReferralService.name);
+// Before NotFoundException
+this.logger.warn('Template item not found', TemplateService.name);
 ```
+
+**Alternative (domain-specific):** [src/referral/referral.service.ts](../src/referral/referral.service.ts) — patterns for validation failures (`debug`), ForbiddenException (`warn`), and audit-style `log` calls.
 
 ---
 
@@ -118,4 +117,4 @@ this.logger.debug('Referral code validation failed: invalid format', ReferralSer
 - [src/shared/logger/](../src/shared/logger/) — Logger module and Pino configuration
 - [docs/CONVENTIONS.md](CONVENTIONS.md) — Technical conventions
 - [AGENTS.md](../AGENTS.md) — Agent guide
-- [src/referral/constants/referral-span.constants.ts](../src/referral/constants/referral-span.constants.ts) — Span attributes for correlation
+- [src/\_template/](../src/_template/) — Canonical template module (logging, spans, metrics)

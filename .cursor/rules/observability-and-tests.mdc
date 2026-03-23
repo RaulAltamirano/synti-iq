@@ -1,5 +1,5 @@
 ---
-description: ObservabilityService (OpenTelemetry) usage and __tests__ structure (referral pattern)
+description: ObservabilityService (OpenTelemetry) usage and __tests__ structure
 globs: src/**/*.ts, src/**/*.spec.ts
 alwaysApply: false
 ---
@@ -9,15 +9,15 @@ alwaysApply: false
 ## ObservabilityService (src/shared/observability/)
 
 - **Tracing**: Wrap critical operations with `observabilityService.withSpan(name, async span => { ... })`.
-- **Constants**: Define in `constants/<module>-span.constants.ts` (e.g. `referral-span.constants.ts`). Format: `module.operationName` for spans, `module.attribute_name` for attributes. See [OpenTelemetry semconv](https://opentelemetry.io/docs/specs/semconv/).
+- **Constants**: Define in `constants/<module>-span.constants.ts` (e.g. `template-span.constants.ts`). Format: `module.operationName` for spans, `module.attribute_name` for attributes. See [OpenTelemetry semconv](https://opentelemetry.io/docs/specs/semconv/).
 - **Attributes**: Use `span.setAttribute(key, value)` with primitive values.
 - **Metrics**: Create domain-specific `*MetricsService`; use `observabilityService.createCounter()` or `createHistogram()` in `onModuleInit`.
-- **Reference**: `src/referral/referral.service.ts`, `src/referral/constants/referral-span.constants.ts`
+- **Reference**: `src/_template/` (canonical), `src/referral/referral.service.ts` (domain example)
 
-## Tests (__tests__/ structure, referral pattern)
+## Tests (__tests__/ structure)
 
 - **Structure**: `__tests__/` with `fixtures/`, `mocks/`, `services/`, `utils/` mirroring source.
 - **Fixtures**: `create*Fixture(overrides?)` exported from `fixtures/index.ts`.
 - **Mocks**: `createMockObservabilityService()` and `createMock*MetricsService()` in `mocks/`; `withSpan` must execute the callback.
 - **Imports**: Specs in `__tests__/utils/` import `../../utils/foo.util`.
-- **Reference**: `src/referral/__tests__/`
+- **Reference**: `src/_template/__tests__/` (canonical), `src/referral/__tests__/` (domain example)

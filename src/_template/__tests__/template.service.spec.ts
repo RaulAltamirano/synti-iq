@@ -6,7 +6,13 @@ import { TemplateService } from '../template.service';
 import { TemplateItem } from '../entities/template-item.entity';
 import { ObservabilityService } from 'src/shared/observability/observability.service';
 import { TemplateMetricsService } from '../services/template-metrics.service';
-import { SPAN_TEMPLATE_LIST, SPAN_TEMPLATE_FIND_BY_ID, SPAN_TEMPLATE_CREATE } from '../constants';
+import {
+  SPAN_TEMPLATE_LIST,
+  SPAN_TEMPLATE_FIND_BY_ID,
+  SPAN_TEMPLATE_CREATE,
+  SPAN_TEMPLATE_UPDATE,
+  SPAN_TEMPLATE_DELETE,
+} from '../constants';
 import { createMockObservabilityService, createMockTemplateMetricsService } from './mocks';
 import { createTemplateItemFixture } from './fixtures';
 
@@ -200,6 +206,22 @@ function registerUpdateTests(
 
       expect(result.name).toBe('New Name');
       expect(repo.save).toHaveBeenCalled();
+      expect(mockTemplateMetricsService.recordUpdate).toHaveBeenCalled();
+    });
+
+    it('calls withSpan with SPAN_TEMPLATE_UPDATE', async () => {
+      const service = getService();
+      const repo = getRepo();
+      const existing = createTemplateItemFixture({ id: 'item-1', name: 'Old' });
+      repo.findOne.mockResolvedValue(existing);
+      repo.save.mockResolvedValue({ ...existing, name: 'New' });
+
+      await service.update('item-1', { name: 'New' });
+
+      expect(mockObservabilityService.withSpan).toHaveBeenCalledWith(
+        SPAN_TEMPLATE_UPDATE,
+        expect.any(Function),
+      );
     });
   });
 }
@@ -226,6 +248,20 @@ function registerDeleteTests(
       await service.delete('item-1');
 
       expect(repo.delete).toHaveBeenCalledWith({ id: 'item-1' });
+      expect(mockTemplateMetricsService.recordDelete).toHaveBeenCalled();
+    });
+
+    it('calls withSpan with SPAN_TEMPLATE_DELETE', async () => {
+      const service = getService();
+      const repo = getRepo();
+      repo.delete.mockResolvedValue({ affected: 1 });
+
+      await service.delete('item-1');
+
+      expect(mockObservabilityService.withSpan).toHaveBeenCalledWith(
+        SPAN_TEMPLATE_DELETE,
+        expect.any(Function),
+      );
     });
   });
 }

@@ -11,6 +11,9 @@ Support structure for scalable and maintainable tests.
 ```
 src/_template/
 ├── __tests__/
+│   ├── dto/                # DTO validation specs (plainToInstance + validate)
+│   │   ├── create-template-item.dto.spec.ts
+│   │   └── filter-template-item.dto.spec.ts
 │   ├── fixtures/           # Reusable test data
 │   │   ├── template-item.fixture.ts
 │   │   └── index.ts
@@ -30,28 +33,24 @@ src/_template/
 
 ## Conventions
 
-- **Centralized specs in `__tests__/`**: All tests live in their own folder, mirroring the source structure (`services/`). Facilitates scaling and keeping tests separate from production code.
+- **Centralized specs in `__tests__/`**: All tests live in their own folder, mirroring the source structure (`services/`, `dto/`). Facilitates scaling and keeping tests separate from production code.
 - **Fixtures**: Use `create*Fixture(overrides)` for consistent test data. Avoids duplicating mock objects.
 - **Mocks**: Import from `__tests__/mocks` for ObservabilityService and TemplateMetricsService.
 - **describe/it**: `describe('Class')` > `describe('method')` > `it('expected behavior')`.
 - **Arrange-Act-Assert**: Keep tests readable in three clear blocks.
 - **One concept per test**: Prefer one main `expect` per `it`; group related assertions when it makes sense.
+- **DTO specs**: Use `plainToInstance` + `validate` from class-transformer/class-validator for Create and Filter DTOs with custom validators or transform logic.
 
 ## Example usage
 
 ```ts
 // From template.service.spec.ts (in __tests__/)
-import {
-  createMockObservabilityService,
-  createMockTemplateMetricsService,
-} from './mocks';
+import { createMockObservabilityService, createMockTemplateMetricsService } from './mocks';
 import { createTemplateItemFixture } from './fixtures';
 
 const mockObservability = createMockObservabilityService();
 const mockMetrics = createMockTemplateMetricsService();
 
 // In the test:
-templateItemRepository.findOne.mockResolvedValue(
-  createTemplateItemFixture({ name: 'Test Item' }),
-);
+templateItemRepository.findOne.mockResolvedValue(createTemplateItemFixture({ name: 'Test Item' }));
 ```

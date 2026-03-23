@@ -16,7 +16,7 @@ Before generating or modifying code in a module:
 
 1. Read existing files in that module (service, controller, DTOs, entities).
 2. For new modules similar to an existing one, use the reference module as template. **When is a module "similar"?** Use the canonical template if the new module has: pagination, filtered queries, observability spans, or multiple services. For simple CRUD without these, use `store` or `user-session` as lighter references.
-3. Canonical reference: [src/\_template/](../src/_template/) — template module with observability, pagination, DTOs, metrics, tests, endpoint docs.
+3. Canonical reference: [src/\_template/](../src/_template/) — template module with observability, pagination, DTOs, metrics, tests, endpoint docs. The template is not registered in `AppModule`; it exists solely as a reference for copying.
 
 **Required reads before modifying a module:**
 
@@ -58,6 +58,7 @@ After completing any task, run in order: `yarn build`, `yarn lint`, `yarn test`,
 | Contract               | Path                                                              | Purpose                                                                   |
 | ---------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------- |
 | `PaginatedResponse<T>` | `src/pagination/interfaces/PaginatedResponse.ts`                  | Paginated response shape                                                  |
+| `PaginatedResponseDto` | `src/pagination/dtos/paginated-response.dto.ts`                   | OpenAPI schema for paginated responses                                    |
 | `BasePaginationParams` | `src/pagination/dtos/base-pagination-params.ts`                   | Pagination query params                                                   |
 | `EndpointDocSpec`      | `src/shared/decorators/interfaces/endpoint-doc-spec.interface.ts` | Swagger endpoint spec                                                     |
 | `ApiDoc` decorator     | `src/shared/decorators/api-doc.decorator.ts`                      | Apply specs to controller methods                                         |

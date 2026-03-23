@@ -32,7 +32,7 @@ export const productEndpoints: Record<string, EndpointDocSpec> = {
         description: 'Returns paginated list of products',
         schema: {
           allOf: [
-            { $ref: '#/components/schemas/PaginatedResponse' },
+            { $ref: '#/components/schemas/PaginatedResponseDto' },
             {
               properties: {
                 items: {

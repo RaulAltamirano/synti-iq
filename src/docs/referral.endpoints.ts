@@ -74,7 +74,7 @@ export const referralEndpoints: Record<string, EndpointDocSpec> = {
         description: 'Returns paginated list of referred users',
         schema: {
           allOf: [
-            { $ref: '#/components/schemas/PaginatedResponse' },
+            { $ref: '#/components/schemas/PaginatedResponseDto' },
             {
               properties: {
                 items: {

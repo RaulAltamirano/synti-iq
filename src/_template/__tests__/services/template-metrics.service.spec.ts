@@ -10,10 +10,14 @@ describe('TemplateMetricsService', () => {
   };
   let createCounter: { inc: jest.Mock };
   let listCounter: { inc: jest.Mock };
+  let updateCounter: { inc: jest.Mock };
+  let deleteCounter: { inc: jest.Mock };
 
   beforeEach(async () => {
     createCounter = { inc: jest.fn() };
     listCounter = { inc: jest.fn() };
+    updateCounter = { inc: jest.fn() };
+    deleteCounter = { inc: jest.fn() };
 
     observabilityService = {
       createCounter: jest.fn(),
@@ -21,7 +25,9 @@ describe('TemplateMetricsService', () => {
 
     observabilityService.createCounter
       .mockReturnValueOnce(createCounter)
-      .mockReturnValueOnce(listCounter);
+      .mockReturnValueOnce(listCounter)
+      .mockReturnValueOnce(updateCounter)
+      .mockReturnValueOnce(deleteCounter);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -39,8 +45,8 @@ describe('TemplateMetricsService', () => {
   });
 
   describe('onModuleInit', () => {
-    it('creates exactly 2 counters via ObservabilityService.createCounter', () => {
-      expect(observabilityService.createCounter).toHaveBeenCalledTimes(2);
+    it('creates exactly 4 counters via ObservabilityService.createCounter', () => {
+      expect(observabilityService.createCounter).toHaveBeenCalledTimes(4);
     });
 
     it('creates template_items_created_total', () => {
@@ -53,8 +59,22 @@ describe('TemplateMetricsService', () => {
     it('creates template_items_list_total with status label', () => {
       expect(observabilityService.createCounter).toHaveBeenCalledWith(
         'template_items_list_total',
-        'Total number of template item list operations',
+        'Total number of items returned across list operations, by status label. Incremented by count per list call, not by operation count.',
         ['status'],
+      );
+    });
+
+    it('creates template_items_updated_total', () => {
+      expect(observabilityService.createCounter).toHaveBeenCalledWith(
+        'template_items_updated_total',
+        'Total number of template items updated',
+      );
+    });
+
+    it('creates template_items_deleted_total', () => {
+      expect(observabilityService.createCounter).toHaveBeenCalledWith(
+        'template_items_deleted_total',
+        'Total number of template items deleted',
       );
     });
   });
@@ -75,6 +95,20 @@ describe('TemplateMetricsService', () => {
     it('increments list counter with "all" when status not provided', () => {
       service.recordList(3);
       expect(listCounter.inc).toHaveBeenCalledWith({ status: 'all' }, 3);
+    });
+  });
+
+  describe('recordUpdate', () => {
+    it('increments update counter', () => {
+      service.recordUpdate();
+      expect(updateCounter.inc).toHaveBeenCalled();
+    });
+  });
+
+  describe('recordDelete', () => {
+    it('increments delete counter', () => {
+      service.recordDelete();
+      expect(deleteCounter.inc).toHaveBeenCalled();
     });
   });
 });

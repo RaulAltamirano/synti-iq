@@ -21,7 +21,7 @@ export const templateEndpoints: Record<string, EndpointDocSpec> = {
         description: 'Returns paginated list of template items',
         schema: {
           allOf: [
-            { $ref: '#/components/schemas/PaginatedResponse' },
+            { $ref: '#/components/schemas/PaginatedResponseDto' },
             {
               properties: {
                 items: {

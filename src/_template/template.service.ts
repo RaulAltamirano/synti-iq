@@ -112,6 +112,7 @@ export class TemplateService {
       if (dto.status !== undefined) item.status = dto.status;
 
       const saved = await this.templateItemRepository.save(item);
+      this.templateMetrics.recordUpdate();
       this.logger.log('Template item updated', TemplateService.name);
 
       return this.toResponseDto(saved);
@@ -127,6 +128,7 @@ export class TemplateService {
         this.logger.warn('Template item not found for delete', TemplateService.name);
         throw new NotFoundException('Template item not found');
       }
+      this.templateMetrics.recordDelete();
       this.logger.log('Template item deleted', TemplateService.name);
     });
   }

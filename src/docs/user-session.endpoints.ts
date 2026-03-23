@@ -26,7 +26,7 @@ export const userSessionEndpoints: Record<string, EndpointDocSpec> = {
         description: 'Returns paginated list of active sessions',
         schema: {
           allOf: [
-            { $ref: '#/components/schemas/PaginatedResponse' },
+            { $ref: '#/components/schemas/PaginatedResponseDto' },
             {
               properties: {
                 items: {
