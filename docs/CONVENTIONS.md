@@ -223,6 +223,12 @@ Shared utilities: `src/shared/` (pagination, logger, decorators, interceptors, o
 
 **Canonical template**: [src/\_template/](../src/_template/) — Reference module with observability, pagination, DTOs, metrics service, `__tests__/` structure, and endpoint docs. Use when creating new modules with pagination, filtered queries, or observability.
 
+**Template checklist** (when using or updating the template):
+
+- `findById` — throw `NotFoundException` when resource not found (404); never return `null`
+- `:id` params — use `ParseUUIDPipe` for validation (`@Param('id', ParseUUIDPipe)`)
+- DTOs in Swagger — add `@ApiProperty` / `@ApiPropertyOptional` for schema documentation
+
 ---
 
 ## Architecture

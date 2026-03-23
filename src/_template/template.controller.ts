@@ -9,6 +9,7 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Auth } from 'src/auth/decorator';
@@ -36,7 +37,7 @@ export class TemplateController {
   @Get(':id')
   @ApiDoc(templateEndpoints, 'findById')
   @Auth('', [])
-  async findById(@Param('id') id: string): Promise<TemplateItemResponseDto | null> {
+  async findById(@Param('id', ParseUUIDPipe) id: string): Promise<TemplateItemResponseDto> {
     return this.templateService.findById(id);
   }
 
@@ -52,7 +53,7 @@ export class TemplateController {
   @ApiDoc(templateEndpoints, 'update')
   @Auth('', [])
   async update(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateTemplateItemDto,
   ): Promise<TemplateItemResponseDto> {
     return this.templateService.update(id, dto);
@@ -62,7 +63,7 @@ export class TemplateController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiDoc(templateEndpoints, 'delete')
   @Auth('', [])
-  async delete(@Param('id') id: string): Promise<void> {
+  async delete(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.templateService.delete(id);
   }
 }
