@@ -1,6 +1,10 @@
 # PR Review Pipeline — SonarCloud, AI & Discord
 
-Automated Pull Request review pipeline integrating SonarCloud, Gemini (AI), and Discord notifications.
+Automated Pull Request review pipeline integrating SonarCloud, AI (Groq + Gemini), and Discord notifications.
+
+**Architecture:** [Router + Specialist](../adr/0001-ai-router-specialist-strategy.md) — Groq (orchestrator) handles summarizations, roast, diff condensation; Gemini (specialist) performs code quality review.
+
+**Quick reference:** On PR open/update → SonarCloud scan, AI review, Discord notification. On PR close → Discord embed with roast, rating, Sonar stats. Required secrets: `SONAR_TOKEN`, `GEMINI_API_KEY`, `GROQ_API_KEY`, `DISCORD_WEBHOOK`.
 
 ---
 
@@ -14,9 +18,30 @@ Automated Pull Request review pipeline integrating SonarCloud, Gemini (AI), and 
 
 **Limitation:** Jobs that use secrets (sonar, ai-review, discord) **do not run** on PRs from forks. They only run when the PR comes from a branch in the same repository.
 
-**CI Quality Gate:** A separate [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) workflow runs on all PRs (main, master, dev) and on push to main/master. It runs `yarn lint`, `yarn format:check`, `yarn build`, and `yarn test`. Configure **Branch Protection** to require the `quality` job to pass before merge.
+**CI Quality Gate:** A separate [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) workflow runs on all PRs (main, master, dev) and on push to main/master. It runs `yarn audit`, `yarn lint`, `yarn format:check`, `yarn build`, and `yarn test:cov` in parallel jobs. See **Branch Protection** below for required status checks.
 
-**Sonar job steps:** The `sonar` job in `pr-review.yml` runs: lint → format:check → build → test:cov → SonarCloud scan → **Quality Gate check**. If the Quality Gate fails, the job fails and blocks merge (when required by Branch Protection).
+**Sonar job steps:** The `quality-fast` and `quality-build` jobs in `pr-review.yml` run in parallel (audit/lint/format vs build/test:cov). The `sonar` job then runs: SonarCloud scan → **Quality Gate check**. If the Quality Gate fails, the job fails and blocks merge (when required by Branch Protection).
+
+---
+
+## Branch Protection
+
+Configure **Settings > Branches > Branch protection rules** for `main`, `master`, and `dev` to enforce quality gates before merge:
+
+| Setting                                  | Recommendation                                                                                                                                                                                                           |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Require status checks before merging** | Enable. Require both workflows to pass: `CI — Quality Gate` and `PR Review Pipeline`. This ensures `yarn audit`, `yarn lint`, `yarn format:check`, `yarn build`, and `yarn test:cov` pass, plus SonarCloud quality gate. |
+| **Require branches to be up to date**    | Optional but recommended — ensures the latest base branch is tested.                                                                                                                                                     |
+| **Do not allow bypassing**               | Prevent administrators from bypassing (unless necessary).                                                                                                                                                                |
+| **Restrict who can push**                | Block direct push to `main`/`master`; require PRs.                                                                                                                                                                       |
+| **Require pull request reviews**         | Require at least 1 approval before merge.                                                                                                                                                                                |
+
+**Required status checks (exact names depend on GitHub UI):**
+
+- `CI — Quality Gate` (workflow) — or its jobs: `quality-fast`, `quality-build`
+- `PR Review Pipeline` (workflow) — or its jobs: `quality-fast`, `quality-build`
+
+Without both required, a PR could merge with high-severity vulnerabilities (if only pr-review is required) or without SonarCloud/AI review (if only CI is required).
 
 ---
 
@@ -35,13 +60,19 @@ The `sonar-project.properties` file in the project root defines:
 - `sonar.projectKey=RaulAltamirano_synti-iq`
 - Source, test, and coverage paths.
 
-### 2. Gemini (Google AI)
+### 2. Groq (Orchestrator)
+
+1. Get an API key from [Groq Console](https://console.groq.com/keys).
+2. Add to GitHub Secrets: `GROQ_API_KEY`.
+3. Model used: `llama-3.3-70b-versatile` (high throughput, 131K context). Used for: issue/findings summaries, roast, diff condensation.
+
+### 3. Gemini (Specialist)
 
 1. Get an API key from [Google AI Studio](https://aistudio.google.com/apikey).
 2. Add to GitHub Secrets: `GEMINI_API_KEY`.
-3. Model used: `gemini-2.5-flash` (stable, good performance/cost).
+3. Model used: `gemini-2.5-flash` (code quality review only).
 
-### 3. Discord
+### 4. Discord
 
 1. In the developer channel: **Channel settings > Integrations > Webhooks > New webhook**.
 2. Copy the webhook URL.
@@ -51,17 +82,22 @@ The `sonar-project.properties` file in the project root defines:
 
 ## Required Secrets
 
-| Secret            | Description                |
-| ----------------- | -------------------------- |
-| `SONAR_TOKEN`     | SonarCloud token           |
-| `GEMINI_API_KEY`  | Google AI (Gemini) API key |
-| `DISCORD_WEBHOOK` | Discord webhook URL        |
+| Secret            | Description                                     |
+| ----------------- | ----------------------------------------------- |
+| `SONAR_TOKEN`     | SonarCloud token                                |
+| `GEMINI_API_KEY`  | Google AI (Gemini) — code quality review        |
+| `GROQ_API_KEY`    | Groq — summarizations, roast, diff condensation |
+| `DISCORD_WEBHOOK` | Discord webhook URL                             |
 
 `GITHUB_TOKEN` is automatically injected by GitHub Actions.
 
-**Optional:** `SONAR_PROJECT` — SonarCloud project key (default: `RaulAltamirano_synti-iq`). Set in workflow env if using a different project.
+**Optional:** `SONAR_PROJECT` — SonarCloud project key (default: `RaulAltamirano_synti-iq`).
 
-**Optional secrets/variables:** `DISCORD_THREAD_ID`, `DISCORD_USE_FORUM`, `GEMINI_MODEL` — documented in [.env.example](../.env.example) (PR Review Pipeline section).
+**Optional secrets:** `GH_APP_ID`, `GH_INSTALLATION_ID`, `GH_APP_PRIVATE_KEY` — use GitHub App (bot) for PR comments and approval instead of GITHUB_TOKEN.
+
+**GitHub App permissions (required for PR comments & approval):** The App must have **Pull requests: Read and write**. Issues-only permission is not enough. In your App settings: **Settings → Developer settings → GitHub Apps → [Your App] → Permissions and events → Repository permissions → Pull requests → Read and write**. Save and re-authorize the installation if prompted.
+
+**Optional variables:** `DISCORD_THREAD_ID`, `DISCORD_USE_FORUM`, `GEMINI_MODEL`, `GROQ_MODEL` — see [.env.example](../.env.example).
 
 > **Note:** Pipeline variables are documented in [.env.example](../.env.example) (PR Review Pipeline section). They are configured as **Secrets** or **Variables** in GitHub Actions, not in local `.env`.
 
@@ -69,31 +105,34 @@ The `sonar-project.properties` file in the project root defines:
 
 ## Pipeline Files
 
-| File                                      | Purpose                                                         |
-| ----------------------------------------- | --------------------------------------------------------------- |
-| `.github/workflows/ci.yml`                | Quality gate: lint, format:check, build, test on PR/push        |
-| `.github/workflows/pr-review.yml`         | Main workflow: SonarCloud, AI review, Discord                   |
-| `sonar-project.properties`                | SonarCloud configuration                                        |
-| `scripts/pr-review.js`                    | Extracts diff, calls Gemini, posts comment on PR                |
-| `scripts/discord-notify.js`               | Sends embed to Discord when PR is closed                        |
-| `scripts/discord-notify-new-pr.js`        | Sends notification to Discord when PR is opened or updated      |
-| `scripts/discord-notify-commit.js`        | Sends commit + comments to Discord on each push (synchronize)   |
-| `scripts/discord-notify-dev-commit.js`    | Sends notification when commit is pushed directly to `dev`      |
-| `.github/workflows/dev-commit-notify.yml` | Discord notification on push to dev branch                      |
-| `scripts/roast-prompt.config.js`          | Config del roast (idioma, estilos, prompt) — fácil de modificar |
+| File                                      | Purpose                                                                                                   |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `.github/workflows/ci.yml`                | Quality gate: audit, lint, format (quality-fast) + build, test:cov (quality-build) in parallel on PR/push |
+| `.github/workflows/pr-review.yml`         | Main workflow: SonarCloud, AI review, Discord                                                             |
+| `sonar-project.properties`                | SonarCloud configuration                                                                                  |
+| `scripts/pr-review.js`                    | Extracts diff, condenses via Groq if large, Gemini reviews, posts comment                                 |
+| `scripts/lib/ai-agents.js`                | Router+Specialist: Groq (orchestrator), Gemini (specialist)                                               |
+| `scripts/discord-notify.js`               | Sends embed to Discord when PR is closed                                                                  |
+| `scripts/discord-notify-new-pr.js`        | Sends notification to Discord when PR is opened or updated; creates thread when `DISCORD_USE_FORUM=true`  |
+| `scripts/discord-notify-commit.js`        | Sends commit + comments to Discord on each push (synchronize)                                             |
+| `scripts/lib/discord-pr-thread.js`        | Resolves or persists Discord thread ID per PR (stored in PR comment)                                      |
+| `scripts/get-pr-discord-thread.js`        | Outputs thread ID for PR (used by CI workflow)                                                            |
+| `scripts/discord-notify-dev-commit.js`    | Sends notification when commit is pushed directly to `dev`                                                |
+| `.github/workflows/dev-commit-notify.yml` | Discord notification on push to dev branch                                                                |
+| `scripts/roast-prompt.config.js`          | Roast config (language, styles, prompt) — easy to customize                                               |
 
 ---
 
-## Roast (al cerrar PR)
+## Roast (on PR Close)
 
-El roast se genera al cerrar el PR mediante `scripts/generate-close-roast.js`, que llama a Gemini con el contexto del PR (rating, Sonar, merge/reject). Se configura en `scripts/roast-prompt.config.js`:
+The roast is generated when the PR is closed via `scripts/generate-close-roast.js`. Uses Groq (orchestrator) primary, Gemini fallback. Configuration is in `scripts/roast-prompt.config.js`:
 
 - **language**: `'es'` | `'en'`
-- **styles**: referencias de humor (Los Simpson, Lupita, etc.) — añade las que quieras
-- **promptTemplate**: plantilla con `{{action}}`, `{{context}}`, `{{style}}`, `{{author}}`, `{{maxChars}}`
-- **fallback**: mensaje cuando Gemini falla o no hay API key
+- **styles**: humor references (e.g. TV shows) — add your own
+- **promptTemplate**: template with `{{action}}`, `{{context}}`, `{{style}}`, `{{author}}`, `{{maxChars}}`
+- **fallback**: message when both APIs fail or no keys are configured
 
-**Fallback:** Si Gemini falla o `GEMINI_API_KEY` no está configurado, se usa el roast extraído del comentario del bot en el PR (bloque oculto `<!-- DISCORD_ROAST:... -->`), o el mensaje por defecto de `roast-prompt.config.js`.
+**Fallback:** If both Groq and Gemini fail, the roast is extracted from the bot comment on the PR (hidden block `<!-- DISCORD_ROAST:... -->`), or the default from `roast-prompt.config.js`.
 
 ---
 
@@ -157,30 +196,37 @@ All Discord embeds include a **Workflow** field with a link to the GitHub Action
 
 **Discord job behavior:** Discord jobs use `continue-on-error: true` so that a webhook failure (invalid URL, rate limit, etc.) does not block PR merge. Failed notifications are visible in the workflow logs; check the Actions run if Discord does not receive a message.
 
-**Thread options (optional):**
+**Thread per PR (required):**
 
-- `DISCORD_THREAD_ID` (secret): Post all commit updates to this thread. Create a thread in Discord, enable Developer Mode, right-click the thread → Copy Thread ID.
-- `DISCORD_USE_FORUM` (variable, `true`): If the webhook is in a **forum channel**, each commit creates a new forum post (thread). Set in **Settings > Variables**.
+The webhook **must** be in a Discord **forum channel**. When a PR is opened:
+
+1. The first notification creates a Discord thread with name `PR #N: Title`.
+2. The thread ID is stored in a PR comment (`<!-- DISCORD_THREAD_ID:... -->`).
+3. All subsequent notifications (CI, AI review, new commits, PR closed) go to that same thread.
+
+**Fallback:** `DISCORD_THREAD_ID` (secret) — single thread for all PRs (legacy). Create a thread in Discord, enable Developer Mode, right-click → Copy Thread ID.
 
 ---
 
 ## Troubleshooting
 
-| Issue                       | Possible cause                             | Solution                                                                                    |
-| --------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| SonarCloud fails            | Invalid token or project does not exist    | Verify `SONAR_TOKEN` and `projectKey` in SonarCloud                                         |
-| Gemini does not respond     | Invalid API key or rate limit              | Check `GEMINI_API_KEY`; reduce PR frequency                                                 |
-| Gemini 404 NOT_FOUND        | Deprecated or unavailable model            | Script uses `gemini-2.5-flash`. See [models](https://ai.google.dev/gemini-api/docs/models). |
-| Discord does not receive    | Invalid or revoked webhook                 | Regenerate webhook and update `DISCORD_WEBHOOK`                                             |
-| discord-notify exit 1       | Empty webhook (fork PR), invalid URL, 4xx  | Check logs: "Response:" shows Discord error. Fork PRs do not receive secrets.               |
-| Diff truncated              | PR too large                               | Script limits to 2000 lines / 50KB; consider smaller PRs                                    |
-| Incomplete/truncated review | Gemini hit MAX_TOKENS or SAFETY            | Check `finishReason` in workflow logs; consider splitting the PR or reducing diff size      |
-| Empty roast in Discord      | Bot comment does not match expected format | Ensure prompt in `pr-review.js` requests **IA Roast:** and **Rating:**                      |
+| Issue                       | Possible cause                             | Solution                                                                                       |
+| --------------------------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| SonarCloud fails            | Invalid token or project does not exist    | Verify `SONAR_TOKEN` and `projectKey` in SonarCloud                                            |
+| Gemini does not respond     | Invalid API key or rate limit              | Check `GEMINI_API_KEY`; reduce PR frequency                                                    |
+| Gemini 404 NOT_FOUND        | Deprecated or unavailable model            | Script uses `gemini-2.5-flash`. See [models](https://ai.google.dev/gemini-api/docs/models).    |
+| Discord does not receive    | Invalid or revoked webhook                 | Regenerate webhook and update `DISCORD_WEBHOOK`                                                |
+| discord-notify exit 1       | Empty webhook (fork PR), invalid URL, 4xx  | Check logs: "Response:" shows Discord error. Fork PRs do not receive secrets.                  |
+| Diff truncated              | PR too large                               | Script limits to 2000 lines / 50KB; consider smaller PRs                                       |
+| Incomplete/truncated review | Gemini hit MAX_TOKENS or SAFETY            | Check `finishReason` in workflow logs; consider splitting the PR or reducing diff size         |
+| Empty roast in Discord      | Bot comment does not match expected format | Ensure prompt in `pr-review.js` requests **IA Roast:** and **Rating:**                         |
+| Response truncated          | PR too large; Gemini hit MAX_TOKENS        | Split PR into smaller chunks; script uses maxOutputTokens 8192 and conciseness for large diffs |
 
 ---
 
 ## References
 
+- [DEVELOPMENT_WORKFLOW.md](DEVELOPMENT_WORKFLOW.md) — Full flow from issue creation to merge
 - [AGENTS.md](../AGENTS.md)
 - [docs/prompts/code-review.md](prompts/code-review.md)
 - [SonarCloud GitHub Actions](https://docs.sonarsource.com/sonarcloud/advanced-setup/ci-based-analysis/github-actions-for-sonarcloud/)

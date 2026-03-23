@@ -1,4 +1,4 @@
-import { RecurrenceRuleDto } from '../entities/recurring-rules.dto';
+import type { RecurrenceRuleDto } from '../entities/recurring-rules.dto';
 
 export class CreateScheduleDto {
   name: string;

@@ -1,4 +1,5 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { CashierScheduleAssignmentService } from './cashier-schedule-assignment.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { CashierScheduleAssignment } from './entities/cashier-schedule-assignment.entity';
@@ -11,7 +12,7 @@ import { CashierScheduleAssignmentRepository } from './repositories/cashier-sche
 import { AssignmentFactory } from './factories/assignment.factory';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { AssignmentStatus } from './enums/assignment-status.enum';
-import { CreateAssignmentDto, RequestShiftSwapDto } from './dto/create-assignment.dto';
+import type { CreateAssignmentDto, RequestShiftSwapDto } from './dto/create-assignment.dto';
 
 describe('CashierScheduleAssignmentService', () => {
   let service: CashierScheduleAssignmentService;

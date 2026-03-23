@@ -1,6 +1,7 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { NotFoundException, ConflictException } from '@nestjs/common';
+import { Logger, NotFoundException, ConflictException } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { Product } from './entities/product.entity';
 import { Inventory } from 'src/inventory/entities/inventory.entity';
@@ -52,7 +53,7 @@ describe('ProductService', () => {
   let inventoryRepository: { create: jest.Mock; save: jest.Mock };
 
   beforeEach(async () => {
-    jest.spyOn(require('@nestjs/common').Logger.prototype, 'error').mockImplementation();
+    jest.spyOn(Logger.prototype, 'error').mockImplementation();
 
     productRepository = {
       createQueryBuilder: jest.fn().mockReturnValue(createMockQueryBuilder()),

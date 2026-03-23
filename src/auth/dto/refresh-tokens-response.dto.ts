@@ -1,4 +1,4 @@
-import { TokensUserDto } from './token-user.dto';
+import type { TokensUserDto } from './token-user.dto';
 
 export class RefreshTokensResponseDto {
   tokens: TokensUserDto;

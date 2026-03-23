@@ -9,15 +9,17 @@ Use this prompt to generate unit tests for an existing NestJS service.
 Before proceeding, read and internalize:
 
 - [AGENTS.md](../../AGENTS.md) — Quality gates, verification
-- [docs/CONVENTIONS.md](../CONVENTIONS.md) — Testing section, __tests__ structure
-- [src/_template/__tests__/](../../src/_template/__tests__/) — Canonical test structure
-- [src/_template/__tests__/template.service.spec.ts](../../src/_template/__tests__/template.service.spec.ts) — Example spec
+- [docs/CONVENTIONS.md](../CONVENTIONS.md) — Testing section, **tests** structure
+- [src/\_template/**tests**/](../../src/_template/__tests__/) — Canonical test structure
+- [src/\_template/**tests**/template.service.spec.ts](../../src/_template/__tests__/template.service.spec.ts) — Example spec
 
 ---
 
 ## Task
 
 Generate comprehensive unit tests for the service at `<path-to-service>`.
+
+**Placeholder:** Replace `<path-to-service>` with the actual path (e.g. `src/store/store.service.ts`).
 
 ### Structure
 

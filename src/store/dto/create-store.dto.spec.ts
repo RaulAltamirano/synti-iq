@@ -5,7 +5,7 @@ import {
   UniqueScheduleDaysValidator,
   ScheduleTimesOrderValidator,
 } from './create-store.dto';
-import { StoreScheduleItemDto } from './store-schedule-item.dto';
+import type { StoreScheduleItemDto } from './store-schedule-item.dto';
 
 describe('CreateStoreDto', () => {
   describe('schedules validation', () => {

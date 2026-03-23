@@ -1,4 +1,4 @@
-import { EndpointDocSpec } from 'src/shared/decorators/interfaces/endpoint-doc-spec.interface';
+import type { EndpointDocSpec } from 'src/shared/decorators/interfaces/endpoint-doc-spec.interface';
 import { CreateUserSessionDto } from 'src/user-session/dto/create-user-session.dto';
 import { UserSessionResponseDto } from 'src/user-session/dto/user-session-response.dto';
 

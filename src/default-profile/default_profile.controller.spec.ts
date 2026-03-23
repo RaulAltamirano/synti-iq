@@ -1,4 +1,5 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { DefaultProfileController } from './default_profile.controller';
 import { DefaultProfileService } from './default_profile.service';
 

@@ -10,13 +10,15 @@ Before proceeding, read and internalize:
 
 - [AGENTS.md](../../AGENTS.md) — Agent guide, canonical contracts, verification checklist
 - [docs/CONVENTIONS.md](../CONVENTIONS.md) — DTOs, REST, Swagger, pagination, observability, testing
-- [src/_template/](../../src/_template/) — Canonical module reference (every file)
+- [src/\_template/](../../src/_template/) — Canonical module reference (every file)
 
 ---
 
 ## Task
 
 Create a complete NestJS module for `<ENTITY>` with the following structure.
+
+**Placeholders:** Replace `<ENTITY>` with the entity name (e.g. Product, Store). Replace `<module-name>` and `<entity>` with the corresponding kebab-case names.
 
 ### Required Files
 
@@ -47,7 +49,7 @@ Create a complete NestJS module for `<ENTITY>` with the following structure.
    - `*-paginated.dto.ts` — `PaginatedResponse<ResponseDto>`
 
 6. **Constants** — `src/<module-name>/constants/<module>-span.constants.ts`
-   - SPAN_* for span names, ATTR_* for attributes (see [template-span.constants.ts](../../src/_template/constants/template-span.constants.ts))
+   - SPAN*\* for span names, ATTR*\* for attributes (see [template-span.constants.ts](../../src/_template/constants/template-span.constants.ts))
    - `<MODULE>_SPAN_NAMES`, `<MODULE>_SPAN_ATTRIBUTES` objects
    - Barrel: `constants/index.ts`
 
@@ -58,8 +60,8 @@ Create a complete NestJS module for `<ENTITY>` with the following structure.
    - Record<string, EndpointDocSpec> for each endpoint
 
 9. **Tests** — `src/<module-name>/__tests__/`
-   - `fixtures/` — create*Fixture(overrides?)
-   - `mocks/` — createMockObservabilityService(), createMock*MetricsService()
+   - `fixtures/` — create\*Fixture(overrides?)
+   - `mocks/` — createMockObservabilityService(), createMock\*MetricsService()
    - `<module-name>.service.spec.ts` — happy path, edge cases, error paths
    - `services/<module>-metrics.service.spec.ts` if metrics service exists
 

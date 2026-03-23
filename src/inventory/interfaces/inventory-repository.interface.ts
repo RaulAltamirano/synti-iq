@@ -1,5 +1,5 @@
-import { Inventory } from '../entities/inventory.entity';
-import { InventoryStatus } from '../entities/inventory.entity';
+import type { Inventory } from '../entities/inventory.entity';
+import type { InventoryStatus } from '../entities/inventory.entity';
 
 export interface IInventoryRepository {
   findById(id: string): Promise<Inventory>;

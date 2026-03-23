@@ -7,7 +7,7 @@ import {
   ApiQuery,
   ApiCookieAuth,
 } from '@nestjs/swagger';
-import { EndpointDocSpec } from './interfaces/endpoint-doc-spec.interface';
+import type { EndpointDocSpec } from './interfaces/endpoint-doc-spec.interface';
 
 export function ApiDoc(docs: Record<string, EndpointDocSpec>, endpointId: string): MethodDecorator {
   const spec = docs[endpointId];

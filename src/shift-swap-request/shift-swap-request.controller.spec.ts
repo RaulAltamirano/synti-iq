@@ -1,4 +1,5 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { ShiftSwapRequestController } from './shift-swap-request.controller';
 import { ShiftSwapRequestService } from './shift-swap-request.service';
 

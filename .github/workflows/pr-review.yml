@@ -15,16 +15,17 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Least privilege: contents: read for checkout; pull-requests: write for SonarCloud/AI PR comments
 permissions:
   contents: read
   pull-requests: write
 
 jobs:
-  sonar:
+  quality-fast:
     if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
         with:
           fetch-depth: 0
 
@@ -37,7 +38,7 @@ jobs:
             ${{ runner.os }}-yarn-
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
         with:
           node-version: '20.19'
           cache: 'yarn'
@@ -48,11 +49,51 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
+      - name: Audit dependencies
+        run: yarn audit --level high
+
       - name: Lint
+        env:
+          # 4GB — runners have ~7GB RAM; 8GB heap caused OOM
+          NODE_OPTIONS: --max-old-space-size=4096
         run: yarn lint
 
       - name: Check formatting
         run: yarn format:check
+
+  quality-build:
+    if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+
+      - name: Cache node_modules
+        uses: actions/cache@v5
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Cache Jest
+        uses: actions/cache@v5
+        with:
+          path: .jest-cache
+          key: ${{ runner.os }}-jest-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('src/**/*.ts') }}
+          restore-keys: |
+            ${{ runner.os }}-jest-${{ hashFiles('**/yarn.lock') }}-
+
+      - name: Setup Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: '20.19'
+          cache: 'yarn'
+
+      - name: Enable Yarn
+        run: corepack enable
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
 
       - name: Build
         run: yarn build
@@ -67,14 +108,38 @@ jobs:
           path: coverage/
           retention-days: 7
 
+  sonar:
+    needs: [quality-fast, quality-build]
+    if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          fetch-depth: 0
+
+      - name: Download coverage report
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: coverage-report
+
+      - name: Restore coverage for Sonar and jest-coverage-report
+        run: mkdir -p coverage && cp -r coverage-report/. coverage/
+
+      - name: Coverage PR comment
+        uses: ArtiomTr/jest-coverage-report-action@7f750dd50f5585533321eb7ebc482b936b49a5d4
+        with:
+          coverage-file: ./coverage/coverage-final.json
+          skip-step: all
+          package-manager: yarn
+
       - name: SonarCloud Scan
-        uses: SonarSource/sonarqube-scan-action@v7
+        uses: SonarSource/sonarqube-scan-action@689fb39b34b9aa95ebc5f8f119343ddd51542402
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
       - name: SonarCloud Quality Gate check
         id: sonarqube-quality-gate-check
-        uses: sonarsource/sonarqube-quality-gate-action@v1.2.0
+        uses: sonarsource/sonarqube-quality-gate-action@cf038b0e0cdecfa9e56c198bbb7d21d751d62c3b
         with:
           pollingTimeoutSec: 600
         env:
@@ -83,9 +148,9 @@ jobs:
 
   ai-review:
     if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
 
       - name: Cache node_modules
         uses: actions/cache@v5
@@ -96,7 +161,7 @@ jobs:
             ${{ runner.os }}-yarn-
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
         with:
           node-version: '20.19'
           cache: 'yarn'
@@ -112,21 +177,27 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_EVENT_PATH: ${{ github.event_path }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_APP_ID: ${{ secrets.GH_APP_ID }}
+          GH_INSTALLATION_ID: ${{ secrets.GH_INSTALLATION_ID }}
+          GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: node scripts/pr-review.js
 
   discord-commit-update:
+    needs: [discord-notify-new-pr]
     if: github.event_name == 'pull_request' && github.event.action == 'synchronize' && github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     continue-on-error: true
     steps:
-      - name: Fetch commit and comments
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+
+      - name: Fetch commit details
         id: fetch
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PR_NUM="${{ github.event.pull_request.number }}"
           HEAD_SHA="${{ github.event.pull_request.head.sha }}"
           COMMIT=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
@@ -135,10 +206,6 @@ jobs:
           COMMIT_MSG=$(echo "$COMMIT" | jq -r '.commit.message // ""' 2>/dev/null)
           COMMIT_AUTHOR=$(echo "$COMMIT" | jq -r '.commit.author.name // .author.login // "unknown"' 2>/dev/null)
           COMMIT_URL=$(echo "$COMMIT" | jq -r '.html_url // ""' 2>/dev/null)
-          COMMENTS=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/${{ github.repository }}/issues/${PR_NUM}/comments" 2>/dev/null || echo "[]")
           echo "sha=${HEAD_SHA}" >> $GITHUB_OUTPUT
           echo "message<<MSG_EOF" >> $GITHUB_OUTPUT
           printf '%s' "$COMMIT_MSG" >> $GITHUB_OUTPUT
@@ -146,15 +213,12 @@ jobs:
           echo "MSG_EOF" >> $GITHUB_OUTPUT
           echo "author=$COMMIT_AUTHOR" >> $GITHUB_OUTPUT
           echo "url=${COMMIT_URL:-}" >> $GITHUB_OUTPUT
-          echo "comments<<COMMENTS_DELIM" >> $GITHUB_OUTPUT
-          echo "$COMMENTS" >> $GITHUB_OUTPUT
-          echo "COMMENTS_DELIM" >> $GITHUB_OUTPUT
 
       - name: Notify Discord - New commit
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-          DISCORD_THREAD_ID: ${{ secrets.DISCORD_THREAD_ID }}
-          DISCORD_USE_FORUM: ${{ vars.DISCORD_USE_FORUM }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
           WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_TITLE: ${{ github.event.pull_request.title }}
@@ -164,19 +228,18 @@ jobs:
           COMMIT_MESSAGE: ${{ steps.fetch.outputs.message }}
           COMMIT_AUTHOR: ${{ steps.fetch.outputs.author }}
           COMMIT_URL: ${{ steps.fetch.outputs.url }}
-          COMMENTS_JSON: ${{ steps.fetch.outputs.comments }}
         run: node scripts/discord-notify-commit.js
 
   discord-notify-new-pr:
     needs: [ai-review]
     if: always() && (needs.ai-review.result == 'success' || needs.ai-review.result == 'failure')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
         with:
           node-version: '20.19'
 
@@ -262,6 +325,9 @@ jobs:
         if: github.event.pull_request != null
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -284,13 +350,13 @@ jobs:
 
   discord-notify:
     if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
         with:
           node-version: '20.19'
 
@@ -343,6 +409,7 @@ jobs:
       - name: Generate roast with burla (why closed/merged)
         id: genroast
         env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
@@ -359,6 +426,8 @@ jobs:
       - name: Notify Discord
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
           WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_MERGED: ${{ github.event.pull_request.merged }}

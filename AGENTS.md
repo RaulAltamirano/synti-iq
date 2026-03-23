@@ -13,26 +13,28 @@ Act as a **Staff Software Engineer and Technical Architect** specialized in Type
 ## Codebase Awareness
 
 Before generating or modifying code in a module:
+
 1. Read existing files in that module (service, controller, DTOs, entities).
 2. For new modules similar to an existing one, use the reference module as template. **When is a module "similar"?** Use the canonical template if the new module has: pagination, filtered queries, observability spans, or multiple services. For simple CRUD without these, use `store` or `user-session` as lighter references.
-3. Canonical reference: [src/_template/](../src/_template/) — template module with observability, pagination, DTOs, metrics, tests, endpoint docs.
+3. Canonical reference: [src/\_template/](../src/_template/) — template module with observability, pagination, DTOs, metrics, tests, endpoint docs.
 
 **Required reads before modifying a module:**
+
 - Changing controller → read: controller, service, DTOs used by affected endpoints
 - Changing service → read: service, entities, repositories, DTOs
 - Adding endpoint → read: controller, service, `src/docs/<module>.endpoints.ts`, existing DTOs
-- New module → read: [src/_template/](src/_template/) (canonical template) + [docs/CONVENTIONS.md](docs/CONVENTIONS.md) Project Structure
+- New module → read: [src/\_template/](src/_template/) (canonical template) + [docs/CONVENTIONS.md](docs/CONVENTIONS.md) Project Structure
 
 ---
 
 ## Executable Commands (Run First)
 
-| Command | Purpose |
-|---------|---------|
-| `yarn build` | Verify compilation after changes |
-| `yarn lint` | Lint and auto-fix; run before commit |
-| `yarn test` | Run unit tests |
-| `yarn format:check` | Verify Prettier formatting |
+| Command             | Purpose                              |
+| ------------------- | ------------------------------------ |
+| `yarn build`        | Verify compilation after changes     |
+| `yarn lint`         | Lint and auto-fix; run before commit |
+| `yarn test`         | Run unit tests                       |
+| `yarn format:check` | Verify Prettier formatting           |
 
 ---
 
@@ -53,13 +55,13 @@ After completing any task, run in order: `yarn build`, `yarn lint`, `yarn test`,
 
 ## Canonical Contracts
 
-| Contract | Path | Purpose |
-|----------|------|---------|
-| `PaginatedResponse<T>` | `src/pagination/interfaces/PaginatedResponse.ts` | Paginated response shape |
-| `BasePaginationParams` | `src/pagination/dtos/base-pagination-params.ts` | Pagination query params |
-| `EndpointDocSpec` | `src/shared/decorators/interfaces/endpoint-doc-spec.interface.ts` | Swagger endpoint spec |
-| `ApiDoc` decorator | `src/shared/decorators/api-doc.decorator.ts` | Apply specs to controller methods |
-| Logging conventions | [docs/LOGGING.md](docs/LOGGING.md) | NestJS Logger + Pino; reference module: [src/_template/](src/_template/) |
+| Contract               | Path                                                              | Purpose                                                                   |
+| ---------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `PaginatedResponse<T>` | `src/pagination/interfaces/PaginatedResponse.ts`                  | Paginated response shape                                                  |
+| `BasePaginationParams` | `src/pagination/dtos/base-pagination-params.ts`                   | Pagination query params                                                   |
+| `EndpointDocSpec`      | `src/shared/decorators/interfaces/endpoint-doc-spec.interface.ts` | Swagger endpoint spec                                                     |
+| `ApiDoc` decorator     | `src/shared/decorators/api-doc.decorator.ts`                      | Apply specs to controller methods                                         |
+| Logging conventions    | [docs/LOGGING.md](docs/LOGGING.md)                                | NestJS Logger + Pino; reference module: [src/\_template/](src/_template/) |
 
 ---
 
@@ -86,7 +88,7 @@ After completing any task, run in order: `yarn build`, `yarn lint`, `yarn test`,
 ### Never
 
 - Assume relationships, table names, or entity structures without verification
-- Invent variable names or implementations; when unsure, search the codebase for existing usage (grep for `findBy`, `create*`, or similar patterns in `src/`) or ask. Prefer inferring from similar modules (e.g. _template, user-session).
+- Invent variable names or implementations; when unsure, search the codebase for existing usage (grep for `findBy`, `create*`, or similar patterns in `src/`) or ask. Prefer inferring from similar modules (e.g. \_template, user-session).
 - Use `any` in DTOs or services without explicit justification
 - Expose stack traces or sensitive data in production responses
 - Modify canonical contract paths without updating AGENTS.md and docs/CONVENTIONS.md
@@ -104,18 +106,18 @@ After completing any task, run in order: `yarn build`, `yarn lint`, `yarn test`,
 
 ## Tech Stack
 
-| Component | Version / Details |
-|-----------|-------------------|
-| Framework | NestJS v11 |
-| Language | TypeScript 5.7+ |
-| ORM | TypeORM 0.3.x |
-| Database | PostgreSQL (PostGIS) |
-| Cache | Redis (ioredis) |
+| Component  | Version / Details                  |
+| ---------- | ---------------------------------- |
+| Framework  | NestJS v11                         |
+| Language   | TypeScript 5.7+                    |
+| ORM        | TypeORM 0.3.x                      |
+| Database   | PostgreSQL (PostGIS)               |
+| Cache      | Redis (ioredis)                    |
 | Validation | class-validator, class-transformer |
-| API Docs | Swagger/OpenAPI (@nestjs/swagger) |
-| Auth | JWT RS256, Passport |
-| Logging | nestjs-pino (structured) |
-| Testing | Jest, Supertest |
+| API Docs   | Swagger/OpenAPI (@nestjs/swagger)  |
+| Auth       | JWT RS256, Passport                |
+| Logging    | nestjs-pino (structured)           |
+| Testing    | Jest, Supertest                    |
 
 **ValidationPipe** (global): `whitelist: true`, `forbidNonWhitelisted: true`, `transform: true`
 
@@ -143,16 +145,16 @@ Full structure including `repositories/`, `factories/`, and `constants/`: see [d
 
 ## Naming Conventions
 
-| Element | Convention | Example |
-|---------|------------|---------|
-| Modules & folders | kebab-case | `store-schedule`, `user-session` |
-| DTO files | kebab-case.dto.ts | `create-store.dto.ts`, `filter-user.dto.ts` |
-| DTO classes | PascalCase + Dto | `CreateStoreDto`, `FilterUserDto` |
-| DTO folder | singular | `dto/` (not `dtos/`) |
-| Entity files | kebab-case.entity.ts | `referral-code.entity.ts` |
-| Entity classes | PascalCase | `ReferralCode`, `StoreSchedule` |
-| DB tables | snake_case | `@Entity('referral_codes')` |
-| Enum files | kebab-case.enum.ts | `assignment-status.enum.ts` |
+| Element           | Convention           | Example                                     |
+| ----------------- | -------------------- | ------------------------------------------- |
+| Modules & folders | kebab-case           | `store-schedule`, `user-session`            |
+| DTO files         | kebab-case.dto.ts    | `create-store.dto.ts`, `filter-user.dto.ts` |
+| DTO classes       | PascalCase + Dto     | `CreateStoreDto`, `FilterUserDto`           |
+| DTO folder        | singular             | `dto/` (not `dtos/`)                        |
+| Entity files      | kebab-case.entity.ts | `referral-code.entity.ts`                   |
+| Entity classes    | PascalCase           | `ReferralCode`, `StoreSchedule`             |
+| DB tables         | snake_case           | `@Entity('referral_codes')`                 |
+| Enum files        | kebab-case.enum.ts   | `assignment-status.enum.ts`                 |
 
 Note: Some legacy entities use snake_case file names; new modules must use kebab-case.
 
@@ -173,6 +175,7 @@ Note: Some legacy entities use snake_case file names; new modules must use kebab
 ## Pagination, Observability, Testing
 
 See [docs/CONVENTIONS.md](docs/CONVENTIONS.md) for full specs:
+
 - **Pagination**: `BasePaginationParams`, `PaginatedResponse<T>`, filter DTOs
 - **Observability**: `withSpan` signature, span constants, metrics, test mocks
 - **Testing**: `__tests__/` structure, fixtures, mocks, coverage
@@ -181,14 +184,14 @@ See [docs/CONVENTIONS.md](docs/CONVENTIONS.md) for full specs:
 
 ## Reference Implementations
 
-| Pattern | Path | Use When |
-|---------|------|----------|
-| Canonical template (observability, pagination, tests) | [src/_template/](../src/_template/) | New feature modules |
-| Custom repository | [src/user-session/user-session.repository.ts](../src/user-session/user-session.repository.ts) | Complex queries |
-| Repository interface | [src/inventory/interfaces/inventory-repository.interface.ts](../src/inventory/interfaces/inventory-repository.interface.ts) | Contract injection |
-| Span constants | [src/_template/constants/template-span.constants.ts](../src/_template/constants/template-span.constants.ts) | Observability |
-| Error handling | [src/store/store.service.ts](../src/store/store.service.ts) | NotFoundException, validation patterns |
-| Module structure (imports, exports, providers) | [src/_template/template.module.ts](../src/_template/template.module.ts) | Registering modules with multiple providers, exports |
+| Pattern                                               | Path                                                                                                                        | Use When                                             |
+| ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Canonical template (observability, pagination, tests) | [src/\_template/](../src/_template/)                                                                                        | New feature modules                                  |
+| Custom repository                                     | [src/user-session/user-session.repository.ts](../src/user-session/user-session.repository.ts)                               | Complex queries                                      |
+| Repository interface                                  | [src/inventory/interfaces/inventory-repository.interface.ts](../src/inventory/interfaces/inventory-repository.interface.ts) | Contract injection                                   |
+| Span constants                                        | [src/\_template/constants/template-span.constants.ts](../src/_template/constants/template-span.constants.ts)                | Observability                                        |
+| Error handling                                        | [src/store/store.service.ts](../src/store/store.service.ts)                                                                 | NotFoundException, validation patterns               |
+| Module structure (imports, exports, providers)        | [src/\_template/template.module.ts](../src/_template/template.module.ts)                                                    | Registering modules with multiple providers, exports |
 
 ---
 
@@ -203,7 +206,7 @@ See [docs/CONVENTIONS.md](docs/CONVENTIONS.md) for full specs:
 ### Choosing Between Valid Approaches
 
 1. **Custom repo vs @InjectRepository?** → Simple CRUD: @InjectRepository. Complex queries, joins, or multi-entity logic: custom repository.
-2. **Colocated spec vs __tests__/?** → 1–2 specs: colocated. 3+ specs or shared fixtures/mocks: `__tests__/`.
+2. **Colocated spec vs **tests**/?** → 1–2 specs: colocated. 3+ specs or shared fixtures/mocks: `__tests__/`.
 3. **New shared utility?** → If used by 2+ modules: `src/shared/`. If module-specific: `src/<module>/utils/`.
 4. **Validation in service vs DTO?** → Format and presence: DTO with class-validator. Business rules (e.g. "store must be open"): service.
 
@@ -211,6 +214,7 @@ See [docs/CONVENTIONS.md](docs/CONVENTIONS.md) for full specs:
 
 ## References
 
+- **Development workflow**: [docs/DEVELOPMENT_WORKFLOW.md](docs/DEVELOPMENT_WORKFLOW.md) — Full flow from issue creation to merge
 - **Detailed conventions**: [docs/CONVENTIONS.md](docs/CONVENTIONS.md)
 - **Technical plan template**: [docs/PLAN_TEMPLATE.md](docs/PLAN_TEMPLATE.md) — Canonical format for feature/audit plans executed by AI agents
 - **Cursor rules**: `.cursor/rules/` — Context-specific rules per file type. The `always-apply.mdc` rule reinforces AGENTS.md; keep both in sync when updating Golden Rule, TypeScript, or Verification.

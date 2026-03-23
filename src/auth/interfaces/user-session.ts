@@ -1,4 +1,4 @@
-import { TokenResponse } from './token-response.type';
+import type { TokenResponse } from './token-response.type';
 
 export interface UserSession {
   id: string;

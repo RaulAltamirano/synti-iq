@@ -1,4 +1,4 @@
-import { TokensUserDto } from '../dto/token-user.dto';
+import type { TokensUserDto } from '../dto/token-user.dto';
 
 export class TokenResponseHelper {
   static build(tokens: TokensUserDto, sessionId?: string) {

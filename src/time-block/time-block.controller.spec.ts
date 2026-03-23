@@ -1,4 +1,5 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import type { TestingModule } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { TimeBlockController } from './time-block.controller';
 import { TimeBlockService } from './time-block.service';
 

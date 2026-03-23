@@ -89,14 +89,17 @@ function formatSonarStats(bugs, hotspots, vulns, fallback = '✅ No critical fin
 /**
  * Builds a Workflow field for embed.
  * @param {string} url
+ * @param {string} [duration] - optional duration (e.g. "3m 42s")
  * @returns {{ name: string, value: string, inline: boolean } | null}
  */
-function buildWorkflowField(url) {
+function buildWorkflowField(url, duration) {
   const u = (url || '').trim();
   if (!u) return null;
+  const parts = [`[View run](${u})`];
+  if (duration && duration.trim()) parts.push(` • ${duration.trim()}`);
   return {
     name: 'Workflow',
-    value: `[View run](${u})`,
+    value: parts.join(''),
     inline: false,
   };
 }
@@ -139,15 +142,18 @@ function sanitizeForEmbed(text) {
  * @param {number} [options.timeoutMs]
  * @param {object} [options.extraPayload] - e.g. { thread_name: '...' }
  * @param {string} [options.threadId]
- * @returns {Promise<void>}
+ * @param {boolean} [options.wait] - if true, returns the created Message (channel_id = thread id for forum posts)
+ * @returns {Promise<object|void>} - Message object when wait=true; otherwise void
  */
 async function sendEmbed(webhookUrl, embed, options = {}) {
-  const { timeoutMs = DEFAULT_TIMEOUT_MS, extraPayload = {}, threadId } = options;
+  const { timeoutMs = DEFAULT_TIMEOUT_MS, extraPayload = {}, threadId, wait = false } = options;
   let url = webhookUrl;
-  if (threadId) {
-    url = webhookUrl.includes('?')
-      ? `${webhookUrl}&thread_id=${threadId}`
-      : `${webhookUrl}?thread_id=${threadId}`;
+  const params = [];
+  if (threadId) params.push(`thread_id=${threadId}`);
+  if (wait) params.push('wait=true');
+  if (params.length > 0) {
+    const qs = params.join('&');
+    url = webhookUrl.includes('?') ? `${webhookUrl}&${qs}` : `${webhookUrl}?${qs}`;
   }
   const payload = { embeds: [embed], ...extraPayload };
 
@@ -181,6 +187,10 @@ async function sendEmbed(webhookUrl, embed, options = {}) {
       console.error('Discord webhook failed:', res.status, res.statusText);
       console.error('Response:', body.slice(0, 500));
       process.exit(1);
+    }
+
+    if (wait) {
+      return /** @type {{ channel_id?: string }} */ (await res.json());
     }
   } catch (err) {
     clearTimeout(timeoutId);

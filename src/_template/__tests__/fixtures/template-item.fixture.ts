@@ -1,4 +1,4 @@
-import { TemplateItem } from '../../entities/template-item.entity';
+import type { TemplateItem } from '../../entities/template-item.entity';
 
 export interface TemplateItemFixtureOverrides {
   id?: string;

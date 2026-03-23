@@ -2,6 +2,8 @@
 
 This document describes the relationship between subscription plans, store creation limits, and business logic.
 
+---
+
 ## Subscription Plans Entity
 
 Plans are defined in `src/subscription/entities/subscription-plan.entity.ts` with:

@@ -1,29 +1,51 @@
 #!/usr/bin/env node
 /**
- * PR Review Script — Extracts PR diff, sends to Gemini for code review, posts comment on GitHub.
- * Run from project root in GitHub Actions. Requires: GITHUB_REPOSITORY, GITHUB_EVENT_PATH, GITHUB_TOKEN, GEMINI_API_KEY
- * Optional: SONAR_TOKEN — fetches SonarCloud metrics for the comment
- * Optional: SONAR_PROJECT — SonarCloud project key (default: RaulAltamirano_synti-iq)
+ * PR Review Script — Router + Specialist strategy (see docs/adr/0001-ai-router-specialist-strategy.md).
+ * Groq (orchestrator): Condenses large diffs to reduce Gemini token load.
+ * Gemini (specialist): Code quality review.
+ *
+ * Comments: Uses Octokit with GitHub App (GH_APP_ID, GH_INSTALLATION_ID, GH_APP_PRIVATE_KEY) when set;
+ * otherwise GITHUB_TOKEN. Bot identity comes from App when configured.
+ *
+ * Run from project root in GitHub Actions. Requires: GITHUB_REPOSITORY, GITHUB_EVENT_PATH, GEMINI_API_KEY
+ * GitHub auth: GITHUB_TOKEN (default) or GH_APP_ID + GH_INSTALLATION_ID + GH_APP_PRIVATE_KEY
+ * Optional: GROQ_API_KEY, SONAR_TOKEN, SONAR_PROJECT
  */
 
 const fs = require('fs');
 const path = require('path');
+const { callGemini, condenseDiff, TOKEN_LIMITS } = require('./lib/ai-agents');
+const {
+  getAuth,
+  listComments,
+  deleteComment,
+  createComment,
+  createReview,
+} = require('./lib/github-client');
 
-const MAX_DIFF_LINES = 2000;
-const MAX_DIFF_BYTES = 50 * 1024;
+const MAX_DIFF_LINES = 2500;
+const MAX_DIFF_BYTES = 60 * 1024;
 const BOT_COMMENT_PREFIX = '🤖 AI Technical Assistant - Review';
+/** GitHub API limit 65536; use 65000 for safe margin. */
+const GITHUB_COMMENT_MAX = 65000;
 
 async function main() {
   const repo = process.env.GITHUB_REPOSITORY;
-  const token = process.env.GITHUB_TOKEN;
   const geminiKey = process.env.GEMINI_API_KEY;
   const eventPath = process.env.GITHUB_EVENT_PATH;
 
   const missing = [];
   if (!repo) missing.push('GITHUB_REPOSITORY');
-  if (!token) missing.push('GITHUB_TOKEN');
   if (!geminiKey) missing.push('GEMINI_API_KEY');
   if (!eventPath) missing.push('GITHUB_EVENT_PATH');
+
+  const hasToken = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
+  const hasApp =
+    (process.env.GH_APP_ID || process.env.GITHUB_APP_ID) &&
+    (process.env.GH_INSTALLATION_ID || process.env.GITHUB_INSTALLATION_ID) &&
+    (process.env.GH_APP_PRIVATE_KEY || process.env.GITHUB_PRIVATE_KEY);
+  if (!hasToken && !hasApp) missing.push('GITHUB_TOKEN or GH_APP_*');
+
   if (missing.length > 0) {
     console.error('Missing required env:', missing.join(', '));
     if (missing.includes('GEMINI_API_KEY')) {
@@ -33,6 +55,8 @@ async function main() {
     }
     process.exit(1);
   }
+
+  const { token, octokit } = await getAuth();
 
   const event = JSON.parse(fs.readFileSync(eventPath, 'utf8'));
   const pr = event.pull_request;
@@ -99,6 +123,15 @@ async function main() {
     diff = '(No code changes in diff)';
   }
 
+  // 1b. Condense large diff with Groq (orchestrator) to reduce Gemini token load
+  const DIFF_CONDENSE_THRESHOLD = 1200;
+  if (lines.length >= DIFF_CONDENSE_THRESHOLD && process.env.GROQ_API_KEY) {
+    const condensed = await condenseDiff(diff, 800);
+    if (condensed) {
+      diff = condensed + `\n\n... [Diff condensed by Groq: original ${lines.length} lines]`;
+    }
+  }
+
   // 2. Load context files with smart truncation
   const root = path.resolve(__dirname, '..');
   const CONTEXT_LIMITS = {
@@ -150,30 +183,23 @@ ${truncate(prePrReview, CONTEXT_LIMITS['docs/prompts/pre-pr-review.md'])}
   const userPrompt = `
 ## Task
 
-Review the following PR diff EXHAUSTIVELY against project standards. Check every category that applies to the diff. Use this exact format:
+Review this PR diff against project standards. Output professional feedback: clear, actionable, constructive. Target <2500 chars. Tone: helpful peer review.
 
-**IA Roast:** "[One funny sarcastic one-liner in English. Mention @${prAuthor}. Max 150 chars. Use phrases or style from: The Simpsons, Futurama, Lupita (Mexican humor), TikTok trends, or Oprankedy. Vary the style each time.]"
+**IA Roast:** "[One light sarcastic one-liner. Mention @${prAuthor}. Max 80 chars.]"
 
 **Convention Analysis:**
-For each category that applies to the diff, output at least one bullet. Use N/A only if the category has no relevant changes.
-- Architecture: [PASS/FAIL/N/A] - Location: [file:line or section] - Detail: [what is wrong or correct] - Reference: [AGENTS.md/CONVENTIONS.md]
-- TypeScript Quality: [PASS/FAIL/N/A] - Location: [file:line] - Detail: [no any, return types, strict typing] - Reference: [CONVENTIONS.md]
-- DTOs & Validation: [PASS/FAIL/N/A] - Location: [file:line] - Detail: [class-validator, @IsOptional] - Reference: [CONVENTIONS.md]
-- Error Handling: [PASS/FAIL/N/A] - Location: [file:line] - Detail: [NotFoundException, BadRequestException, etc.] - Reference: [AGENTS.md]
-- Logging & Observability: [PASS/FAIL/N/A] - Location: [file:line] - Detail: [Logger, withSpan, no console] - Reference: [docs/LOGGING.md, CONVENTIONS.md]
-- Testing: [PASS/FAIL/N/A] - Location: [file or section] - Detail: [unit tests, fixtures, mocks] - Reference: [CONVENTIONS.md, DEFINITION_OF_DONE]
-- API & Documentation: [PASS/FAIL/N/A] - Location: [file:line] - Detail: [ApiDoc, Swagger, endpoint specs] - Reference: [CONVENTIONS.md]
-- Conventions: [PASS/FAIL/N/A] - Location: [file] - Detail: [kebab-case, PascalCase, absolute imports] - Reference: [AGENTS.md]
-Add 1-3 bullets per category that applies. Be specific. If the diff touches DTOs, validate DTOs. If it touches services, validate architecture and error handling.
+Format each finding as:
+- \`✓ Category\` — brief note when PASS (what was done well)
+- \`✗ Category\` — file:line — what to fix, reference (AGENTS.md/CONVENTIONS.md)
+- Omit N/A categories. One line per category that applies. Be specific for FAILs; concise for PASSes.
 
-**Security (SonarCloud):**
-- [Specific concerns if any, or "No obvious security issues detected in diff."]
+**Security (SonarCloud):** One line. If issues: what to address. If none: "No issues in diff."
 
-**Verdict:** [✅ Approved / ❌ Changes Required]. [One sentence: what to fix or confirmation that it looks good.]
+**Verdict:** Start with ✅ Approved or ❌ Changes Required. Follow with one sentence: summary of strengths or key action items.
 
 **Rating:** [1-5]/5
 
-IMPORTANT: Verdict and Convention Analysis must never be empty or N/A. Review exhaustively. Output everything in English.
+IMPORTANT: Professional tone. Acknowledge good work on PASS. For FAIL, be specific and cite docs. English only.
 
 ---
 
@@ -184,120 +210,137 @@ ${diff}
 \`\`\`
 `;
 
-  // 3. Call Gemini (gemini-2.5-flash: stable, good price-performance; fallback: gemini-2.0-flash)
-  const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
-  const geminiRes = await fetch(geminiUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: context + '\n\n' + userPrompt }],
-        },
-      ],
-      generationConfig: {
-        temperature: 0.3,
-        maxOutputTokens: 4096,
-      },
-    }),
+  // 3. Call Gemini (specialist) for code quality review
+  const fullPrompt = context + '\n\n' + userPrompt;
+  const textPart = await callGemini(fullPrompt, {
+    temperature: 0.3,
+    maxTokens: TOKEN_LIMITS.codeReview,
   });
 
-  if (!geminiRes.ok) {
-    console.error('Gemini API error:', geminiRes.status, await geminiRes.text());
-    process.exit(1);
-  }
-
-  const geminiData = await geminiRes.json();
-  const candidate = geminiData?.candidates?.[0];
-  const textPart = candidate?.content?.parts?.[0]?.text;
-  const finishReason = candidate?.finishReason;
-
   if (!textPart) {
-    const reason = finishReason || 'unknown';
-    console.error(
-      `No text in Gemini response. finishReason=${reason}`,
-      JSON.stringify(geminiData, null, 2),
-    );
+    console.error('Gemini API error: no response. Check GEMINI_API_KEY and rate limits.');
     process.exit(1);
-  }
-
-  const problematicReasons = ['MAX_TOKENS', 'SAFETY', 'RECITATION'];
-  if (finishReason && problematicReasons.includes(finishReason)) {
-    console.error(`Gemini finishReason: ${finishReason}. Response may be truncated or blocked.`);
   }
 
   let parsed = parseGeminiResponse(textPart);
-  if (finishReason === 'MAX_TOKENS') {
-    const truncNote = '\n\n(Response truncated. Consider splitting the PR or reducing diff size.)';
-    parsed = {
-      ...parsed,
-      conventionAnalysis: parsed.conventionAnalysis + truncNote,
-    };
+
+  // Ensure comment stays under GitHub API limit (65536)
+  if (parsed.conventionAnalysis.length > 8000) {
+    parsed.conventionAnalysis =
+      parsed.conventionAnalysis.slice(0, 8000) + '\n\n...[truncated for length]';
   }
 
-  // GitHub: brief professional review with emojis. Hidden blocks for Discord extraction on PR close.
+  // GitHub: professional review format. Verdict first, then findings. Hidden blocks for Discord.
   const sections = [
-    ['📋 Convention Analysis', parsed.conventionAnalysis],
-    ['🔒 Security', parsed.security],
-    ['📌 Verdict', parsed.verdict],
-    ['⭐ Rating', parsed.rating + '/5'],
+    ['Verdict', parsed.verdict],
+    ['Findings', parsed.conventionAnalysis],
+    ['Security', parsed.security],
   ];
   if (sonarStats) {
-    sections.splice(2, 0, ['📊 SonarCloud', sonarStats]); // after Security, before Verdict
+    sections.push(['SonarCloud', sonarStats]);
   }
-  const githubComment = [
+  sections.push(['Rating', parsed.rating + '/5']);
+  let githubComment = [
     BOT_COMMENT_PREFIX,
     '',
-    ...sections.flatMap(([title, body]) => [`**${title}:**`, body, '']),
+    ...sections.flatMap(([title, body]) => [`**${title}**`, body, '']),
     `<!-- DISCORD_ROAST:${String(parsed.roast).replace(/-->/g, '')} -->`,
     `<!-- DISCORD_RATING:${parsed.rating} -->`,
     `<!-- DISCORD_VERDICT:${String(parsed.verdict).replace(/-->/g, '')} -->`,
     `<!-- DISCORD_SUMMARY:${[parsed.conventionAnalysis, parsed.security, parsed.verdict].join('\n---\n').replace(/-->/g, '')} -->`,
   ].join('\n');
 
-  // 4. Delete previous bot comments (optional, for cleaner PRs)
-  const commentsRes = await fetch(
-    `${apiBase}/repos/${owner}/${repoName}/issues/${prNumber}/comments`,
-    {
-      headers: {
-        Accept: 'application/vnd.github+json',
-        Authorization: `Bearer ${token}`,
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
-    },
-  );
+  if (githubComment.length > GITHUB_COMMENT_MAX) {
+    const excess = githubComment.length - GITHUB_COMMENT_MAX;
+    const truncateSuffix = '\n\n...[truncated for GitHub limit]';
+    let findings = parsed.conventionAnalysis
+      .replace(/\n\n\.\.\.\[truncated for length\]\s*$/, '')
+      .replace(/\n\n\.\.\.\[truncated for GitHub limit\]\s*$/, '');
+    findings =
+      findings.slice(0, Math.max(0, findings.length - excess - truncateSuffix.length)) +
+      truncateSuffix;
+    const sections2 = [
+      ['Verdict', parsed.verdict],
+      ['Findings', findings],
+      ['Security', parsed.security],
+    ];
+    if (sonarStats) sections2.push(['SonarCloud', sonarStats]);
+    sections2.push(['Rating', parsed.rating + '/5']);
+    githubComment = [
+      BOT_COMMENT_PREFIX,
+      '',
+      ...sections2.flatMap(([t, b]) => [`**${t}**`, b, '']),
+      `<!-- DISCORD_ROAST:${String(parsed.roast).replace(/-->/g, '')} -->`,
+      `<!-- DISCORD_RATING:${parsed.rating} -->`,
+      `<!-- DISCORD_VERDICT:${String(parsed.verdict).replace(/-->/g, '')} -->`,
+      `<!-- DISCORD_SUMMARY:${[findings, parsed.security, parsed.verdict].join('\n---\n').replace(/-->/g, '')} -->`,
+    ].join('\n');
+  }
 
-  if (commentsRes.ok) {
-    const comments = await commentsRes.json();
-    for (const c of comments) {
-      if (c.body && c.body.startsWith(BOT_COMMENT_PREFIX)) {
-        await fetch(`${apiBase}/repos/${owner}/${repoName}/issues/comments/${c.id}`, {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'X-GitHub-Api-Version': '2022-11-28',
-          },
-        });
+  // 4. Delete previous bot comments. Try to delete any comment with our prefix;
+  // delete succeeds only for comments we own (GITHUB_TOKEN or App). 403 when not ours.
+  const comments = await listComments(octokit, {
+    owner,
+    repo: repoName,
+    issueNumber: prNumber,
+  });
+  for (const c of comments) {
+    if (c.body && c.body.startsWith(BOT_COMMENT_PREFIX)) {
+      try {
+        await deleteComment(octokit, { owner, repo: repoName, commentId: c.id });
+      } catch (err) {
+        if (err?.status !== 403 && err?.response?.status !== 403) {
+          console.warn('Could not delete comment', c.id, err?.message);
+        }
       }
     }
   }
 
-  // 5. Post new comment (professional only)
-  const postRes = await fetch(`${apiBase}/repos/${owner}/${repoName}/issues/${prNumber}/comments`, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/vnd.github+json',
-      Authorization: `Bearer ${token}`,
-      'X-GitHub-Api-Version': '2022-11-28',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ body: githubComment }),
-  });
-
-  if (!postRes.ok) {
-    console.error('Failed to post comment:', postRes.status, await postRes.text());
+  // 5. Post new comment (Octokit — bot identity when GH_APP_* set)
+  try {
+    await createComment(octokit, {
+      owner,
+      repo: repoName,
+      issueNumber: prNumber,
+      body: githubComment,
+    });
+  } catch (err) {
+    console.error('Failed to post PR comment:', err.message);
+    if (err.message && err.message.includes('too long')) {
+      console.error(
+        'Comment exceeded GitHub limit (65536 chars). Consider reducing maxTokens or Findings length.',
+      );
+    }
     process.exit(1);
+  }
+
+  // 6. Submit review: APPROVE or REQUEST_CHANGES. Always submit so previous approval is reset when new commit changes verdict.
+  const isApproved = /✅\s*Approved|Approved\s*[.—]|^Approved\b/i.test(parsed.verdict);
+  try {
+    if (isApproved) {
+      await createReview(octokit, {
+        owner,
+        repo: repoName,
+        pullNumber: prNumber,
+        event: 'APPROVE',
+        body: '🤖 AI Technical Assistant — Review passed. See comment above for details.',
+      });
+      console.log('PR approved by bot');
+    } else {
+      await createReview(octokit, {
+        owner,
+        repo: repoName,
+        pullNumber: prNumber,
+        event: 'REQUEST_CHANGES',
+        body: '🤖 AI Technical Assistant — Changes requested. See comment above for findings and action items.',
+      });
+      console.log('PR changes requested by bot');
+    }
+  } catch (err) {
+    console.warn(
+      'Could not submit review (check token permissions: pull_requests write):',
+      err.message,
+    );
   }
 
   console.log('PR review comment posted successfully');

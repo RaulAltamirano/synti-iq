@@ -1,5 +1,5 @@
 import { SetMetadata } from '@nestjs/common';
-import { AddressRequirement } from '../guards/address-required.guard';
+import type { AddressRequirement } from '../guards/address-required.guard';
 
 export const REQUIRE_ADDRESS_KEY = 'addressRequirement';
 

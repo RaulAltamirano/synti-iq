@@ -1,4 +1,4 @@
-import { EndpointDocSpec } from 'src/shared/decorators/interfaces/endpoint-doc-spec.interface';
+import type { EndpointDocSpec } from 'src/shared/decorators/interfaces/endpoint-doc-spec.interface';
 import { ReferralValidationResponseDto } from 'src/referral/dto/referral-validation-response.dto';
 import { MyReferralCodeDto } from 'src/referral/dto/my-referral-code.dto';
 import { MyReferrerResponseDto } from 'src/referral/dto/referrer-info.dto';

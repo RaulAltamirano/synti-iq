@@ -1,4 +1,4 @@
-import { EndpointDocSpec } from 'src/shared/decorators/interfaces/endpoint-doc-spec.interface';
+import type { EndpointDocSpec } from 'src/shared/decorators/interfaces/endpoint-doc-spec.interface';
 import { getStandardErrorResponses } from 'src/shared/decorators/standard-error-responses';
 import { CreateStoreDto } from 'src/store/dto/create-store.dto';
 import { AssignCashierDto } from 'src/store/dto/assign-cashier.dto';

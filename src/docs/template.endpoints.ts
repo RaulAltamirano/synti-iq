@@ -1,4 +1,4 @@
-import { EndpointDocSpec } from 'src/shared/decorators/interfaces/endpoint-doc-spec.interface';
+import type { EndpointDocSpec } from 'src/shared/decorators/interfaces/endpoint-doc-spec.interface';
 import { CreateTemplateItemDto } from 'src/_template/dto/create-template-item.dto';
 import { UpdateTemplateItemDto } from 'src/_template/dto/update-template-item.dto';
 import { TemplateItemResponseDto } from 'src/_template/dto/template-item-response.dto';

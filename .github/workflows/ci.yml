@@ -10,21 +10,26 @@ on:
       - '**.md'
       - 'docs/**'
   push:
-    branches: [main, master]
+    branches: [main, master, dev]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
   workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Least privilege: contents: read for checkout; pull-requests: read for Discord thread-per-PR
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
-  quality:
-    runs-on: ubuntu-latest
+  quality-fast:
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
 
       - name: Cache node_modules
         uses: actions/cache@v5
@@ -35,7 +40,7 @@ jobs:
             ${{ runner.os }}-yarn-
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
         with:
           node-version: '20.19'
           cache: 'yarn'
@@ -50,23 +55,126 @@ jobs:
         run: yarn audit --level high
 
       - name: Lint
+        env:
+          # 4GB — runners have ~7GB RAM; 8GB heap caused OOM
+          NODE_OPTIONS: --max-old-space-size=4096
         run: yarn lint
 
       - name: Check formatting
         run: yarn format:check
 
+  quality-build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+
+      - name: Cache node_modules
+        uses: actions/cache@v5
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Cache Jest
+        uses: actions/cache@v5
+        with:
+          path: .jest-cache
+          key: ${{ runner.os }}-jest-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('src/**/*.ts') }}
+          restore-keys: |
+            ${{ runner.os }}-jest-${{ hashFiles('**/yarn.lock') }}-
+
+      - name: Setup Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: '20.19'
+          cache: 'yarn'
+
+      - name: Enable Yarn
+        run: corepack enable
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
       - name: Build
         run: yarn build
 
-      - name: Test
-        run: yarn test
+      - name: Test with coverage
+        run: yarn test:cov
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+
+  # Fallback: post coverage PR comment when pr-review does not run (e.g. fork PRs)
+  coverage-comment:
+    needs: [quality-build]
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+
+      - name: Download coverage report
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: coverage-report
+
+      - name: Restore coverage for jest-coverage-report
+        run: mkdir -p coverage && cp -r coverage-report/. coverage/
+
+      - name: Coverage PR comment
+        uses: ArtiomTr/jest-coverage-report-action@7f750dd50f5585533321eb7ebc482b936b49a5d4
+        with:
+          coverage-file: ./coverage/coverage-final.json
+          skip-step: all
+          package-manager: yarn
+
+  notify:
+    needs: [quality-fast, quality-build]
+    if: always() && (needs.quality-fast.result == 'success' || needs.quality-fast.result == 'failure') && (needs.quality-build.result == 'success' || needs.quality-build.result == 'failure')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+
+      - name: Resolve Discord thread for PR
+        id: thread
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          THREAD=$(node scripts/get-pr-discord-thread.js 2>/dev/null || true)
+          echo "id=${THREAD:-}" >> $GITHUB_OUTPUT
+
+      - name: Compute workflow duration
+        id: duration
+        env:
+          START: ${{ github.run_started_at }}
+        run: |
+          DURATION=$(node -e "
+            const s = new Date(process.env.START);
+            const e = new Date();
+            const d = Math.round((e - s) / 1000);
+            const m = Math.floor(d / 60);
+            const sec = d % 60;
+            console.log(m > 0 ? m + 'm ' + sec + 's' : sec + 's');
+          ")
+          echo "duration=$DURATION" >> $GITHUB_OUTPUT
 
       - name: Notify Discord — CI passed
-        if: success()
+        if: needs.quality-fast.result == 'success' && needs.quality-build.result == 'success'
         continue-on-error: true
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DISCORD_THREAD_ID: ${{ steps.thread.outputs.id }}
           WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          WORKFLOW_DURATION: ${{ steps.duration.outputs.duration }}
           EVENT_NAME: ${{ github.event_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_TITLE: ${{ github.event.pull_request.title }}
@@ -77,3 +185,22 @@ jobs:
           COMMIT_SHA: ${{ github.sha }}
           COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: node scripts/discord-notify-ci-passed.js
+
+      - name: Notify Discord — CI failed
+        if: needs.quality-fast.result != 'success' || needs.quality-build.result != 'success'
+        continue-on-error: true
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DISCORD_THREAD_ID: ${{ steps.thread.outputs.id }}
+          WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          WORKFLOW_DURATION: ${{ steps.duration.outputs.duration }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          BRANCH: ${{ github.ref_name }}
+          COMMIT_SHA: ${{ github.sha }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: node scripts/discord-notify-ci-failed.js
