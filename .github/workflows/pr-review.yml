@@ -15,13 +15,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Least privilege: contents: read for checkout; pull-requests: write for SonarCloud/AI PR comments
-permissions:
-  contents: read
-  pull-requests: write
-
 jobs:
   quality-fast:
+    permissions:
+      contents: read
     if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     steps:
@@ -47,7 +44,7 @@ jobs:
         run: corepack enable
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install --frozen-lockfile --ignore-scripts
 
       - name: Audit dependencies
         run: yarn audit --level high
@@ -62,6 +59,8 @@ jobs:
         run: yarn format:check
 
   quality-build:
+    permissions:
+      contents: read
     if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     steps:
@@ -93,7 +92,7 @@ jobs:
         run: corepack enable
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install --frozen-lockfile --ignore-scripts
 
       - name: Build
         run: yarn build
@@ -109,6 +108,9 @@ jobs:
           retention-days: 7
 
   sonar:
+    permissions:
+      contents: read
+      pull-requests: write
     needs: [quality-fast, quality-build]
     if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
@@ -178,6 +180,9 @@ jobs:
         run: exit 1
 
   ai-review:
+    permissions:
+      contents: read
+      pull-requests: write
     if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     steps:
@@ -201,7 +206,7 @@ jobs:
         run: corepack enable
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install --frozen-lockfile --ignore-scripts
 
       - name: Run AI Review
         env:
@@ -217,6 +222,8 @@ jobs:
         run: node scripts/pr-review.js
 
   discord-commit-update:
+    permissions:
+      contents: read
     needs: [discord-notify-new-pr]
     if: github.event_name == 'pull_request' && github.event.action == 'synchronize' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
@@ -262,6 +269,9 @@ jobs:
         run: node scripts/discord-notify-commit.js
 
   discord-notify-new-pr:
+    permissions:
+      contents: read
+      pull-requests: write
     needs: [ai-review]
     if: always() && (needs.ai-review.result == 'success' || needs.ai-review.result == 'failure')
     runs-on: ubuntu-24.04
@@ -380,6 +390,8 @@ jobs:
         run: node scripts/discord-notify-new-pr.js
 
   discord-notify:
+    permissions:
+      contents: read
     if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     continue-on-error: true
