@@ -1,6 +1,6 @@
 # SyntiIQ
 
-[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=RaulAltamirano_synti-iq&metric=coverage)](https://sonarcloud.io/summary/new_code?id=RaulAltamirano_synti-iq)
+[![Quality Gate](https://sonarcloud.io/api/project_badges/quality_gate?project=RaulAltamirano_synti-iq&organization=RaulAltamirano)](https://sonarcloud.io/summary/new_code?id=RaulAltamirano_synti-iq)
 
 Enterprise-grade multi-channel e-commerce platform built with NestJS for managing sales, inventory, and operations across multiple channels.
 
