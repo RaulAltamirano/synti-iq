@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, Logger, UnauthorizedException } from '
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { authenticator } from 'otplib';
-import { createHash } from 'crypto';
+import { createHash, randomInt } from 'node:crypto';
 import { Repository } from 'typeorm';
 import { toDataURL } from 'qrcode';
 
@@ -226,10 +226,7 @@ export class TwoFactorService {
   private generateBackupCode(): string {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     const part = (): string =>
-      Array.from(
-        { length: BACKUP_CODE_LENGTH },
-        () => chars[Math.floor(Math.random() * chars.length)],
-      ).join('');
+      Array.from({ length: BACKUP_CODE_LENGTH }, () => chars[randomInt(chars.length)]).join('');
     return `${part()}-${part()}-${part()}`;
   }
 

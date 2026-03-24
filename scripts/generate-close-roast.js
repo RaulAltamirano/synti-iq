@@ -7,6 +7,7 @@
  * Optional: GROQ_API_KEY (primary), GEMINI_API_KEY (fallback), GEMINI_MODEL, GROQ_MODEL
  */
 
+const { randomInt } = require('node:crypto');
 const config = require('./roast-prompt.config.js');
 const { generateRoast } = require('./lib/ai-agents');
 
@@ -23,7 +24,7 @@ async function main() {
     ? `PR fue MERGEADO. Rating ${rating}/5. Sonar: ${bugs} bugs, ${hotspots} hotspots.`
     : `PR fue CERRADO/RECHAZADO. Rating ${rating}/5. Sonar: ${bugs} bugs, ${hotspots} hotspots. Veredicto: ${verdict}`;
 
-  const style = config.styles[Math.floor(Math.random() * config.styles.length)];
+  const style = config.styles[randomInt(config.styles.length)];
   const prompt = config.promptTemplate
     .replace(/\{\{action\}\}/g, action)
     .replace(/\{\{context\}\}/g, context)

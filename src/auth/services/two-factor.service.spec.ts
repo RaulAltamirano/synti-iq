@@ -3,7 +3,7 @@ import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { BadRequestException, UnauthorizedException } from '@nestjs/common';
-import { createHash } from 'crypto';
+import { createHash } from 'node:crypto';
 import { authenticator } from 'otplib';
 import { TwoFactorService } from './two-factor.service';
 import { ObservabilityService } from 'src/shared/observability/observability.service';
