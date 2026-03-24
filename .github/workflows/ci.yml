@@ -20,13 +20,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Least privilege: contents: read for checkout; pull-requests: read for Discord thread-per-PR
-permissions:
-  contents: read
-  pull-requests: read
-
 jobs:
   quality-fast:
+    permissions:
+      contents: read
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
@@ -34,7 +31,7 @@ jobs:
           fetch-depth: 0
 
       - name: Cache node_modules
-        uses: actions/cache@v5
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
         with:
           path: node_modules
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
@@ -54,7 +51,7 @@ jobs:
         run: yarn install --frozen-lockfile
 
       - name: Secrets scan
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -64,7 +61,9 @@ jobs:
 
       - name: Validate PR title
         if: github.event_name == 'pull_request'
-        run: echo "${{ github.event.pull_request.title }}" | npx commitlint
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: echo "$PR_TITLE" | npx commitlint
 
       - name: Audit dependencies
         run: yarn audit --level high
@@ -80,11 +79,13 @@ jobs:
 
   quality-build:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
 
       - name: Cache node_modules
-        uses: actions/cache@v5
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
         with:
           path: node_modules
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
@@ -92,7 +93,7 @@ jobs:
             ${{ runner.os }}-yarn-
 
       - name: Cache Jest
-        uses: actions/cache@v5
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
         with:
           path: .jest-cache
           key: ${{ runner.os }}-jest-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('src/**/*.ts') }}
@@ -118,7 +119,7 @@ jobs:
         run: yarn test:cov
 
       - name: Upload coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: coverage-report
           path: coverage/
@@ -154,6 +155,9 @@ jobs:
     needs: [quality-fast, quality-build]
     if: always() && (needs.quality-fast.result == 'success' || needs.quality-fast.result == 'failure') && (needs.quality-build.result == 'success' || needs.quality-build.result == 'failure')
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
 
