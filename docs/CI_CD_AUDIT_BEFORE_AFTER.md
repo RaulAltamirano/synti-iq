@@ -41,3 +41,19 @@ Brief documentation of the pipeline audit and implemented changes.
 ---
 
 ## Final score: 72 → ~79/100
+
+---
+
+## Post DevOps SRE Implementation (2025-03)
+
+| Change                         | File                       |
+| ------------------------------ | -------------------------- |
+| Secrets scan (gitleaks)        | `.github/workflows/ci.yml` |
+| Commit validation (commitlint) | `.github/workflows/ci.yml` |
+| PR title validation            | `.github/workflows/ci.yml` |
+| CI/CD guardrails doc           | `docs/CI_CD_GUARDRAILS.md` |
+
+**Updated score:** ~85/100
+
+- **Security:** ~24/25 — secrets scan added
+- **Completeness:** ~18/20 — commit/PR validation, guardrails documented

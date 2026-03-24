@@ -43,6 +43,17 @@ Configure **Settings > Branches > Branch protection rules** for `main`, `master`
 
 Without both required, a PR could merge with high-severity vulnerabilities (if only pr-review is required) or without SonarCloud/AI review (if only CI is required).
 
+**Branch protection verification checklist:**
+
+- [ ] Rule exists for `main` and `dev`
+- [ ] "Require a pull request before merging" enabled
+- [ ] "Require status checks to pass" enabled with `quality-fast` and `quality-build`
+- [ ] "Require branches to be up to date before merging" recommended
+- [ ] "Do not allow bypassing the above settings" enabled
+- [ ] "Restrict who can push to matching branches" — no direct push; PRs required
+
+**Full strategy:** [BRANCHING_STRATEGY.md](BRANCHING_STRATEGY.md)
+
 ---
 
 ## Required Configuration

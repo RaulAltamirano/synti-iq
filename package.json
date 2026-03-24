@@ -37,7 +37,9 @@
     "mail:generate-logo": "rsvg-convert -w 168 -h 168 src/mail/assets/logo.svg -o src/mail/assets/logo.png",
     "quality": "yarn build && yarn lint && yarn test && yarn format:check",
     "pre-pr": "yarn quality",
-    "issue:create": "node scripts/create-github-issue.js"
+    "issue:create": "node scripts/create-github-issue.js",
+    "validate:commits": "commitlint --from $(sh scripts/commitlint-from-base.sh) --to HEAD",
+    "validate:commits-base": "commitlint"
   },
   "resolutions": {
     "eslint/**/minimatch": "3.1.4",
@@ -125,6 +127,8 @@
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^9.1.2",
     "eslint-plugin-prettier": "^5.5.5",
+    "@commitlint/cli": "^19.8.0",
+    "@commitlint/config-conventional": "^19.8.0",
     "husky": "^9.1.7",
     "jest": "^29.7.0",
     "lint-staged": "^15.5.2",

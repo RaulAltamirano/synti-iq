@@ -12,15 +12,15 @@ End-to-end professional workflow from creating an issue to merging a pull reques
 Issue → Branch → Implement → Pre-PR Check → PR → CI + Review → Merge
 ```
 
-| Phase            | Action                                     | Doc / Tool                                                                   |
-| ---------------- | ------------------------------------------ | ---------------------------------------------------------------------------- |
-| 1. Create Issue  | Define requirement with AI or template     | [docs/prompts/new-issue.md](prompts/new-issue.md)                            |
-| 2. Create Branch | Branch from `dev` or `main`, link to issue | [GitHub Flow](https://docs.github.com/en/get-started/quickstart/github-flow) |
-| 3. Implement     | Code following conventions                 | [AGENTS.md](../AGENTS.md), [CONVENTIONS.md](CONVENTIONS.md)                  |
-| 4. Pre-PR Check  | Run quality gates before opening PR        | [pre-pr-review.md](prompts/pre-pr-review.md)                                 |
-| 5. Open PR       | Fill template, link issue, request review  | [pull_request_template.md](../.github/pull_request_template.md)              |
-| 6. CI & Review   | CI, SonarCloud, AI review, human approval  | [PR_REVIEW_PIPELINE.md](PR_REVIEW_PIPELINE.md)                               |
-| 7. Merge         | Rebase/merge, delete branch                | Branch protection rules                                                      |
+| Phase            | Action                                     | Doc / Tool                                                                                                                   |
+| ---------------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| 1. Create Issue  | Define requirement with AI or template     | [docs/prompts/new-issue.md](prompts/new-issue.md)                                                                            |
+| 2. Create Branch | Branch from `dev` or `main`, link to issue | [BRANCHING_STRATEGY.md](BRANCHING_STRATEGY.md), [GitHub Flow](https://docs.github.com/en/get-started/quickstart/github-flow) |
+| 3. Implement     | Code following conventions                 | [AGENTS.md](../AGENTS.md), [CONVENTIONS.md](CONVENTIONS.md)                                                                  |
+| 4. Pre-PR Check  | Run quality gates before opening PR        | [pre-pr-review.md](prompts/pre-pr-review.md)                                                                                 |
+| 5. Open PR       | Fill template, link issue, request review  | [pull_request_template.md](../.github/pull_request_template.md)                                                              |
+| 6. CI & Review   | CI, SonarCloud, AI review, human approval  | [PR_REVIEW_PIPELINE.md](PR_REVIEW_PIPELINE.md)                                                                               |
+| 7. Merge         | Rebase/merge, delete branch                | Branch protection rules                                                                                                      |
 
 ---
 
@@ -82,11 +82,13 @@ The script reads a draft file and creates the issue via GitHub CLI. Features:
 
 ## Phase 2: Create Branch
 
+**Full strategy:** [BRANCHING_STRATEGY.md](BRANCHING_STRATEGY.md)
+
 ### Branch naming
 
 - From issue **#42**: `42-feat-store-add-stats-endpoint` or `42-add-store-stats`
-- Short, descriptive, kebab-case.
-- Prefix with issue number for traceability (used by PR Review Pipeline for linking).
+- Format: `<issue>-<type>-<slug>` — short, descriptive, kebab-case
+- Prefix with issue number for traceability (used by PR Review Pipeline for linking)
 
 ### Steps
 
@@ -117,14 +119,37 @@ git checkout -b 42-feat-store-add-stats-endpoint
 
 ### Commits
 
+Commit messages are enforced by **commitlint** via the `commit-msg` Husky hook. Format: `type(scope): description` (max 72 chars).
+
+**Allowed types and when to use:**
+
+| Type       | When to use                                      | SemVer impact |
+| ---------- | ------------------------------------------------ | ------------- |
+| `feat`     | New feature or capability                        | Minor         |
+| `fix`      | Bug fix                                          | Patch         |
+| `refactor` | Code change without fixing bug or adding feature | Patch         |
+| `chore`    | Maintenance, config, tooling, dependencies       | —             |
+| `docs`     | Documentation only                               | —             |
+| `test`     | Adding or updating tests                         | —             |
+| `ci`       | CI/CD configuration changes                      | —             |
+| `perf`     | Performance improvement                          | Patch         |
+| `build`    | Build system or external dependencies (e.g. npm) | —             |
+
+**Breaking changes:** Use `feat!:` or add `BREAKING CHANGE:` in footer for major version bump.
+
+**Examples:**
+
 ```bash
 git add .
 git commit -m "feat(store): add getStats service method"
-# or
 git commit -m "fix(auth): resolve token refresh race condition"
+git commit -m "docs(api): update Swagger endpoint specs"
+git commit -m "chore(deps): bump class-validator to 0.15.1"
 ```
 
-**Reference:** [Conventional Commits](https://www.conventionalcommits.org/)
+**Reference:** [Conventional Commits](https://www.conventionalcommits.org/) — enforced by `commitlint.config.js`
+
+**Local validation (`yarn validate:commits`):** Resolves base branch from merge-base: feature branches → `origin/dev`, hotfix branches → `origin/main`. Override: `COMMITLINT_FROM=origin/main yarn validate:commits`
 
 ---
 
@@ -265,6 +290,12 @@ Configure in **Settings → Branches → Branch protection rules**:
 
 ---
 
+## Release and Changelog
+
+Releases are automated via [release-please](https://github.com/googleapis/release-please). Merge to `main` → Release PR is created/updated → Merge Release PR → version bump + [CHANGELOG.md](../CHANGELOG.md) updated. See [RELEASE_PROCESS.md](RELEASE_PROCESS.md).
+
+---
+
 ## Internal References
 
 | Document                                                             | Purpose                                                |
@@ -280,3 +311,7 @@ Configure in **Settings → Branches → Branch protection rules**:
 | [prompts/pre-pr-review.md](prompts/pre-pr-review.md)                 | Pre-PR verification prompt                             |
 | [prompts/code-review.md](prompts/code-review.md)                     | AI review categories                                   |
 | [scripts/create-github-issue.js](../scripts/create-github-issue.js)  | Issue creation script (auto-label, GH_TOKEN, assignee) |
+| [RELEASE_PROCESS.md](RELEASE_PROCESS.md)                             | SemVer, changelog, release flow                        |
+| [BRANCHING_STRATEGY.md](BRANCHING_STRATEGY.md)                       | Branch naming, lifecycle, protection                   |
+| [CODE_REVIEW_STANDARDS.md](CODE_REVIEW_STANDARDS.md)                 | Review SLA, approval criteria                          |
+| [CI_CD_GUARDRAILS.md](CI_CD_GUARDRAILS.md)                           | Security and quality gates                             |
