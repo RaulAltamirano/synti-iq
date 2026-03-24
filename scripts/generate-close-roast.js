@@ -7,7 +7,7 @@
  * Optional: GROQ_API_KEY (primary), GEMINI_API_KEY (fallback), GEMINI_MODEL, GROQ_MODEL
  */
 
-const { randomInt } = require('crypto');
+const { randomInt } = require('node:crypto');
 const config = require('./roast-prompt.config.js');
 const { generateRoast } = require('./lib/ai-agents');
 

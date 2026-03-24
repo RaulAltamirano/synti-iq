@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, Logger, UnauthorizedException } from '
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { authenticator } from 'otplib';
-import { createHash, randomInt } from 'crypto';
+import { createHash, randomInt } from 'node:crypto';
 import { Repository } from 'typeorm';
 import { toDataURL } from 'qrcode';
 
