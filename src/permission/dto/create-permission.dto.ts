@@ -1,4 +1,5 @@
-import { IsString, IsNotEmpty, IsOptional, Matches, MaxLength } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, MaxLength } from 'class-validator';
+import { IsPermissionName } from 'src/shared/validators/is-permission-name.validator';
 
 /**
  * DTO for creating permissions.
@@ -9,9 +10,7 @@ import { IsString, IsNotEmpty, IsOptional, Matches, MaxLength } from 'class-vali
 export class CreatePermissionDto {
   @IsString()
   @IsNotEmpty()
-  @Matches(/^[a-z0-9_]+$/, {
-    message: 'Permission name must contain only lowercase letters, numbers, and underscores',
-  })
+  @IsPermissionName()
   name: string;
 
   @IsString()
