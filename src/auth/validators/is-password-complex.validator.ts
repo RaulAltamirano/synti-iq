@@ -1,6 +1,18 @@
 import type { ValidationOptions, ValidationArguments } from 'class-validator';
 import { registerDecorator } from 'class-validator';
 
+function isAsciiUpper(c: number): boolean {
+  return c >= 65 && c <= 90;
+}
+
+function isAsciiLower(c: number): boolean {
+  return c >= 97 && c <= 122;
+}
+
+function isDigitOrPrintableSpecial(c: number): boolean {
+  return (c >= 48 && c <= 57) || (c >= 33 && c <= 126);
+}
+
 /**
  * ReDoS-safe password complexity validator.
  * Replaces vulnerable regex with O(n) character iteration.
@@ -11,12 +23,11 @@ function isPasswordComplex(value: unknown): boolean {
   let hasUpper = false;
   let hasLower = false;
   let hasDigitOrSpecial = false;
-  for (let i = 0; i < value.length; i++) {
-    const c = value.charCodeAt(i);
-    if (c >= 65 && c <= 90) hasUpper = true;
-    else if (c >= 97 && c <= 122) hasLower = true;
-    else if (c >= 48 && c <= 57) hasDigitOrSpecial = true;
-    else if (c >= 33 && c <= 126) hasDigitOrSpecial = true; // printable non-alpha
+  for (const segment of value) {
+    const c = segment.codePointAt(0);
+    if (isAsciiUpper(c)) hasUpper = true;
+    else if (isAsciiLower(c)) hasLower = true;
+    else if (isDigitOrPrintableSpecial(c)) hasDigitOrSpecial = true;
   }
   return hasUpper && hasLower && hasDigitOrSpecial;
 }
