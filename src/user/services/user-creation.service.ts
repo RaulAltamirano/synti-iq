@@ -40,7 +40,7 @@ export class UserCreationService {
 
     try {
       const role = await this.validateCreateUserPrerequisites(createUserDto);
-      const user = await this.createUserEntity(createUserDto, role.id, createdBy, queryRunner);
+      const user = await this.createUserEntity(createUserDto, role.id, queryRunner);
       if (!user) throw new InternalServerErrorException('User creation failed');
 
       const profileCreationContext: ProfileCreationContext | undefined =
@@ -64,6 +64,9 @@ export class UserCreationService {
       );
 
       await queryRunner.commitTransaction();
+      if (createdBy) {
+        this.logger.log(`User ${user.id} created by acting user ${createdBy}`);
+      }
       return this.sanitizeUser(user);
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -165,7 +168,6 @@ export class UserCreationService {
   private async createUserEntity(
     dto: CreateUserDto,
     roleId: number,
-    _createdBy: string | undefined,
     queryRunner: QueryRunner,
   ): Promise<User | null> {
     try {
