@@ -47,7 +47,8 @@ function truncate(str, max) {
  * @returns {string}
  */
 function truncateAtSentence(text, maxLen) {
-  if (!text || text.length <= maxLen) return text;
+  if (text == null || text === '') return '';
+  if (text.length <= maxLen) return text;
   const cut = text.slice(0, maxLen + 1);
   const lastPeriod = cut.lastIndexOf('.');
   const lastNewline = cut.lastIndexOf('\n');
@@ -64,7 +65,8 @@ function truncateAtSentence(text, maxLen) {
  * @returns {{ stars: string, levelLabel: string }}
  */
 function formatRating(rating) {
-  const r = Math.min(5, Math.max(1, Number(rating) || 3));
+  const n = Number(rating);
+  const r = Number.isFinite(n) ? Math.min(5, Math.max(1, n)) : 3;
   const stars = '⭐'.repeat(r) + '☆'.repeat(5 - r);
   const levelLabel = RATING_LABELS[r - 1] || RATING_LABELS[2];
   return { stars, levelLabel };
@@ -96,7 +98,8 @@ function buildWorkflowField(url, duration) {
   const u = (url || '').trim();
   if (!u) return null;
   const parts = [`[View run](${u})`];
-  if (duration && duration.trim()) parts.push(` • ${duration.trim()}`);
+  const trimmedDuration = duration?.trim();
+  if (trimmedDuration) parts.push(` • ${trimmedDuration}`);
   return {
     name: 'Workflow',
     value: parts.join(''),
@@ -115,6 +118,7 @@ function validateWebhook(webhook, context) {
       context || 'Missing DISCORD_WEBHOOK. Check that the secret is set in Settings > Secrets.',
     );
     process.exit(1);
+    return;
   }
   if (!webhook.trim().startsWith(WEBHOOK_PREFIX)) {
     console.error(
@@ -131,7 +135,7 @@ function validateWebhook(webhook, context) {
  */
 function sanitizeForEmbed(text) {
   if (!text || typeof text !== 'string') return '';
-  return text.replace(/`/g, "'");
+  return text.replaceAll('`', "'");
 }
 
 /**
@@ -170,7 +174,7 @@ async function sendEmbed(webhookUrl, embed, options = {}) {
 
     if (res.status === 429) {
       const retryAfter = res.headers.get('Retry-After');
-      const delayMs = retryAfter ? Math.min(parseInt(retryAfter, 10) * 1000, 60000) : 5000;
+      const delayMs = retryAfter ? Math.min(Number.parseInt(retryAfter, 10) * 1000, 60000) : 5000;
       await new Promise(r => setTimeout(r, delayMs));
       res = await fetch(url, {
         method: 'POST',

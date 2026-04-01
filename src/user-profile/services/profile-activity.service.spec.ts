@@ -7,6 +7,7 @@ import { UserProfile } from '../entities/user_profile.entity';
 import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.entity';
 import { DeliveryProfile } from 'src/delivery-profiles/entities/delivery_profile.entity';
 import { ProviderProfile } from 'src/provider-profile/entities/provider_profile.entity';
+import { BusinessProfile } from 'src/business-profile/entities/business_profile.entity';
 import { SystemRole } from 'src/shared/enums/roles.enum';
 
 describe('ProfileActivityService', () => {
@@ -40,6 +41,13 @@ describe('ProfileActivityService', () => {
         },
         {
           provide: getRepositoryToken(ProviderProfile),
+          useValue: {
+            findOne: jest.fn(),
+            update: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(BusinessProfile),
           useValue: {
             findOne: jest.fn(),
             update: jest.fn(),
