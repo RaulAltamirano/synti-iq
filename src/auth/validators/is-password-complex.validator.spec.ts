@@ -6,47 +6,28 @@ class PasswordDto {
   password: string;
 }
 
+async function validatePasswordValue(password: unknown) {
+  const dto = new PasswordDto();
+  Object.assign(dto, { password });
+  return validate(dto);
+}
+
 describe('IsPasswordComplex', () => {
-  it('accepts password with upper, lower, and digit', async () => {
-    const dto = new PasswordDto();
-    dto.password = 'Secure1a';
-    const errors = await validate(dto);
+  it.each([
+    { password: 'Secure1a', description: 'upper, lower, and digit' },
+    { password: 'Secure!aB', description: 'special char instead of digit' },
+  ])('accepts password with $description', async ({ password }) => {
+    const errors = await validatePasswordValue(password);
     expect(errors).toHaveLength(0);
   });
 
-  it('accepts password with special char instead of digit', async () => {
-    const dto = new PasswordDto();
-    dto.password = 'Secure!aB';
-    const errors = await validate(dto);
-    expect(errors).toHaveLength(0);
-  });
-
-  it('rejects password without uppercase', async () => {
-    const dto = new PasswordDto();
-    dto.password = 'secure1ab';
-    const errors = await validate(dto);
-    expect(errors.length).toBeGreaterThan(0);
-  });
-
-  it('rejects password without lowercase', async () => {
-    const dto = new PasswordDto();
-    dto.password = 'SECURE1AB';
-    const errors = await validate(dto);
-    expect(errors.length).toBeGreaterThan(0);
-  });
-
-  it('rejects password without digit or special', async () => {
-    const dto = new PasswordDto();
-    dto.password = 'SecureAb';
-    const errors = await validate(dto);
-    expect(errors.length).toBeGreaterThan(0);
-  });
-
-  it('rejects non-string', async () => {
-    const dto = new PasswordDto();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- invalid runtime input
-    (dto as any).password = 123;
-    const errors = await validate(dto);
+  it.each([
+    { password: 'secure1ab', description: 'no uppercase' },
+    { password: 'SECURE1AB', description: 'no lowercase' },
+    { password: 'SecureAb', description: 'no digit or special' },
+    { password: 123, description: 'non-string' },
+  ])('rejects password with $description', async ({ password }) => {
+    const errors = await validatePasswordValue(password);
     expect(errors.length).toBeGreaterThan(0);
   });
 });
