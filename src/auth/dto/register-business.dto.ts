@@ -1,14 +1,5 @@
-import {
-  IsEmail,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  MinLength,
-  Matches,
-  ValidateIf,
-} from 'class-validator';
-
-const REFERRAL_CODE_REGEX = /^[A-Z0-9]{6,12}$/i;
+import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength, ValidateIf } from 'class-validator';
+import { IsReferralCode } from 'src/auth/validators/is-referral-code.validator';
 
 export class RegisterBusinessDto {
   @IsEmail()
@@ -34,8 +25,6 @@ export class RegisterBusinessDto {
   @IsOptional()
   @ValidateIf(o => o.referralCode != null && o.referralCode !== '')
   @IsString()
-  @Matches(REFERRAL_CODE_REGEX, {
-    message: 'Referral code must be 6-12 alphanumeric characters',
-  })
+  @IsReferralCode()
   referralCode?: string;
 }

@@ -1,12 +1,6 @@
-import {
-  IsString,
-  IsEmail,
-  MinLength,
-  MaxLength,
-  Matches,
-  IsOptional,
-  Length,
-} from 'class-validator';
+import { IsString, IsEmail, MinLength, MaxLength, IsOptional, Length } from 'class-validator';
+import { IsPasswordComplex } from 'src/auth/validators/is-password-complex.validator';
+import { IsTotpOrBackupCode } from 'src/auth/validators/is-totp-or-backup-code.validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class LoginUserDto {
@@ -29,9 +23,7 @@ export class LoginUserDto {
   @IsString()
   @MinLength(6)
   @MaxLength(50)
-  @Matches(/(?:(?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/, {
-    message: 'The password must have a Uppercase, lowercase letter and a number',
-  })
+  @IsPasswordComplex()
   password: string;
 
   @ApiProperty({
@@ -45,8 +37,6 @@ export class LoginUserDto {
   @IsOptional()
   @IsString()
   @Length(6, 14)
-  @Matches(/^(\d{6}|[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4})$/, {
-    message: 'Code must be 6-digit TOTP or backup code format XXXX-XXXX-XXXX',
-  })
+  @IsTotpOrBackupCode()
   totpCode?: string;
 }
