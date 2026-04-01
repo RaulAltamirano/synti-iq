@@ -14,11 +14,8 @@ describe('PermissionService', () => {
       providers: [
         PermissionService,
         { provide: getRepositoryToken(Permission), useValue: {} },
-        { provide: getRepositoryToken(User), useValue: {} },
-        {
-          provide: CACHE_MANAGER,
-          useValue: { get: jest.fn(), set: jest.fn(), del: jest.fn() },
-        },
+        { provide: getRepositoryToken(User), useValue: { find: jest.fn(), findOne: jest.fn() } },
+        { provide: CACHE_MANAGER, useValue: { get: jest.fn(), set: jest.fn(), del: jest.fn() } },
       ],
     }).compile();
 

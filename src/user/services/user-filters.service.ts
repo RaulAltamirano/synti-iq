@@ -4,6 +4,8 @@ import {
   Logger,
   ForbiddenException,
   BadRequestException,
+  HttpException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository, SelectQueryBuilder } from 'typeorm';
@@ -19,6 +21,11 @@ import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.ent
 import { FilterBusinessUsersDto } from '../dto/filter-business-users.dto';
 import { PaginationCacheUtil } from 'src/pagination/utils/PaginationCacheUtil';
 import { RoleService } from 'src/role/role.service';
+import { ObservabilityService } from 'src/shared/observability/observability.service';
+import {
+  USER_FILTERS_SPAN_ATTRIBUTES,
+  USER_FILTERS_SPAN_NAMES,
+} from '../constants/user-filters-span.constants';
 
 const BUSINESS_USER_SORT_COLUMN_MAP: Record<string, string> = {
   createdAt: 'createdAt',
@@ -45,47 +52,63 @@ export class UserFiltersService {
     private readonly cacheManager: Cache,
     private readonly userProfileService: UserProfileService,
     private readonly roleService: RoleService,
+    private readonly observabilityService: ObservabilityService,
   ) {}
 
   async filterUsers(filters: FilterUserDto): Promise<PaginatedResponse<User>> {
-    try {
-      const page = filters.page ?? 1;
-      const limit = filters.limit ?? 10;
+    return this.observabilityService.withSpan(USER_FILTERS_SPAN_NAMES.FILTER_USERS, async span => {
+      try {
+        const page = filters.page ?? 1;
+        const limit = filters.limit ?? 10;
 
-      const cacheKey = this.buildCacheKey(filters);
-      const cachedData = await this.cacheManager.get<PaginatedResponse<User>>(cacheKey);
+        const cacheKey = this.buildCacheKey(filters);
+        const cachedData = await this.cacheManager.get<PaginatedResponse<User>>(cacheKey);
 
-      if (cachedData) {
-        return cachedData;
+        if (cachedData) {
+          span.setAttribute(USER_FILTERS_SPAN_ATTRIBUTES.PAGE, cachedData.page);
+          span.setAttribute(USER_FILTERS_SPAN_ATTRIBUTES.TOTAL, cachedData.total);
+          return cachedData;
+        }
+
+        const query = this.userRepository.createQueryBuilder('user');
+        this.buildQuery(query, filters);
+
+        const [users, total] = await query
+          .orderBy('user.createdAt', 'DESC')
+          .skip((page - 1) * limit)
+          .take(limit)
+          .getManyAndCount();
+
+        const totalPages = Math.ceil(total / limit);
+        const response: PaginatedResponse<User> = {
+          items: users,
+          total,
+          page,
+          totalPages,
+          limit,
+          hasNextPage: page < totalPages,
+          hasPreviousPage: page > 1,
+        };
+
+        await this.cacheManager.set(cacheKey, response, this.CACHE_TTL);
+
+        span.setAttribute(USER_FILTERS_SPAN_ATTRIBUTES.PAGE, response.page);
+        span.setAttribute(USER_FILTERS_SPAN_ATTRIBUTES.TOTAL, response.total);
+
+        return response;
+      } catch (error) {
+        if (error instanceof HttpException) {
+          throw error;
+        }
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.error(
+          `filterUsers failed: ${message}`,
+          error instanceof Error ? error.stack : undefined,
+          UserFiltersService.name,
+        );
+        throw new InternalServerErrorException('Failed to filter users');
       }
-
-      const query = this.userRepository.createQueryBuilder('user');
-      this.buildQuery(query, filters);
-
-      const [users, total] = await query
-        .orderBy('user.createdAt', 'DESC')
-        .skip((page - 1) * limit)
-        .take(limit)
-        .getManyAndCount();
-
-      const totalPages = Math.ceil(total / limit);
-      const response: PaginatedResponse<User> = {
-        items: users,
-        total,
-        page,
-        totalPages,
-        limit,
-        hasNextPage: page < totalPages,
-        hasPreviousPage: page > 1,
-      };
-
-      await this.cacheManager.set(cacheKey, response, this.CACHE_TTL);
-
-      return response;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      throw new Error(`Error filtering users: ${message}`);
-    }
+    });
   }
 
   /**
@@ -97,31 +120,41 @@ export class UserFiltersService {
     filters: FilterBusinessUsersDto,
     userId: string,
   ): Promise<PaginatedResponse<User>> {
-    const businessProfileId = await this.resolveBusinessProfileIdForBusinessUsersList(
-      userId,
-      filters.businessProfileId,
+    return this.observabilityService.withSpan(
+      USER_FILTERS_SPAN_NAMES.FILTER_BY_BUSINESS,
+      async span => {
+        const businessProfileId = await this.resolveBusinessProfileIdForBusinessUsersList(
+          userId,
+          filters.businessProfileId,
+        );
+
+        const query = this.createBusinessUsersListQuery(businessProfileId);
+        this.applyBusinessUserSearchFilters(query, filters);
+
+        const total = await query.clone().getCount();
+
+        PaginationCacheUtil.applyPagination(query, filters, {
+          aliasOverride: 'user',
+          columnMap: BUSINESS_USER_SORT_COLUMN_MAP,
+        });
+
+        const items = await query.getMany();
+        const page = filters.page ?? 1;
+        const limit = filters.limit ?? 10;
+
+        const result = PaginationCacheUtil.createPaginatedResponse({
+          items,
+          total,
+          page,
+          limit,
+        });
+
+        span.setAttribute(USER_FILTERS_SPAN_ATTRIBUTES.PAGE, result.page);
+        span.setAttribute(USER_FILTERS_SPAN_ATTRIBUTES.TOTAL, result.total);
+
+        return result;
+      },
     );
-
-    const query = this.createBusinessUsersListQuery(businessProfileId);
-    this.applyBusinessUserSearchFilters(query, filters);
-
-    const total = await query.clone().getCount();
-
-    PaginationCacheUtil.applyPagination(query, filters, {
-      aliasOverride: 'user',
-      columnMap: BUSINESS_USER_SORT_COLUMN_MAP,
-    });
-
-    const items = await query.getMany();
-    const page = filters.page ?? 1;
-    const limit = filters.limit ?? 10;
-
-    return PaginationCacheUtil.createPaginatedResponse({
-      items,
-      total,
-      page,
-      limit,
-    });
   }
 
   private buildCacheKey(filters: FilterUserDto): string {

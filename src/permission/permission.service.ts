@@ -9,7 +9,7 @@ import { User } from 'src/user/entities/user.entity';
 import {
   USER_PERMISSIONS_CACHE_PREFIX,
   USER_PERMISSIONS_CACHE_TTL_MS,
-} from 'src/permission/constants/permission-cache.constants';
+} from 'src/permission/constants';
 
 @Injectable()
 export class PermissionService {
