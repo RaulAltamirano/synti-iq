@@ -1,8 +1,10 @@
-import { IsString, IsOptional, IsBoolean, IsArray } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsArray, IsEnum } from 'class-validator';
+
+import { VehicleType } from 'src/delivery-profiles/enums/vehicle-type.enum';
 
 export class CreateDeliveryProfileDto {
-  @IsString()
-  vehicleType: string;
+  @IsEnum(VehicleType)
+  vehicleType: VehicleType;
 
   @IsString()
   licensePlate: string;

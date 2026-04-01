@@ -10,6 +10,7 @@ import { Repository } from 'typeorm';
 import { User } from 'src/user/entities/user.entity';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { PermissionGroup } from 'src/permission-group/entities/permission-group.entity';
+import { PermissionService } from 'src/permission/permission.service';
 
 @Injectable()
 export class RoleService {
@@ -20,14 +21,14 @@ export class RoleService {
     private readonly permissionGroupRepository: Repository<PermissionGroup>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly permissionService: PermissionService,
   ) {}
 
   async findRoleByUserId(userId: string): Promise<Role | null> {
-    const user = await this.userRepository.findOne({
-      where: { id: userId },
-      relations: ['role'],
-    });
-    return user?.role || null;
+    return this.roleRepository
+      .createQueryBuilder('role')
+      .innerJoin('role.users', 'user', 'user.id = :userId', { userId })
+      .getOne();
   }
 
   async findAll(): Promise<Role[]> {
@@ -78,7 +79,11 @@ export class RoleService {
       }
     }
 
-    return (await this.roleRepository.save(role)) as Role;
+    const saved = await this.roleRepository.save(role);
+    if (updateRoleDto.permissionGroupIds !== undefined) {
+      await this.permissionService.invalidateUserPermissionsCacheForRoleId(id);
+    }
+    return saved;
   }
 
   private async validatePermissionGroups(groupIds: number[]): Promise<PermissionGroup[]> {

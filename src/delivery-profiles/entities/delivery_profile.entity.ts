@@ -6,8 +6,10 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
+import { ProfileApprovalLifecycleColumns } from 'src/shared/entities/profile-approval-lifecycle.columns';
+
 @Entity('delivery_profiles')
-export class DeliveryProfile {
+export class DeliveryProfile extends ProfileApprovalLifecycleColumns {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -25,18 +27,6 @@ export class DeliveryProfile {
 
   @Column('text', { array: true, nullable: true })
   preferredZones: string[];
-
-  @Column('boolean', { default: false })
-  isApproved: boolean;
-
-  @Column('timestamp with time zone', { nullable: true })
-  approvedAt: Date | null;
-
-  @Column('uuid', { nullable: true })
-  approvedBy: string | null;
-
-  @Column('timestamp with time zone', { nullable: true })
-  lastActivityAt: Date | null;
 
   @CreateDateColumn()
   createdAt: Date;

@@ -135,6 +135,13 @@ export const storeEndpoints: Record<string, EndpointDocSpec> = {
 - Table: `@Entity('snake_case_table')`
 - Legacy: Some entities use snake_case filenames; new modules must use kebab-case.
 
+### Column naming (PostgreSQL)
+
+- **Database column names**: `snake_case` (e.g. `user_id`, `created_at`, `is_approved`, `last_activity_at`). Aligns with SQL, raw queries, and typical PostgreSQL tooling.
+- **TypeScript property names**: `camelCase` (e.g. `userId`, `createdAt`, `isApproved`, `lastActivityAt`).
+- **Mapping**: use `@Column({ name: 'snake_case_column' })` (or equivalent options on `@CreateDateColumn`, `@JoinColumn`, etc.) so the property name and the physical column name stay explicit.
+- **Shared blocks**: when multiple profile tables expose the same approval/activity fields, extend `ProfileApprovalLifecycleColumns` from `src/shared/entities/profile-approval-lifecycle.columns.ts` (e.g. cashier, delivery, provider profiles) instead of duplicating decorators.
+
 ### Relations
 
 - Use `@OneToMany`, `@ManyToOne`, `@OneToOne`, `@ManyToMany` with explicit `@JoinColumn` on the owning side.

@@ -87,6 +87,7 @@ What other options were evaluated? Why were they rejected?
 | ADR                                           | Title                                           | Status |
 | --------------------------------------------- | ----------------------------------------------- | ------ |
 | [0001](0001-ai-router-specialist-strategy.md) | AI Router + Specialist Strategy (Groq + Gemini) | Active |
+| [0002](0002-user-profile-role-coherence.md)   | User profile, role coherence, permission model  | Active |
 
 <!-- When adding ADRs, append rows:
 | [0001](0001-use-typeorm.md) | Use TypeORM as ORM | Active |

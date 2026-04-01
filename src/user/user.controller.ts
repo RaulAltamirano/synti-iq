@@ -1,12 +1,12 @@
-import { Controller, Get, Query, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller, Get, HttpStatus, Query, UsePipes, ValidationPipe } from '@nestjs/common';
 import { UserService } from './user.service';
 import { FilterUserDto } from 'src/auth/dto/filter-user.dto';
+import { FilterBusinessUsersDto } from './dto/filter-business-users.dto';
 import { PaginatedResponse } from 'src/pagination/interfaces/PaginatedResponse';
 import { Auth, GetUser } from 'src/auth/decorator';
 import { User } from './entities/user.entity';
 import { UserProfileResponse } from './interfaces/user-profile-response.interface';
 import { ApiTags, ApiOperation, ApiResponse, ApiCookieAuth } from '@nestjs/swagger';
-import { HttpStatus } from '@nestjs/common';
 import { ApiDoc } from 'src/shared/decorators';
 import { userEndpoints } from 'src/docs/user.endpoints';
 
@@ -22,6 +22,22 @@ export class UserController {
   @ApiResponse({ status: 200, description: 'Returns paginated list of users' })
   async filterUsers(@Query() filters: FilterUserDto): Promise<PaginatedResponse<User>> {
     return this.userService.filterUsers(filters);
+  }
+
+  @Get('business')
+  @Auth('', [])
+  @UsePipes(new ValidationPipe({ transform: true }))
+  @ApiDoc(userEndpoints, 'filterUsersByBusiness')
+  @ApiCookieAuth('access_token')
+  @ApiOperation({ summary: 'List users scoped to a business (BusinessProfile)' })
+  @ApiResponse({ status: 200, description: 'Paginated users for the business' })
+  @ApiResponse({ status: 400, description: 'businessProfileId required for admin or manager' })
+  @ApiResponse({ status: 403, description: 'Insufficient permissions or invalid profile' })
+  async filterUsersByBusiness(
+    @Query() filters: FilterBusinessUsersDto,
+    @GetUser() user: User,
+  ): Promise<PaginatedResponse<User>> {
+    return this.userService.filterUsersByBusiness(filters, user.id);
   }
 
   @Get('me')

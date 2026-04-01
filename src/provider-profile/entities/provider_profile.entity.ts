@@ -6,8 +6,10 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
+import { ProfileApprovalLifecycleColumns } from 'src/shared/entities/profile-approval-lifecycle.columns';
+
 @Entity('provider_profiles')
-export class ProviderProfile {
+export class ProviderProfile extends ProfileApprovalLifecycleColumns {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -28,18 +30,6 @@ export class ProviderProfile {
 
   @Column('boolean', { default: false })
   isVerified: boolean;
-
-  @Column('boolean', { default: false })
-  isApproved: boolean;
-
-  @Column('timestamp with time zone', { nullable: true })
-  approvedAt: Date | null;
-
-  @Column('uuid', { nullable: true })
-  approvedBy: string | null;
-
-  @Column('timestamp with time zone', { nullable: true })
-  lastActivityAt: Date | null;
 
   @CreateDateColumn()
   createdAt: Date;

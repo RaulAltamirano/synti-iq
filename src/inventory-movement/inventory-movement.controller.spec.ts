@@ -9,7 +9,7 @@ describe('InventoryMovementController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [InventoryMovementController],
-      providers: [InventoryMovementService],
+      providers: [{ provide: InventoryMovementService, useValue: {} }],
     }).compile();
 
     controller = module.get<InventoryMovementController>(InventoryMovementController);

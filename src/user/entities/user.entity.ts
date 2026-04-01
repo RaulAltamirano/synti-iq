@@ -2,7 +2,9 @@ import { Role } from 'src/role/entities/role.entity';
 import {
   Column,
   CreateDateColumn,
+  DeleteDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   OneToOne,
@@ -16,42 +18,45 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Index()
   @Column('text', { unique: true })
   email: string;
 
-  @Column('text', { select: false })
-  password: string;
+  @Column('text', { select: false, nullable: true })
+  password: string | null;
 
-  @Column('text', { name: 'firstName' })
+  @Column({ name: 'first_name' })
   firstName: string;
 
-  @Column('text', { name: 'lastName' })
+  @Column({ name: 'last_name' })
   lastName: string;
 
   @Column('bool', { default: true })
   isActive: boolean;
 
-  @Column('bool', { default: false })
-  isDelete: boolean;
-
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @Column('timestamp with time zone', { nullable: true })
+  @Index()
+  @Column('timestamp with time zone', { nullable: true, name: 'last_login' })
   lastLogin: Date;
 
-  @Column('int', { nullable: false })
+  @Index()
+  @Column('int', { nullable: false, name: 'role_id' })
   roleId: number;
 
   @ManyToOne(() => Role, { nullable: false })
-  @JoinColumn({ name: 'roleId' })
+  @JoinColumn({ name: 'role_id' })
   role: Role;
 
-  @Column({ nullable: true, select: false })
+  @Column({ name: 'two_factor_secret', nullable: true, select: false })
   twoFactorSecret?: string;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+
+  @DeleteDateColumn({ name: 'deleted_at' })
+  deletedAt: Date | null;
 
   @OneToOne(() => UserProfile, profile => profile.user, { nullable: true })
   profile?: UserProfile;

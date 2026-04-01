@@ -1,10 +1,23 @@
-import { CashierScheduleAssignment } from 'src/cashier-schedule-assignment/entities/cashier-schedule-assignment.entity';
-import { RecurringScheduleTemplate } from 'src/recurring-schedule-template/entities/recurring-schedule-template.entity';
-import { StoreSchedule } from 'src/store-schedule/entities/store-schedule.entity';
 import { Store } from 'src/store/entities/store.entity';
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  Unique,
+  Index,
+  CreateDateColumn,
+  UpdateDateColumn,
+  DeleteDateColumn,
+} from 'typeorm';
+
+import { ProfileApprovalLifecycleColumns } from 'src/shared/entities/profile-approval-lifecycle.columns';
+
 @Entity('cashier_profiles')
-export class CashierProfile {
+@Unique('UQ_cashier_profiles_store_cashier_number', ['storeId', 'cashierNumber'])
+@Index('IDX_cashier_profiles_is_approved', ['isApproved'])
+export class CashierProfile extends ProfileApprovalLifecycleColumns {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -12,43 +25,27 @@ export class CashierProfile {
   @JoinColumn({ name: 'store_id' })
   store: Store;
 
-  @Column()
+  @Column({ name: 'store_id' })
   storeId: string;
 
-  @OneToMany(() => CashierScheduleAssignment, assignment => assignment.cashier)
-  scheduleAssignments: CashierScheduleAssignment[];
-
-  @OneToMany(() => RecurringScheduleTemplate, template => template.cashier)
-  recurringTemplates: RecurringScheduleTemplate[];
-
-  @Column('text')
+  @Column('text', { name: 'branch_office' })
   branchOffice: string;
 
-  @Column('text')
+  @Column('text', { name: 'cashier_number' })
   cashierNumber: string;
 
-  @ManyToOne(() => StoreSchedule, { nullable: true })
-  @JoinColumn({ name: 'assigned_schedule_id' })
-  assignedSchedule: StoreSchedule;
-
-  @Column({ nullable: true })
-  assignedScheduleId: string;
-
-  @Column('timestamp with time zone', { nullable: true })
+  @Column('timestamp with time zone', { nullable: true, name: 'shift_start_time' })
   shiftStartTime: Date;
 
-  @Column('timestamp with time zone', { nullable: true })
+  @Column('timestamp with time zone', { nullable: true, name: 'shift_end_time' })
   shiftEndTime: Date;
 
-  @Column('boolean', { default: false })
-  isApproved: boolean;
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
 
-  @Column('timestamp with time zone', { nullable: true })
-  approvedAt: Date | null;
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
 
-  @Column('uuid', { nullable: true })
-  approvedBy: string | null;
-
-  @Column('timestamp with time zone', { nullable: true })
-  lastActivityAt: Date | null;
+  @DeleteDateColumn({ name: 'deleted_at' })
+  deletedAt: Date | null;
 }
