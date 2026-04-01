@@ -1,52 +1,39 @@
 import {
+  Entity,
+  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  Entity,
-  Index,
-  PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 
+import { ProfileApprovalLifecycleColumns } from 'src/shared/entities/profile-approval-lifecycle.columns';
+
 @Entity('provider_profiles')
-@Index('IDX_provider_profiles_is_approved', ['isApproved'])
-@Index('IDX_provider_profiles_is_verified', ['isVerified'])
-export class ProviderProfile {
+export class ProviderProfile extends ProfileApprovalLifecycleColumns {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column('text', { name: 'company_name' })
+  @Column('text')
   companyName: string;
 
-  @Column('text', { unique: true, name: 'tax_id' })
+  @Column('text')
   taxId: string;
 
-  @Column('text', { name: 'contact_phone' })
+  @Column('text')
   contactPhone: string;
 
-  @Column('text', { nullable: true, name: 'address' })
+  @Column('text', { nullable: true })
   address?: string;
 
-  @Column('text', { array: true, nullable: true, name: 'specialties' })
+  @Column('text', { array: true, nullable: true })
   specialties?: string[];
 
-  @Column('boolean', { default: false, name: 'is_verified' })
+  @Column('boolean', { default: false })
   isVerified: boolean;
 
-  @Column('boolean', { default: false, name: 'is_approved' })
-  isApproved: boolean;
-
-  @Column('timestamp with time zone', { nullable: true, name: 'approved_at' })
-  approvedAt: Date | null;
-
-  @Column('uuid', { nullable: true, name: 'approved_by' })
-  approvedBy: string | null;
-
-  @Column('timestamp with time zone', { nullable: true, name: 'last_activity_at' })
-  lastActivityAt: Date | null;
-
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn()
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn()
   updatedAt: Date;
 }
