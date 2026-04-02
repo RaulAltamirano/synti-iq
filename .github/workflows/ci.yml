@@ -39,7 +39,7 @@ jobs:
             ${{ runner.os }}-yarn-
 
       - name: Setup Node
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
           node-version: '20.19'
           cache: 'yarn'
@@ -101,7 +101,7 @@ jobs:
             ${{ runner.os }}-jest-${{ hashFiles('**/yarn.lock') }}-
 
       - name: Setup Node
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
           node-version: '20.19'
           cache: 'yarn'
