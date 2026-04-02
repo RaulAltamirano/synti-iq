@@ -18,22 +18,20 @@ import { InventoryModule } from 'src/inventory/inventory.module';
 import { SaleItemModule } from 'src/sale-item/sale-item.module';
 import { SaleModule } from 'src/sale/sale.module';
 import { TransactionsModule } from 'src/transactions/transactions.module';
-import { CashierScheduleAssignmentModule } from 'src/cashier-schedule-assignment/cashier-schedule-assignment.module';
-import { RecurringScheduleTemplateModule } from 'src/recurring-schedule-template/recurring-schedule-template.module';
 import { StoreScheduleModule } from 'src/store-schedule/store-schedule.module';
-import { TimeBlockModule } from 'src/time-block/time-block.module';
+import { ScheduleModule } from 'src/shared/schedule/schedule.module';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { ProductCategorieModule } from 'src/product-category/product-categorie.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ResponseModule } from 'src/shared/response/response.module';
 import { LoggerModule } from 'src/shared/logger';
+import { ObservabilityModule } from 'src/shared/observability/observability.module';
 import { MailModule } from 'src/mail/mail.module';
 import { Resend } from 'resend';
 
 @Module({
   imports: [
-    LoggerModule,
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env'],
@@ -52,26 +50,26 @@ import { Resend } from 'resend';
       useFactory: databaseConfig,
       inject: [ConfigService],
     }),
+    RedisModule,
+    ObservabilityModule,
+    LoggerModule,
     AuthModule,
     UserModule,
     PermissionModule,
     RoleModule,
     PermissionGroupModule,
     DatabaseModule,
-    RedisModule,
     ProductModule,
     StoreModule,
     BusinessProfileModule,
     ReferralModule,
     InventoryModule,
-    CashierScheduleAssignmentModule,
-    RecurringScheduleTemplateModule,
     StoreScheduleModule,
+    ScheduleModule,
     SaleItemModule,
     SaleModule,
     TransactionsModule,
     LocationModule,
-    TimeBlockModule,
     ProductCategorieModule,
     ResponseModule,
     MailModule.forRootAsync({

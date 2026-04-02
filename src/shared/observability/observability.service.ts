@@ -6,12 +6,26 @@ export interface SpanContextOptions {
   attributes?: Record<string, string | number | boolean>;
 }
 
+/**
+ * Collapse high-cardinality path segments for Prometheus `route` labels.
+ * UUID and 32-char hex segments first (so numeric regex does not split UUIDs), then pure-numeric
+ * path segments, then long opaque tokens. Long slugs may collapse — trade-off vs Prometheus cardinality.
+ */
+export function sanitizeMetricRoute(route: string): string {
+  const pathOnly = route.split('?')[0];
+  return pathOnly
+    .replaceAll(/\/[a-f0-9-]{36}(?=\/|$)/gi, '/:id')
+    .replaceAll(/\/[a-f0-9]{32}(?=\/|$)/gi, '/:id')
+    .replaceAll(/\/\d+(?=\/|$)/g, '/:id')
+    .replaceAll(/\/[a-zA-Z0-9_-]{12,}(?=\/|$)/g, '/:id');
+}
+
 @Injectable()
 export class ObservabilityService implements OnModuleInit {
   private readonly tracer = trace.getTracer('synti-iq-api');
   private readonly registry = new Registry();
-  private httpRequestDuration: Histogram;
-  private httpRequestTotal: Counter;
+  private httpRequestDuration!: Histogram;
+  private httpRequestTotal!: Counter;
 
   getTraceId(): string | undefined {
     const span = trace.getActiveSpan();
@@ -42,10 +56,6 @@ export class ObservabilityService implements OnModuleInit {
     };
   }
 
-  startSpan(name: string, attributes?: Record<string, string | number | boolean>) {
-    return this.tracer.startSpan(name, { attributes });
-  }
-
   async withSpan<T>(
     name: string,
     fn: (span: Span) => Promise<T>,
@@ -66,10 +76,6 @@ export class ObservabilityService implements OnModuleInit {
     } finally {
       span.end();
     }
-  }
-
-  getTracer() {
-    return this.tracer;
   }
 
   createCounter(name: string, help: string, labelNames: string[] = []): Counter {
@@ -118,19 +124,11 @@ export class ObservabilityService implements OnModuleInit {
   recordHttpRequest(method: string, route: string, statusCode: number, duration: number) {
     const labels = {
       method,
-      route: this.sanitizeRoute(route),
+      route: sanitizeMetricRoute(route),
       status_code: statusCode.toString(),
     };
 
     this.httpRequestDuration.observe(labels, duration / 1000);
     this.httpRequestTotal.inc(labels);
-  }
-
-  private sanitizeRoute(route: string): string {
-    return route
-      .replace(/\/\d+/g, '/:id')
-      .replace(/\/[a-f0-9-]{36}/gi, '/:id')
-      .replace(/\/[a-f0-9-]{32}/gi, '/:id')
-      .split('?')[0];
   }
 }

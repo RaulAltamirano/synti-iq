@@ -1,19 +1,7 @@
-import {
-  Inject,
-  Injectable,
-  Logger,
-  ForbiddenException,
-  BadRequestException,
-  HttpException,
-  InternalServerErrorException,
-} from '@nestjs/common';
+import { Injectable, Logger, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository, SelectQueryBuilder } from 'typeorm';
-import { Cache } from 'cache-manager';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { FilterUserDto } from 'src/auth/dto/filter-user.dto';
 import { PaginatedResponse } from 'src/pagination/interfaces/PaginatedResponse';
-import { createHash } from 'node:crypto';
 import { User } from '../entities/user.entity';
 import { UserProfileService } from 'src/user-profile/user_profile.service';
 import { SystemRole } from 'src/shared/enums/roles.enum';
@@ -40,76 +28,15 @@ const BUSINESS_USER_SORT_COLUMN_MAP: Record<string, string> = {
 export class UserFiltersService {
   private readonly logger = new Logger(UserFiltersService.name);
 
-  private readonly CACHE_TTL = 1800;
-  private readonly CACHE_PREFIX = 'users:filter:';
-
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(CashierProfile)
     private readonly cashierProfileRepository: Repository<CashierProfile>,
-    @Inject(CACHE_MANAGER)
-    private readonly cacheManager: Cache,
     private readonly userProfileService: UserProfileService,
     private readonly roleService: RoleService,
     private readonly observabilityService: ObservabilityService,
   ) {}
-
-  async filterUsers(filters: FilterUserDto): Promise<PaginatedResponse<User>> {
-    return this.observabilityService.withSpan(USER_FILTERS_SPAN_NAMES.FILTER_USERS, async span => {
-      try {
-        const page = filters.page ?? 1;
-        const limit = filters.limit ?? 10;
-
-        const cacheKey = this.buildCacheKey(filters);
-        const cachedData = await this.cacheManager.get<PaginatedResponse<User>>(cacheKey);
-
-        if (cachedData) {
-          span.setAttribute(USER_FILTERS_SPAN_ATTRIBUTES.PAGE, cachedData.page);
-          span.setAttribute(USER_FILTERS_SPAN_ATTRIBUTES.TOTAL, cachedData.total);
-          return cachedData;
-        }
-
-        const query = this.userRepository.createQueryBuilder('user');
-        this.buildQuery(query, filters);
-
-        const [users, total] = await query
-          .orderBy('user.createdAt', 'DESC')
-          .skip((page - 1) * limit)
-          .take(limit)
-          .getManyAndCount();
-
-        const totalPages = Math.ceil(total / limit);
-        const response: PaginatedResponse<User> = {
-          items: users,
-          total,
-          page,
-          totalPages,
-          limit,
-          hasNextPage: page < totalPages,
-          hasPreviousPage: page > 1,
-        };
-
-        await this.cacheManager.set(cacheKey, response, this.CACHE_TTL);
-
-        span.setAttribute(USER_FILTERS_SPAN_ATTRIBUTES.PAGE, response.page);
-        span.setAttribute(USER_FILTERS_SPAN_ATTRIBUTES.TOTAL, response.total);
-
-        return response;
-      } catch (error) {
-        if (error instanceof HttpException) {
-          throw error;
-        }
-        const message = error instanceof Error ? error.message : String(error);
-        this.logger.error(
-          `filterUsers failed: ${message}`,
-          error instanceof Error ? error.stack : undefined,
-          UserFiltersService.name,
-        );
-        throw new InternalServerErrorException('Failed to filter users');
-      }
-    });
-  }
 
   /**
    * Lists users belonging to a business (owner profile or cashiers of stores under the business).
@@ -155,68 +82,6 @@ export class UserFiltersService {
         return result;
       },
     );
-  }
-
-  private buildCacheKey(filters: FilterUserDto): string {
-    const orderedFilters = Object.keys(filters)
-      .sort((a, b) => a.localeCompare(b))
-      .reduce(
-        (obj, key) => {
-          obj[key] = filters[key];
-          return obj;
-        },
-        {} as Record<string, unknown>,
-      );
-
-    return `${this.CACHE_PREFIX}${createHash('sha256')
-      .update(JSON.stringify(orderedFilters))
-      .digest('hex')}`;
-  }
-
-  private buildQuery(query: SelectQueryBuilder<User>, filters: FilterUserDto) {
-    query
-      .leftJoinAndSelect('user.role', 'role')
-      .leftJoinAndSelect('user.profile', 'profile')
-      .where('user.deletedAt IS NULL');
-
-    if (filters.name) {
-      const namePattern = `%${this.escapeLikeString(filters.name)}%`;
-      query.andWhere(
-        '(LOWER(user.firstName) LIKE LOWER(:namePattern) OR LOWER(user.lastName) LIKE LOWER(:namePattern))',
-        { namePattern },
-      );
-    }
-
-    if (filters.email) {
-      query.andWhere('LOWER(user.email) LIKE LOWER(:email)', {
-        email: `%${this.escapeLikeString(filters.email)}%`,
-      });
-    }
-
-    if (filters.isActive !== undefined) {
-      query.andWhere('user.isActive = :isActive', {
-        isActive: filters.isActive,
-      });
-    }
-
-    if (filters.isOnline) {
-      const onlineThreshold = new Date(Date.now() - 5 * 60 * 1000);
-      query.andWhere('user.lastLogin > :onlineThreshold', {
-        onlineThreshold,
-      });
-    }
-
-    if (filters.isPendingApproval) {
-      query.andWhere('user.isActive = :isActive', { isActive: false });
-    }
-
-    if (filters.roles?.length) {
-      query.andWhere('role.name IN (:...roleNames)', {
-        roleNames: filters.roles,
-      });
-    }
-
-    return query;
   }
 
   private escapeLikeString(value: string): string {

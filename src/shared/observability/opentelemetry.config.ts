@@ -2,14 +2,20 @@ import { NodeSDK } from '@opentelemetry/sdk-node';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { resourceFromAttributes } from '@opentelemetry/resources';
-import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
+import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
 
-export function initializeOpenTelemetry(): NodeSDK {
+const RESOURCE_DEPLOYMENT_ENVIRONMENT = 'deployment.environment' as const;
+
+export function initializeOpenTelemetry(): NodeSDK | null {
+  if (process.env.OTEL_SDK_DISABLED === '1' || process.env.NODE_ENV === 'test') {
+    return null;
+  }
+
   const sdk = new NodeSDK({
     resource: resourceFromAttributes({
-      [SemanticResourceAttributes.SERVICE_NAME]: 'synti-iq-api',
-      [SemanticResourceAttributes.SERVICE_VERSION]: process.env.npm_package_version || '1.0.0',
-      [SemanticResourceAttributes.DEPLOYMENT_ENVIRONMENT]: process.env.NODE_ENV || 'development',
+      [ATTR_SERVICE_NAME]: 'synti-iq-api',
+      [ATTR_SERVICE_VERSION]: process.env.npm_package_version || '1.0.0',
+      [RESOURCE_DEPLOYMENT_ENVIRONMENT]: process.env.NODE_ENV || 'development',
     }),
     traceExporter: process.env.OTEL_EXPORTER_OTLP_ENDPOINT
       ? new OTLPTraceExporter({
@@ -36,9 +42,12 @@ export function initializeOpenTelemetry(): NodeSDK {
 
   sdk.start();
 
-  process.on('SIGTERM', () => {
-    sdk.shutdown().finally(() => process.exit(0));
-  });
+  const shutdown = (): void => {
+    void sdk.shutdown().finally(() => process.exit(0));
+  };
+
+  process.once('SIGTERM', shutdown);
+  process.once('SIGINT', shutdown);
 
   return sdk;
 }
