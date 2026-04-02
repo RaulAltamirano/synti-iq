@@ -2,6 +2,12 @@ import { ForbiddenException, type ExecutionContext } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import { MetricsAuthGuard } from './metrics-auth.guard';
 
+/**
+ * RFC 5737 TEST-NET-3 (`203.0.113.0/24`) — reserved for documentation and examples.
+ * Used here only to mean “not loopback”; it is not a live host and is not routed on the public Internet.
+ */
+const NON_LOOPBACK_FIXTURE_IP = '203.0.113.10';
+
 function makeContext(req: {
   headers: Record<string, string | string[] | undefined>;
   socket?: { remoteAddress?: string };
@@ -75,7 +81,7 @@ describe('MetricsAuthGuard', () => {
       const guard = guardWithKey(undefined, 'development');
       const ctx = makeContext({
         headers: {},
-        socket: { remoteAddress: '192.168.1.1' },
+        socket: { remoteAddress: NON_LOOPBACK_FIXTURE_IP },
       });
       expect(() => guard.canActivate(ctx)).toThrow(ForbiddenException);
     });

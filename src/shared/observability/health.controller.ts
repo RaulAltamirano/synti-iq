@@ -1,49 +1,17 @@
-import { Controller, Get, HttpStatus, Logger, Res } from '@nestjs/common';
-import { InjectDataSource } from '@nestjs/typeorm';
+import { Controller, Get, HttpStatus, Res } from '@nestjs/common';
 import type { Response } from 'express';
-import { DataSource } from 'typeorm';
-import { RedisService } from 'src/shared/redis/redis.service';
+import { HealthCheckService } from './health-check.service';
+import type { HealthCheckResult } from './health-check.types';
 
-export interface HealthCheckResult {
-  status: 'ok' | 'error';
-  timestamp: string;
-  checks: {
-    database: 'ok' | 'down';
-    redis: 'ok' | 'down';
-  };
-}
+export type { HealthCheckResult } from './health-check.types';
 
 @Controller('health')
 export class HealthController {
-  private readonly logger = new Logger(HealthController.name);
-
-  constructor(
-    @InjectDataSource()
-    private readonly dataSource: DataSource,
-    private readonly redisService: RedisService,
-  ) {}
+  constructor(private readonly healthCheckService: HealthCheckService) {}
 
   @Get()
   async getHealth(@Res({ passthrough: true }) res: Response): Promise<HealthCheckResult> {
-    const checks: HealthCheckResult['checks'] = { database: 'down', redis: 'down' };
-
-    try {
-      await this.dataSource.query('SELECT 1');
-      checks.database = 'ok';
-    } catch {
-      this.logger.warn('Health check: database unreachable');
-    }
-
-    try {
-      const pong = await this.redisService.getClient().ping();
-      if (pong === 'PONG') {
-        checks.redis = 'ok';
-      }
-    } catch {
-      this.logger.warn('Health check: redis unreachable');
-    }
-
-    const ok = checks.database === 'ok' && checks.redis === 'ok';
+    const { checks, ok } = await this.healthCheckService.evaluate();
     if (!ok) {
       res.status(HttpStatus.SERVICE_UNAVAILABLE);
     }

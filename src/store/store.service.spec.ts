@@ -28,6 +28,8 @@ const createQueryBuilderChain = () => ({
 });
 
 const createCashierQueryBuilderChain = () => ({
+  leftJoin: jest.fn().mockReturnThis(),
+  leftJoinAndMapOne: jest.fn().mockReturnThis(),
   where: jest.fn().mockReturnThis(),
   clone: jest.fn().mockReturnThis(),
   orderBy: jest.fn().mockReturnThis(),

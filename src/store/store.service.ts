@@ -13,11 +13,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.entity';
 import { UserProfile } from 'src/user-profile/entities/user_profile.entity';
 import { User } from 'src/user/entities/user.entity';
-import { In, Repository } from 'typeorm';
+import type { Span } from '@opentelemetry/api';
+import { In, Repository, SelectQueryBuilder } from 'typeorm';
 import { Store } from './entities/store.entity';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { Cache } from 'cache-manager';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { BasePaginationParams } from 'src/pagination/dtos/base-pagination-params';
 import { PaginatedResponse } from 'src/pagination/interfaces/PaginatedResponse';
 import { PaginationCacheUtil } from 'src/pagination/utils/PaginationCacheUtil';
 import { StoreFilterDto } from './dto/filter-store-dto';
@@ -105,28 +107,11 @@ export class StoreService {
 
       this.applyFilters(queryBuilder, filters);
 
-      const countQueryBuilder = queryBuilder.clone();
-      const total = await countQueryBuilder.getCount();
-
-      PaginationCacheUtil.applyPagination(queryBuilder, filters, {
+      const response = await this.paginateQueryBuilder(queryBuilder, filters, {
         columnMap: STORE_SORT_COLUMN_MAP,
       });
 
-      const stores = await queryBuilder.getMany();
-
-      const page = filters.page ?? 1;
-      const limit = filters.limit ?? 10;
-
-      const response = PaginationCacheUtil.createPaginatedResponse({
-        items: stores,
-        total,
-        page,
-        limit,
-      });
-
-      span.setAttribute(STORE_SPAN_ATTRIBUTES.PAGE, response.page);
-      span.setAttribute(STORE_SPAN_ATTRIBUTES.LIMIT, response.limit);
-      span.setAttribute(STORE_SPAN_ATTRIBUTES.TOTAL, response.total);
+      this.setPaginatedSpanAttributes(span, response);
 
       await this.cacheManager.set(cacheKey, response, 300);
 
@@ -204,6 +189,44 @@ export class StoreService {
         maxTarget: filters.maxDailySalesTarget,
       });
     }
+  }
+
+  private async paginateQueryBuilder<T>(
+    queryBuilder: SelectQueryBuilder<T>,
+    filters: BasePaginationParams,
+    options: { columnMap: Record<string, string>; aliasOverride?: string },
+  ): Promise<PaginatedResponse<T>> {
+    const countQueryBuilder = queryBuilder.clone();
+    const total = await countQueryBuilder.getCount();
+    PaginationCacheUtil.applyPagination(queryBuilder, filters, {
+      columnMap: options.columnMap,
+      aliasOverride: options.aliasOverride,
+    });
+    const items = await queryBuilder.getMany();
+    const page = filters.page ?? 1;
+    const limit = filters.limit ?? 10;
+    return PaginationCacheUtil.createPaginatedResponse({ items, total, page, limit });
+  }
+
+  private setPaginatedSpanAttributes(span: Span, response: PaginatedResponse<unknown>): void {
+    span.setAttribute(STORE_SPAN_ATTRIBUTES.PAGE, response.page);
+    span.setAttribute(STORE_SPAN_ATTRIBUTES.LIMIT, response.limit);
+    span.setAttribute(STORE_SPAN_ATTRIBUTES.TOTAL, response.total);
+  }
+
+  private async sendCashierInvitationForNewUser(user: User): Promise<void> {
+    const ttlHours = Number(this.configService.get<string>('CASHIER_INVITATION_TTL_HOURS') ?? 48);
+    const expiresAt = new Date(Date.now() + ttlHours * 60 * 60 * 1000);
+    const { rawToken } = await this.accountInvitationService.createForUser(user.id, expiresAt);
+    const appUrl = (
+      this.configService.get<string>('FRONTEND_URL') ?? 'https://app.syntiiq.com'
+    ).replace(/\/$/, '');
+    const setPasswordUrl = `${appUrl}/auth/set-password?token=${encodeURIComponent(rawToken)}`;
+    await this.mailService.sendCashierInvitation({
+      email: user.email,
+      firstName: user.firstName,
+      setPasswordUrl,
+    });
   }
 
   async findOne(id: string, userId?: string): Promise<Store> {
@@ -293,29 +316,12 @@ export class StoreService {
         .leftJoinAndMapOne('cashier.user', User, 'u', 'u.id = up."userId"')
         .where('cashier.storeId = :storeId', { storeId });
 
-      const countQueryBuilder = queryBuilder.clone();
-      const total = await countQueryBuilder.getCount();
-
-      PaginationCacheUtil.applyPagination(queryBuilder, filters, {
+      const response = await this.paginateQueryBuilder(queryBuilder, filters, {
         columnMap: CASHIER_SORT_COLUMN_MAP,
         aliasOverride: 'cashier',
       });
 
-      const items = await queryBuilder.getMany();
-
-      const page = filters.page ?? 1;
-      const limit = filters.limit ?? 10;
-
-      const response = PaginationCacheUtil.createPaginatedResponse({
-        items,
-        total,
-        page,
-        limit,
-      });
-
-      span.setAttribute(STORE_SPAN_ATTRIBUTES.PAGE, response.page);
-      span.setAttribute(STORE_SPAN_ATTRIBUTES.LIMIT, response.limit);
-      span.setAttribute(STORE_SPAN_ATTRIBUTES.TOTAL, response.total);
+      this.setPaginatedSpanAttributes(span, response);
 
       return response;
     });
@@ -447,19 +453,7 @@ export class StoreService {
 
     const user = await this.userService.create(createUserDto);
 
-    const ttlHours = Number(this.configService.get<string>('CASHIER_INVITATION_TTL_HOURS') ?? 48);
-    const expiresAt = new Date(Date.now() + ttlHours * 60 * 60 * 1000);
-    const { rawToken } = await this.accountInvitationService.createForUser(user.id, expiresAt);
-    const appUrl = (
-      this.configService.get<string>('FRONTEND_URL') ?? 'https://app.syntiiq.com'
-    ).replace(/\/$/, '');
-    const setPasswordUrl = `${appUrl}/auth/set-password?token=${encodeURIComponent(rawToken)}`;
-
-    await this.mailService.sendCashierInvitation({
-      email: user.email,
-      firstName: user.firstName,
-      setPasswordUrl,
-    });
+    await this.sendCashierInvitationForNewUser(user);
 
     await this.invalidateListCache();
     return { user, invitationSent: true };
@@ -520,19 +514,7 @@ export class StoreService {
 
     const user = await this.userService.create(createUserDto);
 
-    const ttlHours = Number(this.configService.get<string>('CASHIER_INVITATION_TTL_HOURS') ?? 48);
-    const expiresAt = new Date(Date.now() + ttlHours * 60 * 60 * 1000);
-    const { rawToken } = await this.accountInvitationService.createForUser(user.id, expiresAt);
-    const appUrl = (
-      this.configService.get<string>('FRONTEND_URL') ?? 'https://app.syntiiq.com'
-    ).replace(/\/$/, '');
-    const setPasswordUrl = `${appUrl}/auth/set-password?token=${encodeURIComponent(rawToken)}`;
-
-    await this.mailService.sendCashierInvitation({
-      email: user.email,
-      firstName: user.firstName,
-      setPasswordUrl,
-    });
+    await this.sendCashierInvitationForNewUser(user);
 
     return { user, invitationSent: true };
   }
