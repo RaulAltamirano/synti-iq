@@ -25,6 +25,7 @@ const SWAGGER_TAGS = [
   ['Location', 'Shipping and billing addresses'],
   ['Statistics', 'Sales analytics and reporting'],
   ['Shipping', 'Order fulfillment and tracking'],
+  ['Observability', 'Health checks and Prometheus metrics'],
 ] as const;
 
 function createSwaggerConfig(): ReturnType<DocumentBuilder['build']> {

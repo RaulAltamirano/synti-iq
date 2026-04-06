@@ -38,7 +38,7 @@ import { SystemRole } from 'src/shared/enums/roles.enum';
 import { StoreSchedule } from 'src/store-schedule/entities/store-schedule.entity';
 import { DateUtils } from 'src/shared/utils/date-utils';
 import { ObservabilityService } from 'src/shared/observability/observability.service';
-import { STORE_SPAN_ATTRIBUTES, STORE_SPAN_NAMES } from './constants/store-span.constants';
+import { STORE_SPAN_ATTRIBUTES, STORE_SPAN_NAMES } from './constants';
 
 /** Maps API sort field names to TypeORM `store` alias columns */
 const STORE_SORT_COLUMN_MAP: Record<string, string> = {

@@ -26,7 +26,7 @@ import { ProductCategorieModule } from 'src/product-category/product-categorie.m
 import { CacheModule } from '@nestjs/cache-manager';
 import { ResponseModule } from 'src/shared/response/response.module';
 import { LoggerModule } from 'src/shared/logger';
-import { ObservabilityModule } from 'src/shared/observability/observability.module';
+import { ObservabilityModule } from 'src/shared/observability';
 import { MailModule } from 'src/mail/mail.module';
 import { Resend } from 'resend';
 
