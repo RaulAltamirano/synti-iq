@@ -2,8 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LoggerModule as NestJsPinoModule } from 'nestjs-pino';
 import pinoPretty from 'pino-pretty';
-import { ObservabilityModule } from '../observability/observability.module';
-import { ObservabilityService } from '../observability/observability.service';
+import { ObservabilityModule, ObservabilityService } from 'src/shared/observability';
 import { createFilterStream } from './logger-filter.stream';
 
 @Module({
@@ -35,6 +34,14 @@ import { createFilterStream } from './logger-filter.stream';
               Object.fromEntries(
                 Object.entries(observability.getTraceContext()).filter(([, v]) => v != null),
               ),
+            redact: {
+              paths: [
+                'req.headers.cookie',
+                'req.headers.authorization',
+                'res.headers["set-cookie"]',
+              ],
+              censor: '[REDACTED]',
+            },
           },
         };
       },

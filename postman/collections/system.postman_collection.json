@@ -1,0 +1,30 @@
+{
+  "info": {
+    "_postman_id": "synti-iq-system",
+    "name": "🏥 System",
+    "description": "## 🏥 System & observability\n\nPublic endpoints for load balancers and ops.\n\n### Health\n\n`GET /api/health` — Liveness/readiness: runs `SELECT 1` on PostgreSQL and `PING` on Redis. Returns **200** with `status: ok` when both pass; **503** with `status: error` and per-check `checks.database` / `checks.redis` (`ok` | `down`) when any dependency fails.\n\nNo authentication required.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "item": [
+    {
+      "name": "🏥 Health",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/health",
+              "host": ["{{base_url}}"],
+              "path": ["api", "health"]
+            },
+            "description": "Verifies PostgreSQL and Redis. Response body includes `status`, `timestamp`, and `checks` with `database` and `redis` each `ok` or `down`. HTTP **503** when any check is down."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

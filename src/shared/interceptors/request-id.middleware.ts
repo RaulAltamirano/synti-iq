@@ -8,6 +8,7 @@ export const requestContext = new AsyncLocalStorage<{ requestId: string }>();
 @Injectable()
 export class RequestIdMiddleware implements NestMiddleware {
   use(req: Request, res: Response, next: NextFunction) {
+    req.metricsStartTimeMs = Date.now();
     const requestId = (req.headers['x-request-id'] as string) || uuidv4();
     (req.headers as Record<string, string>)['x-request-id'] = requestId;
 

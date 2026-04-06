@@ -5,12 +5,10 @@ import { Logger as NestLogger, ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { PaginatedResponseDto } from 'src/pagination/dtos/paginated-response.dto';
 import { ReferralRecordDto } from 'src/referral/dto/referral-record.dto';
+import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.entity';
 import * as cookieParser from 'cookie-parser';
 import { Logger, LoggerErrorInterceptor } from 'nestjs-pino';
-import { initializeOpenTelemetry } from './shared/observability/opentelemetry.config';
 import { RequestIdMiddleware } from './shared/interceptors/request-id.middleware';
-
-initializeOpenTelemetry();
 
 const SWAGGER_PATH = 'api/docs';
 const SWAGGER_TITLE = 'SyntiIQ API';
@@ -25,9 +23,9 @@ const SWAGGER_TAGS = [
   ['Product', 'Product catalog'],
   ['Inventory', 'Stock and inventory'],
   ['Location', 'Shipping and billing addresses'],
-  ['CashierSchedule', 'Cashier shifts and assignments'],
   ['Statistics', 'Sales analytics and reporting'],
   ['Shipping', 'Order fulfillment and tracking'],
+  ['Observability', 'Health checks and Prometheus metrics'],
 ] as const;
 
 function createSwaggerConfig(): ReturnType<DocumentBuilder['build']> {
@@ -57,7 +55,7 @@ function createSwaggerConfig(): ReturnType<DocumentBuilder['build']> {
 function setupSwagger(app: INestApplication): void {
   const config = createSwaggerConfig();
   const document = SwaggerModule.createDocument(app, config, {
-    extraModels: [PaginatedResponseDto, ReferralRecordDto],
+    extraModels: [PaginatedResponseDto, ReferralRecordDto, CashierProfile],
   });
   (document.components ??= {}).schemas ??= {};
   (document.components.schemas as Record<string, unknown>)['ApiErrorDto'] = {
@@ -102,6 +100,17 @@ function setupSwagger(app: INestApplication): void {
   });
 }
 
+function getCorsOrigins(): string[] {
+  const raw = process.env.CORS_ORIGINS?.trim();
+  if (raw) {
+    return raw
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+  }
+  return [process.env.FRONTEND_URL];
+}
+
 function applyGlobalConfig(app: INestApplication): void {
   app.setGlobalPrefix('api');
   app.useGlobalPipes(
@@ -112,9 +121,9 @@ function applyGlobalConfig(app: INestApplication): void {
       transformOptions: { enableImplicitConversion: true },
     }),
   );
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const corsOrigins = getCorsOrigins();
   app.enableCors({
-    origin: frontendUrl,
+    origin: corsOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'X-Requested-With', 'X-Request-ID'],
@@ -131,7 +140,9 @@ async function bootstrap(): Promise<void> {
   app.use(requestIdMiddleware.use.bind(requestIdMiddleware));
   setupSwagger(app);
   applyGlobalConfig(app);
-  await app.listen(3000);
+  const port = Number(process.env.PORT) || 3000;
+  const host = process.env.HOST ?? '0.0.0.0';
+  await app.listen(port, host);
   const logger = new NestLogger('Bootstrap');
   logger.log(`🚀 Application is running on: ${await app.getUrl()}`);
   logger.log(`📚 Swagger: ${await app.getUrl()}/${SWAGGER_PATH}`);
