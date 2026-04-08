@@ -15,12 +15,11 @@ import { PaginatedResponse } from 'src/pagination/interfaces/PaginatedResponse';
 import { FilterUserSessionDto } from './dto/filter-user-session.dto';
 import { DeviceInfoDto } from './dto/device-info.dto';
 import { UserSession } from './entities/user-session.entity';
+import { SESSION_TTL_S, buildSessionKey } from './constants/user-session-cache.constants';
 
 @Injectable()
 export class UserSessionService {
   private readonly logger = new Logger(UserSessionService.name);
-  private readonly SESSION_PREFIX = 'session';
-  private readonly SESSION_TTL = 7 * 24 * 60 * 60;
 
   constructor(
     private readonly userSessionRepository: UserSessionRepository,
@@ -31,7 +30,7 @@ export class UserSessionService {
     this.validateParams(userId, sessionId);
 
     try {
-      const sessionKey = this.getSessionKey(userId, sessionId);
+      const sessionKey = buildSessionKey(userId, sessionId);
       const sessionData = await this.redisService.get<{
         isValid: boolean;
         refreshTokenHash?: string;
@@ -67,7 +66,7 @@ export class UserSessionService {
     this.validateParams(userId, sessionId);
 
     try {
-      const sessionKey = this.getSessionKey(userId, sessionId);
+      const sessionKey = buildSessionKey(userId, sessionId);
       await this.redisService.del(sessionKey);
 
       await this.userSessionRepository.update(userId, sessionId, {
@@ -108,7 +107,7 @@ export class UserSessionService {
         return;
       }
 
-      const sessionKeys = sessions.map(session => this.getSessionKey(userId, session.sessionId));
+      const sessionKeys = sessions.map(session => buildSessionKey(userId, session.sessionId));
       if (sessionKeys.length > 0) {
         await this.redisService.del(...sessionKeys);
       }
@@ -210,7 +209,7 @@ export class UserSessionService {
         return;
       }
 
-      const sessionKeys = sessions.map(session => this.getSessionKey(userId, session.sessionId));
+      const sessionKeys = sessions.map(session => buildSessionKey(userId, session.sessionId));
       if (sessionKeys.length > 0) {
         await this.redisService.del(...sessionKeys);
       }
@@ -232,9 +231,7 @@ export class UserSessionService {
         return;
       }
 
-      const sessionKeys = otherSessions.map(session =>
-        this.getSessionKey(userId, session.sessionId),
-      );
+      const sessionKeys = otherSessions.map(session => buildSessionKey(userId, session.sessionId));
       if (sessionKeys.length > 0) {
         await this.redisService.del(...sessionKeys);
       }
@@ -258,7 +255,7 @@ export class UserSessionService {
         return 0;
       }
 
-      const sessionKeys = sessions.map(session => this.getSessionKey(userId, session.sessionId));
+      const sessionKeys = sessions.map(session => buildSessionKey(userId, session.sessionId));
       if (sessionKeys.length > 0) {
         await this.redisService.del(...sessionKeys);
         this.logger.debug(
@@ -297,7 +294,7 @@ export class UserSessionService {
         throw new NotFoundException('Session not found');
       }
 
-      const sessionKey = this.getSessionKey(userId, sessionId);
+      const sessionKey = buildSessionKey(userId, sessionId);
       const sessionData = await this.redisService.get<{
         refreshTokenHash: string;
         isValid: boolean;
@@ -340,10 +337,6 @@ export class UserSessionService {
     }
   }
 
-  private getSessionKey(userId: string, sessionId: string): string {
-    return `${this.SESSION_PREFIX}:${userId}:${sessionId}`;
-  }
-
   async setSessionInRedisUnified(
     userId: string,
     sessionId: string,
@@ -355,8 +348,8 @@ export class UserSessionService {
       usedTokens?: string[];
     },
   ): Promise<void> {
-    const sessionKey = this.getSessionKey(userId, sessionId);
-    await this.redisService.set(sessionKey, data, this.SESSION_TTL);
+    const sessionKey = buildSessionKey(userId, sessionId);
+    await this.redisService.set(sessionKey, data, SESSION_TTL_S);
   }
 
   private handleError(error: any, context: string): never {

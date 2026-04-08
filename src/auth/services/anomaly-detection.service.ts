@@ -1,5 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RedisService } from 'src/shared/redis/redis.service';
+import {
+  SESSION_TTL_S,
+  SESSION_MAX_REFRESH_COUNT,
+} from 'src/user-session/constants/user-session-cache.constants';
 
 interface SessionMetadata {
   ipAddress?: string;
@@ -20,7 +24,6 @@ interface AnomalyResult {
 @Injectable()
 export class AnomalyDetectionService {
   private readonly logger = new Logger(AnomalyDetectionService.name);
-  private readonly SESSION_TTL = 7 * 24 * 60 * 60;
 
   constructor(private readonly redisService: RedisService) {}
 
@@ -63,7 +66,7 @@ export class AnomalyDetectionService {
     }
 
     const refreshCount = (sessionData.refreshCount || 0) + 1;
-    if (refreshCount > 100) {
+    if (refreshCount > SESSION_MAX_REFRESH_COUNT) {
       anomalies.push('Excessive token refreshes');
     }
 
@@ -102,7 +105,7 @@ export class AnomalyDetectionService {
         lastRefresh: new Date().toISOString(),
         refreshCount: (sessionData.refreshCount || 0) + 1,
       },
-      this.SESSION_TTL,
+      SESSION_TTL_S,
     );
   }
 }
