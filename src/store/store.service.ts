@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  HttpException,
   Inject,
   Injectable,
   InternalServerErrorException,
@@ -397,16 +398,12 @@ export class StoreService {
       const saved = await this.storeRepo.save(store);
       await this.invalidateListCache();
       return saved;
-    } catch (error) {
-      if (
-        error instanceof ConflictException ||
-        error instanceof BadRequestException ||
-        error instanceof ForbiddenException
-      ) {
-        throw error;
-      }
-
-      throw new InternalServerErrorException('Failed to create store');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      const stack = error instanceof Error ? error.stack : undefined;
+      this.logger.error('Failed to create store', stack, StoreService.name);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException(message);
     }
   }
 
@@ -418,14 +415,14 @@ export class StoreService {
     await this.findOne(id, userId);
 
     try {
-      await this.storeRepo.delete(id);
+      await this.storeRepo.softDelete(id);
       await this.invalidateListCache();
-    } catch (error) {
-      this.logger.error(
-        'Error deleting store',
-        error instanceof Error ? error.stack : String(error),
-      );
-      throw new BadRequestException('Error deleting store');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      const stack = error instanceof Error ? error.stack : undefined;
+      this.logger.error('Error soft-deleting store', stack, StoreService.name);
+      if (error instanceof HttpException) throw error;
+      throw new InternalServerErrorException(message);
     }
   }
 
