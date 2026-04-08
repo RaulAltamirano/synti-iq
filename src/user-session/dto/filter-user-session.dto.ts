@@ -29,16 +29,4 @@ export class FilterUserSessionDto {
   @IsOptional()
   @IsString()
   deviceType?: string;
-
-  @IsOptional()
-  @IsString()
-  browser?: string;
-
-  @IsOptional()
-  @IsString()
-  os?: string;
-
-  @IsOptional()
-  @IsString()
-  ipAddress?: string;
 }

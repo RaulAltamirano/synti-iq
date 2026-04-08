@@ -359,20 +359,6 @@ export class UserSessionService {
     await this.redisService.set(sessionKey, data, this.SESSION_TTL);
   }
 
-  private async setSessionInRedis(
-    userId: string,
-    sessionId: string,
-    data: {
-      refreshTokenHash?: string;
-      isValid: boolean;
-      lastUsed?: string;
-      deviceInfo?: any;
-    },
-  ): Promise<void> {
-    const sessionKey = this.getSessionKey(userId, sessionId);
-    await this.redisService.set(sessionKey, data, this.SESSION_TTL);
-  }
-
   private handleError(error: any, context: string): never {
     if (error instanceof HttpException) {
       throw error;
