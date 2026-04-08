@@ -145,7 +145,10 @@ export class StoreService {
   private async resolveCashierBusinessProfileId(userId: string): Promise<string> {
     const profile = await this.userProfileService.getUserProfile(userId);
     if (!profile?.profileId || profile.profileType !== SystemRole.CASHIER) {
-      this.logger.warn('Store scope: invalid cashier profile for user', { userId });
+      this.logger.warn(
+        `Store scope: invalid cashier profile — userId=${userId}`,
+        StoreService.name,
+      );
       throw new ForbiddenException('Invalid cashier profile');
     }
     const cashier = await this.cashierRepo.findOne({
@@ -153,10 +156,10 @@ export class StoreService {
       relations: ['store'],
     });
     if (!cashier?.store?.businessProfileId) {
-      this.logger.warn('Store scope: cashier without store assignment', {
-        userId,
-        cashierId: profile.profileId,
-      });
+      this.logger.warn(
+        `Store scope: cashier without store assignment — userId=${userId} cashierId=${profile.profileId}`,
+        StoreService.name,
+      );
       throw new ForbiddenException('Cashier must be assigned to a store');
     }
     return cashier.store.businessProfileId;
@@ -271,27 +274,26 @@ export class StoreService {
         profile.profileType !== SystemRole.BUSINESS_OWNER ||
         profile.profileId !== store.businessProfileId
       ) {
-        this.logger.warn('Store access denied: business owner mismatch', {
-          storeId: store.id,
-          userId,
-        });
+        this.logger.warn(
+          `Store access denied: business owner mismatch — storeId=${store.id} userId=${userId}`,
+          StoreService.name,
+        );
         throw new ForbiddenException('You can only access your own stores');
       }
     } else if (role === SystemRole.CASHIER) {
       const businessProfileId = await this.resolveCashierBusinessProfileId(userId);
       if (store.businessProfileId !== businessProfileId) {
-        this.logger.warn('Store access denied: cashier business mismatch', {
-          storeId: store.id,
-          userId,
-        });
+        this.logger.warn(
+          `Store access denied: cashier business mismatch — storeId=${store.id} userId=${userId}`,
+          StoreService.name,
+        );
         throw new ForbiddenException('You can only access stores in your business');
       }
     } else {
-      this.logger.warn('Store access denied: role not permitted for store access', {
-        storeId: store.id,
-        userId,
-        role,
-      });
+      this.logger.warn(
+        `Store access denied: role not permitted — storeId=${store.id} userId=${userId} role=${role}`,
+        StoreService.name,
+      );
       throw new ForbiddenException('You are not allowed to access this store');
     }
   }
