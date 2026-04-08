@@ -4,6 +4,24 @@ import { BadRequestException } from '@nestjs/common';
 import { UserSessionService } from './user-session.service';
 import { UserSessionRepository } from './user-session.repository';
 import { RedisService } from 'src/shared/redis/redis.service';
+import type { UserSession } from './entities/user-session.entity';
+
+function makeSession(overrides: Partial<UserSession> = {}): UserSession {
+  return {
+    id: 'id-1',
+    userId: 'user-1',
+    sessionId: 'session-1',
+    refreshToken: 'hash',
+    deviceInfo: null,
+    userAgent: 'Mozilla/5.0',
+    ipAddress: '1.2.3.4',
+    lastUsed: new Date('2026-01-01T00:00:00Z'),
+    isValid: true,
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    updatedAt: new Date('2026-01-01T00:00:00Z'),
+    ...overrides,
+  } as UserSession;
+}
 
 describe('UserSessionService', () => {
   let service: UserSessionService;
@@ -62,6 +80,12 @@ describe('UserSessionService', () => {
       expect(callOrder).toEqual(['db', 'redis']);
     });
 
+    it('does not delete from Redis if DB update throws', async () => {
+      repo.update.mockRejectedValue(new Error('DB unavailable'));
+      await expect(service.invalidateSession('user-1', 'session-1')).rejects.toThrow();
+      expect(redis.del).not.toHaveBeenCalled();
+    });
+
     it('throws BadRequestException when userId is missing', async () => {
       await expect(service.invalidateSession('', 'session-1')).rejects.toBeInstanceOf(
         BadRequestException,
@@ -93,6 +117,13 @@ describe('UserSessionService', () => {
       expect(callOrder).toEqual(['db', 'redis']);
     });
 
+    it('does not delete from Redis if DB update throws', async () => {
+      repo.findActiveByUserId.mockResolvedValue([makeSession()]);
+      repo.invalidateAllForUser.mockRejectedValue(new Error('DB unavailable'));
+      await expect(service.invalidateAllSessions('user-1')).rejects.toThrow();
+      expect(redis.del).not.toHaveBeenCalled();
+    });
+
     it('returns early if no active sessions', async () => {
       repo.findActiveByUserId.mockResolvedValue([]);
       await service.invalidateAllSessions('user-1');
@@ -117,6 +148,20 @@ describe('UserSessionService', () => {
 
       await service.invalidateDeviceSessions('user-1', 'mobile');
       expect(callOrder).toEqual(['db', 'redis']);
+    });
+
+    it('returns early if no sessions found for device type', async () => {
+      repo.findByDeviceType.mockResolvedValue([]);
+      await service.invalidateDeviceSessions('user-1', 'mobile');
+      expect(repo.invalidateByDeviceType).not.toHaveBeenCalled();
+      expect(redis.del).not.toHaveBeenCalled();
+    });
+
+    it('does not delete from Redis if DB update throws', async () => {
+      repo.findByDeviceType.mockResolvedValue([makeSession()]);
+      repo.invalidateByDeviceType.mockRejectedValue(new Error('DB unavailable'));
+      await expect(service.invalidateDeviceSessions('user-1', 'mobile')).rejects.toThrow();
+      expect(redis.del).not.toHaveBeenCalled();
     });
 
     it('throws BadRequestException when device type is missing', async () => {
@@ -144,6 +189,15 @@ describe('UserSessionService', () => {
       expect(callOrder).toEqual(['db', 'redis']);
     });
 
+    it('does not delete from Redis if DB update throws', async () => {
+      const session1 = makeSession({ sessionId: 'session-1' });
+      const session2 = makeSession({ sessionId: 'session-2' });
+      repo.findActiveByUserId.mockResolvedValue([session1, session2]);
+      repo.invalidateAllExcept.mockRejectedValue(new Error('DB unavailable'));
+      await expect(service.invalidateOtherSessions('user-1', 'session-1')).rejects.toThrow();
+      expect(redis.del).not.toHaveBeenCalled();
+    });
+
     it('returns early if no other sessions exist', async () => {
       repo.findActiveByUserId.mockResolvedValue([{ sessionId: 'session-1' }] as any);
       await service.invalidateOtherSessions('user-1', 'session-1');
@@ -169,6 +223,15 @@ describe('UserSessionService', () => {
 
       await service.invalidateSessionsByDeviceInfo('user-1', deviceInfo);
       expect(callOrder).toEqual(['db', 'redis']);
+    });
+
+    it('does not delete from Redis if DB update throws', async () => {
+      repo.findByDeviceInfo.mockResolvedValue([makeSession()]);
+      repo.invalidateByDeviceInfo.mockRejectedValue(new Error('DB unavailable'));
+      await expect(
+        service.invalidateSessionsByDeviceInfo('user-1', { userAgent: 'Mozilla' }),
+      ).rejects.toThrow();
+      expect(redis.del).not.toHaveBeenCalled();
     });
 
     it('returns 0 if no sessions found', async () => {
