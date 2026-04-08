@@ -66,12 +66,12 @@ export class UserSessionService {
     this.validateParams(userId, sessionId);
 
     try {
-      const sessionKey = buildSessionKey(userId, sessionId);
-      await this.redisService.del(sessionKey);
-
       await this.userSessionRepository.update(userId, sessionId, {
         isValid: false,
       });
+
+      const sessionKey = buildSessionKey(userId, sessionId);
+      await this.redisService.del(sessionKey);
     } catch (error) {
       throw this.handleError(error, 'invalidating session');
     }
@@ -107,12 +107,12 @@ export class UserSessionService {
         return;
       }
 
+      await this.userSessionRepository.invalidateAllForUser(userId);
+
       const sessionKeys = sessions.map(session => buildSessionKey(userId, session.sessionId));
       if (sessionKeys.length > 0) {
         await this.redisService.del(...sessionKeys);
       }
-
-      await this.userSessionRepository.invalidateAllForUser(userId);
     } catch (error) {
       throw this.handleError(error, 'invalidating all sessions');
     }
@@ -209,12 +209,12 @@ export class UserSessionService {
         return;
       }
 
+      await this.userSessionRepository.invalidateByDeviceType(userId, deviceType);
+
       const sessionKeys = sessions.map(session => buildSessionKey(userId, session.sessionId));
       if (sessionKeys.length > 0) {
         await this.redisService.del(...sessionKeys);
       }
-
-      await this.userSessionRepository.invalidateByDeviceType(userId, deviceType);
     } catch (error) {
       throw this.handleError(error, 'invalidating device sessions');
     }
@@ -231,12 +231,12 @@ export class UserSessionService {
         return;
       }
 
+      await this.userSessionRepository.invalidateAllExcept(userId, currentSessionId);
+
       const sessionKeys = otherSessions.map(session => buildSessionKey(userId, session.sessionId));
       if (sessionKeys.length > 0) {
         await this.redisService.del(...sessionKeys);
       }
-
-      await this.userSessionRepository.invalidateAllExcept(userId, currentSessionId);
     } catch (error) {
       throw this.handleError(error, 'invalidating other sessions');
     }
@@ -255,6 +255,11 @@ export class UserSessionService {
         return 0;
       }
 
+      const invalidatedCount = await this.userSessionRepository.invalidateByDeviceInfo(
+        userId,
+        deviceInfo,
+      );
+
       const sessionKeys = sessions.map(session => buildSessionKey(userId, session.sessionId));
       if (sessionKeys.length > 0) {
         await this.redisService.del(...sessionKeys);
@@ -262,11 +267,6 @@ export class UserSessionService {
           `Deleted ${sessionKeys.length} session key(s) from Redis for user ${userId}`,
         );
       }
-
-      const invalidatedCount = await this.userSessionRepository.invalidateByDeviceInfo(
-        userId,
-        deviceInfo,
-      );
 
       return invalidatedCount;
     } catch (error) {
