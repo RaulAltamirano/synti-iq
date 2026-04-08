@@ -1,6 +1,6 @@
 import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, SelectQueryBuilder } from 'typeorm';
+import { In, Repository, SelectQueryBuilder } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.entity';
 import { UserProfile } from 'src/user-profile/entities/user_profile.entity';
@@ -175,10 +175,8 @@ export class StoreCashierService {
     }
 
     const uniqueIds = [...new Set(cashierIds)];
-    // Cast required: TypeORM accepts array values at runtime but the generic type narrows `id` to
-    // FindOperator<string>; passing the raw array keeps the test assertion readable.
     const result = await this.cashierRepo.softDelete({
-      id: uniqueIds as unknown as string,
+      id: In(uniqueIds),
       storeId,
     });
     await this.storeQueryService.invalidateListCache();

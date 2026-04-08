@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { FindOperator } from 'typeorm';
 import { StoreCashierService } from './store-cashier.service';
 import { StoreQueryService } from './store-query.service';
 import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.entity';
@@ -206,8 +207,14 @@ describe('StoreCashierService', () => {
       const result = await service.removeCashiersFromStore('s-1', ['c-1', 'c-2', 'c-1'], 'user-1');
 
       expect(cashierRepo.softDelete).toHaveBeenCalledWith(
-        expect.objectContaining({ id: expect.arrayContaining(['c-1', 'c-2']) }),
+        expect.objectContaining({
+          id: expect.any(FindOperator),
+          storeId: 's-1',
+        }),
       );
+      // Verify the FindOperator contains the correct values
+      const call = cashierRepo.softDelete.mock.calls[0][0];
+      expect(call.id._value).toEqual(['c-1', 'c-2']);
       expect(result.removed).toBe(2);
       expect(storeQueryService.invalidateListCache).toHaveBeenCalled();
     });
