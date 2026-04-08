@@ -9,3 +9,10 @@ export {
   STORE_SPAN_ATTRIBUTES,
   STORE_SPAN_NAMES,
 } from './store-span.constants';
+
+export {
+  STORE_CACHE_PREFIX,
+  STORE_CACHE_VERSION_KEY,
+  STORE_LIST_CACHE_TTL_MS,
+  STORE_VERSION_CACHE_TTL_MS,
+} from './store-cache.constants';

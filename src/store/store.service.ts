@@ -27,7 +27,7 @@ import { FilterStoreCashiersDto } from './dto/filter-store-cashiers.dto';
 import { CreateCashierAccountDto } from './dto/create-cashier-account.dto';
 import { CreateCashierAccountResponseDto } from './dto/create-cashier-account-response.dto';
 import { CreateUnassignedCashierAccountDto } from 'src/cashier-profile/dto/create-unassigned-cashier-account.dto';
-import { AccountInvitationService } from 'src/auth/services/account-invitation.service';
+import { AccountInvitationService } from 'src/auth/account-invitation/account-invitation.service';
 import { MailService } from 'src/mail/mail.service';
 import { CreateUserDto } from 'src/user/dto/create-user.dto';
 import { Location } from 'src/location/entities/location.entity';
@@ -38,7 +38,14 @@ import { SystemRole } from 'src/shared/enums/roles.enum';
 import { StoreSchedule } from 'src/store-schedule/entities/store-schedule.entity';
 import { DateUtils } from 'src/shared/utils/date-utils';
 import { ObservabilityService } from 'src/shared/observability/observability.service';
-import { STORE_SPAN_ATTRIBUTES, STORE_SPAN_NAMES } from './constants';
+import {
+  STORE_SPAN_ATTRIBUTES,
+  STORE_SPAN_NAMES,
+  STORE_CACHE_PREFIX,
+  STORE_CACHE_VERSION_KEY,
+  STORE_LIST_CACHE_TTL_MS,
+  STORE_VERSION_CACHE_TTL_MS,
+} from './constants';
 
 /** Maps API sort field names to TypeORM `store` alias columns */
 const STORE_SORT_COLUMN_MAP: Record<string, string> = {
@@ -61,8 +68,6 @@ const CASHIER_SORT_COLUMN_MAP: Record<string, string> = {
 @Injectable()
 export class StoreService {
   private readonly logger = new Logger(StoreService.name);
-  private readonly CACHE_PREFIX = 'store';
-  private readonly CACHE_VERSION_KEY = 'store:_version';
 
   constructor(
     @InjectRepository(Store)
@@ -86,9 +91,9 @@ export class StoreService {
         await this.applyStoreScopeForUser(userId, filters);
       }
 
-      const version = (await this.cacheManager.get<number>(this.CACHE_VERSION_KEY)) ?? 0;
-      const hashPart = PaginationCacheUtil.buildCacheKey(this.CACHE_PREFIX, filters).split(':')[1];
-      const cacheKey = `${this.CACHE_PREFIX}:${version}:${hashPart}`;
+      const version = (await this.cacheManager.get<number>(STORE_CACHE_VERSION_KEY)) ?? 0;
+      const hashPart = PaginationCacheUtil.buildCacheKey(STORE_CACHE_PREFIX, filters).split(':')[1];
+      const cacheKey = `${STORE_CACHE_PREFIX}:${version}:${hashPart}`;
 
       const cachedResult = await this.cacheManager.get<PaginatedResponse<Store>>(cacheKey);
       if (cachedResult) {
@@ -113,7 +118,7 @@ export class StoreService {
 
       this.setPaginatedSpanAttributes(span, response);
 
-      await this.cacheManager.set(cacheKey, response, 300);
+      await this.cacheManager.set(cacheKey, response, STORE_LIST_CACHE_TTL_MS);
 
       return response;
     });
@@ -406,7 +411,7 @@ export class StoreService {
   }
 
   private async invalidateListCache(): Promise<void> {
-    await this.cacheManager.set(this.CACHE_VERSION_KEY, Date.now(), 86400);
+    await this.cacheManager.set(STORE_CACHE_VERSION_KEY, Date.now(), STORE_VERSION_CACHE_TTL_MS);
   }
 
   async remove(id: string, userId?: string): Promise<void> {
