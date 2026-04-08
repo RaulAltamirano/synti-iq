@@ -17,11 +17,3 @@ export const SESSION_MAX_REFRESH_COUNT = 100;
 export function buildSessionKey(userId: string, sessionId: string): string {
   return `${SESSION_PREFIX}:${userId}:${sessionId}`;
 }
-
-/**
- * Builds the Redis key for the per-session refresh counter (separate from session payload).
- * Pattern: `session:refresh_count:{userId}:{sessionId}`
- */
-export function buildRefreshCountKey(userId: string, sessionId: string): string {
-  return `${SESSION_PREFIX}:refresh_count:${userId}:${sessionId}`;
-}

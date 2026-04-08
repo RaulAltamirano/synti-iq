@@ -3,6 +3,7 @@ import { RedisService } from 'src/shared/redis/redis.service';
 import {
   SESSION_TTL_S,
   SESSION_MAX_REFRESH_COUNT,
+  buildSessionKey,
 } from 'src/user-session/constants/user-session-cache.constants';
 
 interface SessionMetadata {
@@ -32,7 +33,7 @@ export class AnomalyDetectionService {
     sessionId: string,
     metadata: SessionMetadata,
   ): Promise<AnomalyResult> {
-    const sessionKey = `session:${userId}:${sessionId}`;
+    const sessionKey = buildSessionKey(userId, sessionId);
     const sessionData = await this.redisService.get<{
       deviceInfo?: SessionMetadata;
       lastRefresh?: string;
@@ -86,7 +87,7 @@ export class AnomalyDetectionService {
     sessionId: string,
     metadata: SessionMetadata,
   ): Promise<void> {
-    const sessionKey = `session:${userId}:${sessionId}`;
+    const sessionKey = buildSessionKey(userId, sessionId);
     const sessionData =
       (await this.redisService.get<{
         deviceInfo?: SessionMetadata;
