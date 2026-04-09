@@ -4,19 +4,14 @@ import {
   SESSION_TTL_S,
   SESSION_MAX_REFRESH_COUNT,
   buildSessionKey,
+  buildRefreshCountKey,
 } from 'src/user-session/constants/user-session-cache.constants';
+import type {
+  AnomalySessionRedisPayload,
+  TokenUsageMetadata,
+} from 'src/auth/interfaces/token-usage-metadata.interface';
 
-interface SessionMetadata {
-  ipAddress?: string;
-  userAgent?: string;
-  deviceInfo?: {
-    deviceType?: string;
-    browser?: string;
-    os?: string;
-  };
-}
-
-interface AnomalyResult {
+export interface AnomalyDetectionResult {
   isAnomaly: boolean;
   reason?: string;
   severity?: 'low' | 'medium' | 'high';
@@ -31,14 +26,10 @@ export class AnomalyDetectionService {
   async detectTokenReuse(
     userId: string,
     sessionId: string,
-    metadata: SessionMetadata,
-  ): Promise<AnomalyResult> {
+    metadata: TokenUsageMetadata,
+  ): Promise<AnomalyDetectionResult> {
     const sessionKey = buildSessionKey(userId, sessionId);
-    const sessionData = await this.redisService.get<{
-      deviceInfo?: SessionMetadata;
-      lastRefresh?: string;
-      refreshCount?: number;
-    }>(sessionKey);
+    const sessionData = await this.redisService.get<AnomalySessionRedisPayload>(sessionKey);
 
     if (!sessionData) {
       return { isAnomaly: false };
@@ -66,7 +57,8 @@ export class AnomalyDetectionService {
       anomalies.push('User agent changed');
     }
 
-    const refreshCount = (sessionData.refreshCount || 0) + 1;
+    const refreshCountKey = buildRefreshCountKey(userId, sessionId);
+    const refreshCount = (await this.redisService.get<number>(refreshCountKey)) ?? 0;
     if (refreshCount > SESSION_MAX_REFRESH_COUNT) {
       anomalies.push('Excessive token refreshes');
     }
@@ -85,15 +77,10 @@ export class AnomalyDetectionService {
   async recordTokenUsage(
     userId: string,
     sessionId: string,
-    metadata: SessionMetadata,
+    metadata: TokenUsageMetadata,
   ): Promise<void> {
     const sessionKey = buildSessionKey(userId, sessionId);
-    const sessionData =
-      (await this.redisService.get<{
-        deviceInfo?: SessionMetadata;
-        refreshCount?: number;
-        [key: string]: any;
-      }>(sessionKey)) || {};
+    const sessionData = (await this.redisService.get<AnomalySessionRedisPayload>(sessionKey)) ?? {};
 
     await this.redisService.set(
       sessionKey,
@@ -104,9 +91,16 @@ export class AnomalyDetectionService {
           ...metadata,
         },
         lastRefresh: new Date().toISOString(),
-        refreshCount: (sessionData.refreshCount || 0) + 1,
       },
       SESSION_TTL_S,
     );
+
+    // Atomic counter — avoids read-modify-write race condition
+    const refreshCountKey = buildRefreshCountKey(userId, sessionId);
+    const newCount = await this.redisService.incr(refreshCountKey);
+    if (newCount === 1) {
+      // Key was just created; set TTL to match session lifetime
+      await this.redisService.expire(refreshCountKey, SESSION_TTL_S);
+    }
   }
 }
