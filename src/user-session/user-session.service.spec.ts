@@ -242,4 +242,95 @@ describe('UserSessionService', () => {
       expect(redis.del).not.toHaveBeenCalled();
     });
   });
+
+  describe('validateSessionOwnership', () => {
+    it('returns true from Redis cache when session is valid', async () => {
+      redis.get.mockResolvedValue({ isValid: true });
+      const result = await service.validateSessionOwnership('user-1', 'session-1');
+      expect(result).toBe(true);
+      expect(repo.findByUserAndSessionId).not.toHaveBeenCalled();
+    });
+
+    it('returns false from Redis cache when session is invalid', async () => {
+      redis.get.mockResolvedValue({ isValid: false });
+      const result = await service.validateSessionOwnership('user-1', 'session-1');
+      expect(result).toBe(false);
+    });
+
+    it('falls back to DB when Redis misses and re-caches the session', async () => {
+      const session = makeSession({ refreshToken: 'hash', isValid: true });
+      redis.get.mockResolvedValue(null);
+      repo.findByUserAndSessionId.mockResolvedValue(session);
+
+      const result = await service.validateSessionOwnership('user-1', 'session-1');
+
+      expect(result).toBe(true);
+      expect(redis.set).toHaveBeenCalled();
+    });
+
+    it('returns false when Redis misses and DB finds no valid session', async () => {
+      redis.get.mockResolvedValue(null);
+      repo.findByUserAndSessionId.mockResolvedValue(null);
+
+      const result = await service.validateSessionOwnership('user-1', 'session-1');
+
+      expect(result).toBe(false);
+      expect(redis.set).not.toHaveBeenCalled();
+    });
+
+    it('throws BadRequestException when userId is empty', async () => {
+      await expect(service.validateSessionOwnership('', 'session-1')).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    });
+  });
+
+  describe('createSession', () => {
+    it('persists session via repository and returns response DTO', async () => {
+      const session = makeSession();
+      repo.create.mockResolvedValue(session);
+
+      const result = await service.createSession({
+        userId: 'user-1',
+        sessionId: 'session-1',
+        refreshToken: 'hash',
+        deviceInfo: null,
+        userAgent: 'Mozilla/5.0',
+        ipAddress: '1.2.3.4',
+        lastUsed: new Date(),
+      });
+
+      expect(repo.create).toHaveBeenCalled();
+      expect(result.sessionId).toBe('session-1');
+    });
+
+    it('throws BadRequestException when userId is missing', async () => {
+      await expect(
+        service.createSession({
+          userId: '',
+          sessionId: 'session-1',
+          refreshToken: 'hash',
+          deviceInfo: null,
+          userAgent: null,
+          ipAddress: null,
+          lastUsed: new Date(),
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+  });
+
+  describe('setSessionInRedisUnified', () => {
+    it('stores session data in Redis with SESSION_TTL_S', async () => {
+      await service.setSessionInRedisUnified('user-1', 'session-1', {
+        refreshTokenHash: 'hash',
+        isValid: true,
+      });
+
+      expect(redis.set).toHaveBeenCalledWith(
+        expect.stringContaining('session:user-1:session-1'),
+        expect.objectContaining({ refreshTokenHash: 'hash', isValid: true }),
+        expect.any(Number),
+      );
+    });
+  });
 });
