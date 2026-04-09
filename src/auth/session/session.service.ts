@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { UserSessionService } from 'src/user-session/user-session.service';
 import { ObservabilityService } from 'src/shared/observability/observability.service';
 import {
@@ -15,8 +15,6 @@ import {
  */
 @Injectable()
 export class SessionService {
-  private readonly logger = new Logger(SessionService.name);
-
   constructor(
     private readonly userSessionService: UserSessionService,
     private readonly observabilityService: ObservabilityService,
@@ -82,26 +80,6 @@ export class SessionService {
         span.setAttribute(AUTH_CORE_SPAN_ATTRIBUTES.USER_ID, userId);
         const sessions = await this.userSessionService.findActiveByUserId(userId);
         return sessions.map(session => ({ sessionId: session.sessionId }));
-      },
-    );
-  }
-
-  async isSessionOwnedByUser(userId: string, sessionId: string): Promise<boolean> {
-    return this.observabilityService.withSpan(
-      AUTH_USER_SESSIONS_SPAN_NAMES.IS_OWNED,
-      async span => {
-        span.setAttribute(AUTH_CORE_SPAN_ATTRIBUTES.USER_ID, userId);
-        return this.userSessionService.validateSessionOwnership(userId, sessionId);
-      },
-    );
-  }
-
-  async markSessionUsed(userId: string, sessionId: string): Promise<void> {
-    return this.observabilityService.withSpan(
-      AUTH_USER_SESSIONS_SPAN_NAMES.MARK_USED,
-      async span => {
-        span.setAttribute(AUTH_CORE_SPAN_ATTRIBUTES.USER_ID, userId);
-        return this.userSessionService.updateSessionLastUsed(userId, sessionId);
       },
     );
   }

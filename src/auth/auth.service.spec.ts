@@ -92,7 +92,14 @@ describe('AuthService', () => {
         { provide: UserService, useValue: userService },
         {
           provide: SessionService,
-          useValue: { invalidateSessionsByDeviceInfo: jest.fn().mockResolvedValue(0) },
+          useValue: {
+            invalidateOne: jest.fn(),
+            invalidateAll: jest.fn(),
+            invalidateSessionsByDeviceInfo: jest.fn().mockResolvedValue(0),
+            validateSessionOwnership: jest.fn().mockResolvedValue(true),
+            updateSessionLastUsed: jest.fn(),
+            listActive: jest.fn(),
+          },
         },
         { provide: PasswordService, useValue: passwordService },
         { provide: UserProfileService, useValue: {} },
