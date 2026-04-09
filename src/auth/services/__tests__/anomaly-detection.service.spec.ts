@@ -5,9 +5,14 @@ import { RedisService } from 'src/shared/redis/redis.service';
 
 describe('AnomalyDetectionService', () => {
   let service: AnomalyDetectionService;
-  let redis: jest.Mocked<Pick<RedisService, 'get' | 'set' | 'incr' | 'expire'>>;
+  let redis: jest.Mocked<Pick<RedisService, 'get' | 'set' | 'incr' | 'expire' | 'getClient'>>;
+  let mockRedisClient: any;
 
   beforeEach(async () => {
+    mockRedisClient = {
+      get: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AnomalyDetectionService,
@@ -18,6 +23,7 @@ describe('AnomalyDetectionService', () => {
             set: jest.fn(),
             incr: jest.fn().mockResolvedValue(1),
             expire: jest.fn().mockResolvedValue(true),
+            getClient: jest.fn().mockReturnValue(mockRedisClient),
           },
         },
       ],
@@ -69,9 +75,9 @@ describe('AnomalyDetectionService', () => {
 
     it('reads refresh count from separate key, not from session payload', async () => {
       redis.get.mockImplementation(async (key: string) => {
-        if (key.includes('refresh_count')) return 101;
         return { deviceInfo: { ipAddress: '1.2.3.4' }, isValid: true };
       });
+      mockRedisClient.get.mockResolvedValue('101');
 
       const result = await service.detectTokenReuse('user-1', 'session-1', {
         ipAddress: '1.2.3.4',
@@ -79,13 +85,16 @@ describe('AnomalyDetectionService', () => {
 
       expect(result.isAnomaly).toBe(true);
       expect(result.reason).toContain('Excessive token refreshes');
+      expect(mockRedisClient.get).toHaveBeenCalledWith(
+        expect.stringContaining('session:refresh_count:user-1:session-1'),
+      );
     });
 
     it('detects IP address change', async () => {
       redis.get.mockImplementation(async (key: string) => {
-        if (key.includes('refresh_count')) return 0;
         return { deviceInfo: { ipAddress: '1.2.3.4', userAgent: 'agent' } };
       });
+      mockRedisClient.get.mockResolvedValue('0');
 
       const result = await service.detectTokenReuse('user-1', 'session-1', {
         ipAddress: '9.9.9.9',
@@ -99,9 +108,9 @@ describe('AnomalyDetectionService', () => {
 
     it('returns high severity when multiple anomalies detected', async () => {
       redis.get.mockImplementation(async (key: string) => {
-        if (key.includes('refresh_count')) return 0;
         return { deviceInfo: { ipAddress: '1.2.3.4', userAgent: 'old-agent' } };
       });
+      mockRedisClient.get.mockResolvedValue('0');
 
       const result = await service.detectTokenReuse('user-1', 'session-1', {
         ipAddress: '9.9.9.9',

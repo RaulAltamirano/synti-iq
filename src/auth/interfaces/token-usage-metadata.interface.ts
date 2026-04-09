@@ -15,3 +15,10 @@ export interface AnomalySessionRedisPayload {
   lastUsed?: string;
   usedTokens?: string[];
 }
+
+/** Result from AnomalyDetectionService token reuse detection */
+export interface AnomalyDetectionResult {
+  isAnomaly: boolean;
+  reason?: string;
+  severity?: 'low' | 'medium' | 'high';
+}

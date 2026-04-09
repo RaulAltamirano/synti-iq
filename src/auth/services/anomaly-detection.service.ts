@@ -9,13 +9,8 @@ import {
 import type {
   AnomalySessionRedisPayload,
   TokenUsageMetadata,
+  AnomalyDetectionResult,
 } from 'src/auth/interfaces/token-usage-metadata.interface';
-
-export interface AnomalyDetectionResult {
-  isAnomaly: boolean;
-  reason?: string;
-  severity?: 'low' | 'medium' | 'high';
-}
 
 @Injectable()
 export class AnomalyDetectionService {
@@ -58,7 +53,8 @@ export class AnomalyDetectionService {
     }
 
     const refreshCountKey = buildRefreshCountKey(userId, sessionId);
-    const refreshCount = (await this.redisService.get<number>(refreshCountKey)) ?? 0;
+    const rawCount = await this.redisService.getClient().get(refreshCountKey);
+    const refreshCount = rawCount !== null ? parseInt(rawCount, 10) : 0;
     if (refreshCount > SESSION_MAX_REFRESH_COUNT) {
       anomalies.push('Excessive token refreshes');
     }
@@ -80,6 +76,9 @@ export class AnomalyDetectionService {
     metadata: TokenUsageMetadata,
   ): Promise<void> {
     const sessionKey = buildSessionKey(userId, sessionId);
+    // Note: updating deviceInfo in the session payload is a best-effort read-modify-write.
+    // Under concurrent refreshes, the last writer wins for deviceInfo/lastRefresh,
+    // which is acceptable — this data is used only for anomaly detection heuristics.
     const sessionData = (await this.redisService.get<AnomalySessionRedisPayload>(sessionKey)) ?? {};
 
     await this.redisService.set(
@@ -99,7 +98,9 @@ export class AnomalyDetectionService {
     const refreshCountKey = buildRefreshCountKey(userId, sessionId);
     const newCount = await this.redisService.incr(refreshCountKey);
     if (newCount === 1) {
-      // Key was just created; set TTL to match session lifetime
+      // Set TTL on first creation. Note: a crash between incr and expire would leave
+      // a persistent key with no TTL. This is an accepted trade-off — session cleanup
+      // and the session key's own TTL bound the lifetime indirectly.
       await this.redisService.expire(refreshCountKey, SESSION_TTL_S);
     }
   }
