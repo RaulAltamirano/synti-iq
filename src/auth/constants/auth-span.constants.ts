@@ -60,6 +60,16 @@ export const AUTH_USER_SESSIONS_SPAN_NAMES = {
   IS_OWNED: SPAN_AUTH_USER_SESSIONS_IS_OWNED,
 } as const;
 
+/** Span names for anomaly detection */
+export const SPAN_AUTH_ANOMALY_DETECT_REUSE = 'auth.anomaly.detectTokenReuse' as const;
+export const SPAN_AUTH_ANOMALY_RECORD_USAGE = 'auth.anomaly.recordTokenUsage' as const;
+
+/** Grouped span names for anomaly detection */
+export const AUTH_ANOMALY_SPAN_NAMES = {
+  DETECT_REUSE: SPAN_AUTH_ANOMALY_DETECT_REUSE,
+  RECORD_USAGE: SPAN_AUTH_ANOMALY_RECORD_USAGE,
+} as const;
+
 /** Attribute keys for user sessions spans */
 export const ATTR_AUTH_CORE_USER_ID = 'auth.user_id' as const;
 

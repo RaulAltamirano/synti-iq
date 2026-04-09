@@ -3,14 +3,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import type { Span } from '@opentelemetry/api';
 import { Cache } from 'cache-manager';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Repository, SelectQueryBuilder } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Store } from 'src/store/entities/store.entity';
 import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.entity';
 import { UserService } from 'src/user/user.service';
 import { UserProfileService } from 'src/user-profile/user_profile.service';
 import { ObservabilityService } from 'src/shared/observability/observability.service';
 import { SystemRole } from 'src/shared/enums/roles.enum';
-import { BasePaginationParams } from 'src/pagination/dtos/base-pagination-params';
 import { PaginatedResponse } from 'src/pagination/interfaces/PaginatedResponse';
 import { PaginationCacheUtil } from 'src/pagination/utils/PaginationCacheUtil';
 import { StoreFilterDto } from 'src/store/dto/filter-store-dto';
@@ -74,7 +73,7 @@ export class StoreQueryService {
 
       this.applyFilters(queryBuilder, filters);
 
-      const response = await this.paginateQueryBuilder(queryBuilder, filters, {
+      const response = await PaginationCacheUtil.paginateQueryBuilder(queryBuilder, filters, {
         columnMap: STORE_SORT_COLUMN_MAP,
       });
 
@@ -178,23 +177,6 @@ export class StoreQueryService {
         maxTarget: filters.maxDailySalesTarget,
       });
     }
-  }
-
-  private async paginateQueryBuilder<T>(
-    queryBuilder: SelectQueryBuilder<T>,
-    filters: BasePaginationParams,
-    options: { columnMap: Record<string, string>; aliasOverride?: string },
-  ): Promise<PaginatedResponse<T>> {
-    const countQueryBuilder = queryBuilder.clone();
-    const total = await countQueryBuilder.getCount();
-    PaginationCacheUtil.applyPagination(queryBuilder, filters, {
-      columnMap: options.columnMap,
-      aliasOverride: options.aliasOverride,
-    });
-    const items = await queryBuilder.getMany();
-    const page = filters.page ?? 1;
-    const limit = filters.limit ?? 10;
-    return PaginationCacheUtil.createPaginatedResponse({ items, total, page, limit });
   }
 
   private setPaginatedSpanAttributes(span: Span, response: PaginatedResponse<unknown>): void {

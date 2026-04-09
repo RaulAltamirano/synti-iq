@@ -1,6 +1,6 @@
 import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository, SelectQueryBuilder } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.entity';
 import { UserProfile } from 'src/user-profile/entities/user_profile.entity';
@@ -11,7 +11,6 @@ import { AccountInvitationService } from 'src/auth/account-invitation/account-in
 import { MailService } from 'src/mail/mail.service';
 import { ObservabilityService } from 'src/shared/observability/observability.service';
 import { SystemRole } from 'src/shared/enums/roles.enum';
-import { BasePaginationParams } from 'src/pagination/dtos/base-pagination-params';
 import { PaginatedResponse } from 'src/pagination/interfaces/PaginatedResponse';
 import { PaginationCacheUtil } from 'src/pagination/utils/PaginationCacheUtil';
 import { FilterStoreCashiersDto } from 'src/store/dto/filter-store-cashiers.dto';
@@ -67,7 +66,7 @@ export class StoreCashierService {
         .leftJoinAndMapOne('cashier.user', User, 'u', 'u.id = up."userId"')
         .where('cashier.storeId = :storeId', { storeId });
 
-      const response = await this.paginateQueryBuilder(queryBuilder, filters, {
+      const response = await PaginationCacheUtil.paginateQueryBuilder(queryBuilder, filters, {
         columnMap: CASHIER_SORT_COLUMN_MAP,
         aliasOverride: 'cashier',
       });
@@ -197,22 +196,5 @@ export class StoreCashierService {
       firstName: user.firstName,
       setPasswordUrl,
     });
-  }
-
-  private async paginateQueryBuilder<T>(
-    queryBuilder: SelectQueryBuilder<T>,
-    filters: BasePaginationParams,
-    options: { columnMap: Record<string, string>; aliasOverride?: string },
-  ): Promise<PaginatedResponse<T>> {
-    const countQueryBuilder = queryBuilder.clone();
-    const total = await countQueryBuilder.getCount();
-    PaginationCacheUtil.applyPagination(queryBuilder, filters, {
-      columnMap: options.columnMap,
-      aliasOverride: options.aliasOverride,
-    });
-    const items = await queryBuilder.getMany();
-    const page = filters.page ?? 1;
-    const limit = filters.limit ?? 10;
-    return PaginationCacheUtil.createPaginatedResponse({ items, total, page, limit });
   }
 }

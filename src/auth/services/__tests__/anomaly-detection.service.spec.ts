@@ -2,16 +2,26 @@ import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
 import { AnomalyDetectionService } from '../anomaly-detection.service';
 import { RedisService } from 'src/shared/redis/redis.service';
+import { ObservabilityService } from 'src/shared/observability/observability.service';
+
+const IP_ORIGINAL = '1.2.3.4';
+const IP_CHANGED = '9.9.9.9';
 
 describe('AnomalyDetectionService', () => {
   let service: AnomalyDetectionService;
   let redis: jest.Mocked<Pick<RedisService, 'get' | 'set' | 'incr' | 'expire' | 'getClient'>>;
-  let mockRedisClient: any;
+  let mockRedisClient: { get: jest.Mock };
+
+  function setupSession(
+    deviceInfo: { ipAddress?: string; userAgent?: string },
+    rawRefreshCount = '0',
+  ): void {
+    redis.get.mockResolvedValue({ deviceInfo, isValid: true });
+    mockRedisClient.get.mockResolvedValue(rawRefreshCount);
+  }
 
   beforeEach(async () => {
-    mockRedisClient = {
-      get: jest.fn(),
-    };
+    mockRedisClient = { get: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -26,11 +36,19 @@ describe('AnomalyDetectionService', () => {
             getClient: jest.fn().mockReturnValue(mockRedisClient),
           },
         },
+        {
+          provide: ObservabilityService,
+          useValue: {
+            withSpan: jest.fn().mockImplementation((_name: string, fn: () => unknown) => fn()),
+          },
+        },
       ],
     }).compile();
 
     service = module.get(AnomalyDetectionService);
-    redis = module.get(RedisService) as any;
+    redis = module.get(RedisService) as jest.Mocked<
+      Pick<RedisService, 'get' | 'set' | 'incr' | 'expire' | 'getClient'>
+    >;
   });
 
   describe('recordTokenUsage', () => {
@@ -38,7 +56,7 @@ describe('AnomalyDetectionService', () => {
       redis.get.mockResolvedValue({ isValid: true, refreshTokenHash: 'hash' });
 
       await service.recordTokenUsage('user-1', 'session-1', {
-        ipAddress: '1.2.3.4',
+        ipAddress: IP_ORIGINAL,
         userAgent: 'test-agent',
       });
 
@@ -74,13 +92,10 @@ describe('AnomalyDetectionService', () => {
     });
 
     it('reads refresh count from separate key, not from session payload', async () => {
-      redis.get.mockImplementation(async (key: string) => {
-        return { deviceInfo: { ipAddress: '1.2.3.4' }, isValid: true };
-      });
-      mockRedisClient.get.mockResolvedValue('101');
+      setupSession({ ipAddress: IP_ORIGINAL }, '101');
 
       const result = await service.detectTokenReuse('user-1', 'session-1', {
-        ipAddress: '1.2.3.4',
+        ipAddress: IP_ORIGINAL,
       });
 
       expect(result.isAnomaly).toBe(true);
@@ -91,13 +106,10 @@ describe('AnomalyDetectionService', () => {
     });
 
     it('detects IP address change', async () => {
-      redis.get.mockImplementation(async (key: string) => {
-        return { deviceInfo: { ipAddress: '1.2.3.4', userAgent: 'agent' } };
-      });
-      mockRedisClient.get.mockResolvedValue('0');
+      setupSession({ ipAddress: IP_ORIGINAL, userAgent: 'agent' });
 
       const result = await service.detectTokenReuse('user-1', 'session-1', {
-        ipAddress: '9.9.9.9',
+        ipAddress: IP_CHANGED,
         userAgent: 'agent',
       });
 
@@ -107,13 +119,10 @@ describe('AnomalyDetectionService', () => {
     });
 
     it('returns high severity when multiple anomalies detected', async () => {
-      redis.get.mockImplementation(async (key: string) => {
-        return { deviceInfo: { ipAddress: '1.2.3.4', userAgent: 'old-agent' } };
-      });
-      mockRedisClient.get.mockResolvedValue('0');
+      setupSession({ ipAddress: IP_ORIGINAL, userAgent: 'old-agent' });
 
       const result = await service.detectTokenReuse('user-1', 'session-1', {
-        ipAddress: '9.9.9.9',
+        ipAddress: IP_CHANGED,
         userAgent: 'new-agent',
       });
 

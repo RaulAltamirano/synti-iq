@@ -1,5 +1,6 @@
 import { createHash } from 'crypto';
 import { Logger } from '@nestjs/common';
+import type { SelectQueryBuilder } from 'typeorm';
 import type { PaginatedResponse } from '../interfaces/PaginatedResponse';
 import type { BasePaginationParams } from '../dtos/base-pagination-params';
 import type { CacheService } from 'src/cache/cache.service';
@@ -177,6 +178,23 @@ export class PaginationCacheUtil {
 
       return freshData;
     }
+  }
+
+  static async paginateQueryBuilder<T>(
+    queryBuilder: SelectQueryBuilder<T>,
+    filters: BasePaginationParams,
+    options: { columnMap: Record<string, string>; aliasOverride?: string },
+  ): Promise<PaginatedResponse<T>> {
+    const countQueryBuilder = queryBuilder.clone();
+    const total = await countQueryBuilder.getCount();
+    PaginationCacheUtil.applyPagination(queryBuilder, filters, {
+      columnMap: options.columnMap,
+      aliasOverride: options.aliasOverride,
+    });
+    const items = await queryBuilder.getMany();
+    const page = filters.page ?? 1;
+    const limit = filters.limit ?? 10;
+    return PaginationCacheUtil.createPaginatedResponse({ items, total, page, limit });
   }
 
   static async invalidateCache(cacheService: any, prefix: string): Promise<void> {
