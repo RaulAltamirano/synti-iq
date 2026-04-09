@@ -265,7 +265,11 @@ describe('UserSessionService', () => {
       const result = await service.validateSessionOwnership('user-1', 'session-1');
 
       expect(result).toBe(true);
-      expect(redis.set).toHaveBeenCalled();
+      expect(redis.set).toHaveBeenCalledWith(
+        expect.stringContaining('session:user-1:session-1'),
+        expect.objectContaining({ refreshTokenHash: 'hash', isValid: true }),
+        expect.any(Number),
+      );
     });
 
     it('returns false when Redis misses and DB finds no valid session', async () => {
