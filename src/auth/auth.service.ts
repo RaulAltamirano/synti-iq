@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { PasswordService } from './services/password/password.service';
-import { UserSessionService } from 'src/user-session/user-session.service';
+import { SessionService } from 'src/auth/session/session.service';
 import { UserService } from 'src/user/user.service';
 import { SignUpDto } from 'src/auth/dto/sign-up.dto';
 import { RegisterBusinessDto } from 'src/auth/dto/register-business.dto';
@@ -36,7 +36,7 @@ export class AuthService {
 
   constructor(
     private readonly userRepository: UserService,
-    private readonly sessionService: UserSessionService,
+    private readonly authSessionCommandService: SessionService,
     private readonly passwordService: PasswordService,
     private readonly userProfileService: UserProfileService,
     private readonly dataSource: DataSource,
@@ -335,9 +335,10 @@ export class AuthService {
   ): Promise<void> {
     try {
       if (metadata.deviceInfo?.userAgent) {
-        const invalidatedCount = await this.sessionService.invalidateSessionsByDeviceInfo(userId, {
-          userAgent: metadata.deviceInfo.userAgent,
-        });
+        const invalidatedCount =
+          await this.authSessionCommandService.invalidateSessionsByDeviceInfo(userId, {
+            userAgent: metadata.deviceInfo.userAgent,
+          });
 
         if (invalidatedCount > 0) {
           this.logger.log(
@@ -349,10 +350,12 @@ export class AuthService {
           `Cannot invalidate previous sessions for user ${userId}: userAgent is not available`,
         );
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      const stack = error instanceof Error ? error.stack : undefined;
       this.logger.error(
-        `Failed to invalidate previous sessions for user ${userId}: ${error.message}`,
-        error.stack,
+        `Failed to invalidate previous sessions for user ${userId}: ${message}`,
+        stack,
       );
     }
   }
@@ -370,7 +373,10 @@ export class AuthService {
   async refreshTokens(dto: RefreshTokenDto, request?: Request): Promise<RefreshTokensResponseDto> {
     const { userId, sessionId } = await this.sessionManager.verifyRefreshToken(dto.refreshToken);
 
-    const isValidSession = await this.sessionService.validateSessionOwnership(userId, sessionId);
+    const isValidSession = await this.authSessionCommandService.validateSessionOwnership(
+      userId,
+      sessionId,
+    );
     if (!isValidSession) {
       throw new UnauthorizedException('Invalid session');
     }
@@ -381,7 +387,7 @@ export class AuthService {
     }
 
     this.validateUserStatus(user);
-    await this.sessionService.updateSessionLastUsed(userId, sessionId);
+    await this.authSessionCommandService.updateSessionLastUsed(userId, sessionId);
     await this.userRepository.updateLastActivity(userId);
 
     const metadata = this.metadataService.extractSessionMetadata(request);
@@ -481,13 +487,16 @@ export class AuthService {
   }
 
   private async validateSession(userId: string, sessionId: string): Promise<void> {
-    const isValid = await this.sessionService.validateSessionOwnership(userId, sessionId);
+    const isValid = await this.authSessionCommandService.validateSessionOwnership(
+      userId,
+      sessionId,
+    );
     if (!isValid) {
       this.logger.warn(`Session validation failed: userId=${userId}, sessionId=${sessionId}`);
       throw new UnauthorizedException('Invalid session');
     }
 
-    await this.sessionService.updateSessionLastUsed(userId, sessionId);
+    await this.authSessionCommandService.updateSessionLastUsed(userId, sessionId);
     await this.userRepository.updateLastActivity(userId);
   }
 }

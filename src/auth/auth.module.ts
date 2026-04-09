@@ -32,6 +32,7 @@ import { ReferralModule } from 'src/referral/referral.module';
 import { TwoFactorService } from './services/two-factor.service';
 import { UserBackupCode } from './entities/user-backup-code.entity';
 import { ObservabilityModule } from 'src/shared/observability/observability.module';
+import { SessionService } from './session/session.service';
 
 @Module({
   controllers: [AuthController],
@@ -53,6 +54,7 @@ import { ObservabilityModule } from 'src/shared/observability/observability.modu
     AuthSessionManager,
     AuthMetadataService,
     RateLimitService,
+    SessionService,
   ],
   imports: [
     UserModule,
