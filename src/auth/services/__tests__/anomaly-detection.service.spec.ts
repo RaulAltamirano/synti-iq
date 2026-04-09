@@ -4,8 +4,9 @@ import { AnomalyDetectionService } from '../anomaly-detection.service';
 import { RedisService } from 'src/shared/redis/redis.service';
 import { ObservabilityService } from 'src/shared/observability/observability.service';
 
-const IP_ORIGINAL = '1.2.3.4';
-const IP_CHANGED = '9.9.9.9';
+// RFC 5737 TEST-NET (documentation-only ranges; string literals only in mocked tests)
+const IP_ORIGINAL = '192.0.2.1';
+const IP_CHANGED = '198.51.100.1';
 
 describe('AnomalyDetectionService', () => {
   let service: AnomalyDetectionService;

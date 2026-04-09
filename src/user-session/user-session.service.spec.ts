@@ -6,6 +6,11 @@ import { UserSessionRepository } from './user-session.repository';
 import { RedisService } from 'src/shared/redis/redis.service';
 import type { UserSession } from './entities/user-session.entity';
 
+// RFC 5737 TEST-NET — documentation-only IP; string fixture in mocked tests (no network)
+const TEST_SESSION_IP = '192.0.2.1';
+// Fixed instant so session fixtures and createSession inputs are deterministic (not wall-clock dependent)
+const FIXTURE_INSTANT = new Date('2026-01-01T00:00:00Z');
+
 function makeSession(overrides: Partial<UserSession> = {}): UserSession {
   return {
     id: 'id-1',
@@ -14,11 +19,11 @@ function makeSession(overrides: Partial<UserSession> = {}): UserSession {
     refreshToken: 'hash',
     deviceInfo: null,
     userAgent: 'Mozilla/5.0',
-    ipAddress: '1.2.3.4',
-    lastUsed: new Date('2026-01-01T00:00:00Z'),
+    ipAddress: TEST_SESSION_IP,
+    lastUsed: FIXTURE_INSTANT,
     isValid: true,
-    createdAt: new Date('2026-01-01T00:00:00Z'),
-    updatedAt: new Date('2026-01-01T00:00:00Z'),
+    createdAt: FIXTURE_INSTANT,
+    updatedAt: FIXTURE_INSTANT,
     ...overrides,
   } as UserSession;
 }
@@ -300,8 +305,8 @@ describe('UserSessionService', () => {
         refreshToken: 'hash',
         deviceInfo: null,
         userAgent: 'Mozilla/5.0',
-        ipAddress: '1.2.3.4',
-        lastUsed: new Date(),
+        ipAddress: TEST_SESSION_IP,
+        lastUsed: FIXTURE_INSTANT,
       });
 
       expect(repo.create).toHaveBeenCalled();
@@ -317,7 +322,7 @@ describe('UserSessionService', () => {
           deviceInfo: null,
           userAgent: null,
           ipAddress: null,
-          lastUsed: new Date(),
+          lastUsed: FIXTURE_INSTANT,
         }),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
