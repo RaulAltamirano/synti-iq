@@ -1,5 +1,4 @@
 import { Store } from 'src/store/entities/store.entity';
-import { TimeBlock } from 'src/time-block/entities/time-block.entity';
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -31,9 +30,6 @@ export class StoreSchedule {
   })
   @JoinColumn({ name: 'store_id' })
   store: Store;
-
-  @OneToMany(() => TimeBlock, timeBlock => timeBlock.storeSchedule)
-  timeBlocks?: TimeBlock[];
 
   @Column('text')
   dayOfWeek: string;

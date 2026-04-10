@@ -180,7 +180,6 @@ src/
 ├── auth/               # Authentication & authorization
 ├── cash-register-session/  # Cash register sessions
 ├── cashier-profile/    # Cashier profile management
-├── cashier-schedule-assignment/  # Cashier scheduling
 ├── core/               # Core application module
 ├── customer-profile/   # Customer profile management
 ├── default-profile/    # Default profile management
@@ -191,12 +190,11 @@ src/
 ├── product/            # Product catalog
 ├── product-category/   # Product categories
 ├── provider-profile/   # Provider profile management
-├── recurring-schedule-template/  # Recurring schedules
 ├── sale/               # Sales management
 ├── sale-item/          # Sale items
 ├── shared/             # Shared utilities and modules
 ├── store/              # Store management
-├── time-block/         # Time block management
+├── store-schedule/     # Store opening hours (per day)
 ├── transactions/       # Transaction management
 ├── user/               # User management
 ├── user-profile/       # User profile management

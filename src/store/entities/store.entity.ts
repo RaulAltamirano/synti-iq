@@ -3,7 +3,6 @@ import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.ent
 import { Inventory } from 'src/inventory/entities/inventory.entity';
 import { Location } from 'src/location/entities/location.entity';
 import { PaymentMethod } from 'src/payment-method/entities/payment-method.entity';
-import { RecurringScheduleTemplate } from 'src/recurring-schedule-template/entities/recurring-schedule-template.entity';
 import { Sale } from 'src/sale/entities/sale.entity';
 import { StoreSchedule } from 'src/store-schedule/entities/store-schedule.entity';
 import {
@@ -56,11 +55,6 @@ export class Store {
 
   @OneToMany(() => StoreSchedule, schedule => schedule.store, { cascade: ['insert'] })
   schedules: StoreSchedule[];
-
-  @OneToMany(() => RecurringScheduleTemplate, template => template.store, {
-    cascade: true,
-  })
-  recurringTemplates: RecurringScheduleTemplate[];
 
   @OneToMany(() => CashierProfile, cashier => cashier.store)
   cashiers: CashierProfile[];
