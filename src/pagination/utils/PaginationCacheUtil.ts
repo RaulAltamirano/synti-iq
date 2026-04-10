@@ -54,7 +54,7 @@ export class PaginationCacheUtil {
     // Limitar profundidad máxima para evitar recursión excesiva
     if (depth > 3) return {};
 
-    const sortedKeys = Object.keys(filters).sort();
+    const sortedKeys = Object.keys(filters).sort((a, b) => a.localeCompare(b));
     const result: Record<string, unknown> = {};
 
     for (const key of sortedKeys) {
