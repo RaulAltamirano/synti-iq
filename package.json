@@ -63,7 +63,7 @@
     "@nestjs-modules/ioredis": "^2.2.0",
     "@nestjs/cache-manager": "^3.1.0",
     "@nestjs/common": "^11.1.17",
-    "@nestjs/config": "^4.0.3",
+    "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.1.17",
     "@nestjs/elasticsearch": "^11.1.0",
     "@nestjs/mapped-types": "^2.1.0",
