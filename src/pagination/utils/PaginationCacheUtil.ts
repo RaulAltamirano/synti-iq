@@ -1,10 +1,31 @@
 import { createHash } from 'crypto';
+import { SelectQueryBuilder } from 'typeorm';
 import { PaginatedResponse } from '../interfaces/PaginatedResponse';
 import { BasePaginationParams } from '../dtos/base-pagination-params';
 import { CacheService } from 'src/cache/cache.service';
 
+/**
+ * Interfaz para métricas de paginación
+ */
+interface PaginationMetrics {
+  page?: number;
+  limit?: number;
+  executionTime: number;
+  filters?: BasePaginationParams;
+  cacheKey?: string;
+  params?: BasePaginationParams;
+  cached?: boolean;
+  error?: boolean;
+}
+
 export class PaginationCacheUtil {
-  static buildCacheKey(prefix: string, filters: Record<string, any>): string {
+  /**
+   * Construye una clave de caché determinística a partir de un prefijo y filtros
+   * @param prefix - Prefijo para la clave de caché (ej: 'stores', 'products')
+   * @param filters - Objeto con filtros para serializar
+   * @returns Clave de caché única para los filtros proporcionados
+   */
+  static buildCacheKey(prefix: string, filters: Record<string, unknown>): string {
     if (!prefix) {
       throw new Error('Cache prefix is required');
     }
@@ -20,25 +41,52 @@ export class PaginationCacheUtil {
       .digest('hex')}`;
   }
 
-  private static sanitizeFilters(filters: Record<string, any>, depth = 0): Record<string, any> {
+  /**
+   * Sanitiza filtros eliminando valores null/undefined y limitando profundidad
+   * @param filters - Objeto de filtros a sanitizar
+   * @param depth - Profundidad actual (evita recursión infinita)
+   * @returns Objeto sanitizado sin valores null/undefined
+   */
+  private static sanitizeFilters(
+    filters: Record<string, unknown>,
+    depth = 0,
+  ): Record<string, unknown> {
+    // Limitar profundidad máxima para evitar recursión excesiva
     if (depth > 3) return {};
 
-    return Object.keys(filters)
-      .sort()
-      .reduce((obj, key) => {
-        const value = filters[key];
-        if (value === undefined || value === null) return obj;
+    const sortedKeys = Object.keys(filters).sort();
+    const result: Record<string, unknown> = {};
 
-        if (typeof value === 'object' && !Array.isArray(value)) {
-          obj[key] = this.sanitizeFilters(value, depth + 1);
-        } else {
-          obj[key] = value;
-        }
+    for (const key of sortedKeys) {
+      const value = filters[key];
 
-        return obj;
-      }, {});
+      // Saltar valores null o undefined
+      if (value === undefined || value === null) continue;
+
+      // Manejar objetos anidados (pero no arrays)
+      if (typeof value === 'object' && !Array.isArray(value)) {
+        result[key] = this.sanitizeFilters(value as Record<string, unknown>, depth + 1);
+      }
+      // Manejar arrays: sanitizar cada elemento si es objeto
+      else if (Array.isArray(value)) {
+        result[key] = value.map(item =>
+          typeof item === 'object' && item !== null
+            ? this.sanitizeFilters(item as Record<string, unknown>, depth + 1)
+            : item,
+        );
+      }
+      // Valores primitivos se mantienen igual
+      else {
+        result[key] = value;
+      }
+    }
+
+    return result;
   }
 
+  /**
+   * Crea una respuesta paginada estandarizada
+   */
   static createPaginatedResponse<T>({
     data,
     total,
@@ -66,23 +114,30 @@ export class PaginationCacheUtil {
     };
   }
 
+  /**
+   * Aplica paginación y ordenamiento a un query builder de TypeORM
+   * @param queryBuilder - QueryBuilder de TypeORM
+   * @param paginationParams - Parámetros de paginación
+   * @param options - Opciones adicionales
+   * @returns El mismo queryBuilder con paginación aplicada
+   */
   static applyPagination<T>(
-    queryBuilder: any,
+    queryBuilder: SelectQueryBuilder<T>,
     paginationParams: BasePaginationParams,
     options?: {
       aliasOverride?: string;
       columnMap?: Record<string, string>;
-      metricsCollector?: (metrics: any) => void;
+      metricsCollector?: (metrics: PaginationMetrics) => void;
     },
-  ) {
+  ): SelectQueryBuilder<T> {
     const startTime = options?.metricsCollector ? Date.now() : 0;
 
     const { page = 1, limit = 10, sortBy, sortOrder = 'ASC' } = paginationParams;
 
     const validPage = Math.max(1, Number(page) || 1);
-    const validLimit = Math.min(Math.max(1, Number(limit) || 10), 100); // Prevenir límites extremos
+    const validLimit = Math.min(Math.max(1, Number(limit) || 10), 100);
 
-    const alias = options?.aliasOverride || queryBuilder.alias || '';
+    const alias = options?.aliasOverride || queryBuilder.alias;
 
     if (sortBy) {
       const actualColumn = options?.columnMap?.[sortBy] || sortBy;
@@ -104,6 +159,9 @@ export class PaginationCacheUtil {
     return queryBuilder;
   }
 
+  /**
+   * Obtiene resultados paginados con caché
+   */
   static async getPaginatedResults<T>(
     cacheService: CacheService,
     cachePrefix: string,
@@ -112,10 +170,10 @@ export class PaginationCacheUtil {
     options: {
       ttl?: number;
       staleWhileRevalidate?: boolean;
-      metricsCollector?: (metrics: any) => void;
+      metricsCollector?: (metrics: PaginationMetrics) => void;
     } = {},
   ): Promise<PaginatedResponse<T>> {
-    const cacheKey = this.buildCacheKey(cachePrefix, paginationParams);
+    const cacheKey = this.buildCacheKey(cachePrefix, paginationParams as Record<string, unknown>);
 
     const startTime = options?.metricsCollector ? Date.now() : 0;
 
@@ -170,7 +228,10 @@ export class PaginationCacheUtil {
     }
   }
 
-  static async invalidateCache(cacheService: any, prefix: string): Promise<void> {
+  /**
+   * Invalida todas las claves de caché con un prefijo dado
+   */
+  static async invalidateCache(cacheService: CacheService, prefix: string): Promise<void> {
     try {
       await cacheService.invalidate(`${prefix}:*`);
     } catch (error) {
