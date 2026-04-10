@@ -31,3 +31,5 @@ Track the first merge request in the [MR organization plan](../superpowers/plans
 ## Resources
 
 - [MR organization plan](../superpowers/plans/2026-04-09-mr-organization.md)
+- GitHub issue: https://github.com/RaulAltamirano/synti-iq/issues/103
+- Pull request: https://github.com/RaulAltamirano/synti-iq/pull/102
