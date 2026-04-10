@@ -76,3 +76,9 @@ Thumbs.db
 issue-draft.md
 docs/issues/draft*.md
 !docs/issues/draft-template.md
+
+# Agent / local planning (do not push to GitHub)
+docs/superpowers/
+
+graphify-out/
+src/graphify-out/
