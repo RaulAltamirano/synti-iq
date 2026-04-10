@@ -19,7 +19,6 @@ import { SaleItemModule } from 'src/sale-item/sale-item.module';
 import { SaleModule } from 'src/sale/sale.module';
 import { TransactionsModule } from 'src/transactions/transactions.module';
 import { StoreScheduleModule } from 'src/store-schedule/store-schedule.module';
-import { ScheduleModule } from 'src/shared/schedule/schedule.module';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { ProductCategorieModule } from 'src/product-category/product-categorie.module';
@@ -65,7 +64,6 @@ import { Resend } from 'resend';
     ReferralModule,
     InventoryModule,
     StoreScheduleModule,
-    ScheduleModule,
     SaleItemModule,
     SaleModule,
     TransactionsModule,
