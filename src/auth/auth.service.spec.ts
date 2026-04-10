@@ -5,7 +5,7 @@ import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { authenticator } from 'otplib';
 import { AuthService } from './auth.service';
 import { UserService } from 'src/user/user.service';
-import { UserSessionService } from 'src/user-session/user-session.service';
+import { SessionService } from 'src/auth/session/session.service';
 import { PasswordService } from 'src/auth/services/password/password.service';
 import { UserProfileService } from 'src/user-profile/user_profile.service';
 import { AuthSessionManager } from './services/auth-session-manager.service';
@@ -91,8 +91,15 @@ describe('AuthService', () => {
         AuthService,
         { provide: UserService, useValue: userService },
         {
-          provide: UserSessionService,
-          useValue: { invalidateSessionsByDeviceInfo: jest.fn().mockResolvedValue(0) },
+          provide: SessionService,
+          useValue: {
+            invalidateOne: jest.fn(),
+            invalidateAll: jest.fn(),
+            invalidateSessionsByDeviceInfo: jest.fn().mockResolvedValue(0),
+            validateSessionOwnership: jest.fn().mockResolvedValue(true),
+            updateSessionLastUsed: jest.fn(),
+            listActive: jest.fn(),
+          },
         },
         { provide: PasswordService, useValue: passwordService },
         { provide: UserProfileService, useValue: {} },

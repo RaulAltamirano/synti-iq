@@ -37,3 +37,43 @@ export const AUTH_2FA_SPAN_ATTRIBUTES = {
   ENABLED: ATTR_2FA_ENABLED,
   BACKUP_CODES_REMAINING: ATTR_2FA_BACKUP_CODES_REMAINING,
 } as const;
+
+/** Span names for user sessions operations */
+export const SPAN_AUTH_USER_SESSIONS_VALIDATE_OWNERSHIP =
+  'auth.userSessions.validateOwnership' as const;
+export const SPAN_AUTH_USER_SESSIONS_INVALIDATE_ONE = 'auth.userSessions.invalidateOne' as const;
+export const SPAN_AUTH_USER_SESSIONS_INVALIDATE_ALL = 'auth.userSessions.invalidateAll' as const;
+export const SPAN_AUTH_USER_SESSIONS_INVALIDATE_BY_DEVICE =
+  'auth.userSessions.invalidateByDevice' as const;
+export const SPAN_AUTH_USER_SESSIONS_MARK_USED = 'auth.userSessions.markUsed' as const;
+export const SPAN_AUTH_USER_SESSIONS_LIST_ACTIVE = 'auth.userSessions.listActive' as const;
+export const SPAN_AUTH_USER_SESSIONS_IS_OWNED = 'auth.userSessions.isOwned' as const;
+
+/** Grouped span names for user sessions */
+export const AUTH_USER_SESSIONS_SPAN_NAMES = {
+  VALIDATE_OWNERSHIP: SPAN_AUTH_USER_SESSIONS_VALIDATE_OWNERSHIP,
+  INVALIDATE_ONE: SPAN_AUTH_USER_SESSIONS_INVALIDATE_ONE,
+  INVALIDATE_ALL: SPAN_AUTH_USER_SESSIONS_INVALIDATE_ALL,
+  INVALIDATE_BY_DEVICE: SPAN_AUTH_USER_SESSIONS_INVALIDATE_BY_DEVICE,
+  MARK_USED: SPAN_AUTH_USER_SESSIONS_MARK_USED,
+  LIST_ACTIVE: SPAN_AUTH_USER_SESSIONS_LIST_ACTIVE,
+  IS_OWNED: SPAN_AUTH_USER_SESSIONS_IS_OWNED,
+} as const;
+
+/** Span names for anomaly detection */
+export const SPAN_AUTH_ANOMALY_DETECT_REUSE = 'auth.anomaly.detectTokenReuse' as const;
+export const SPAN_AUTH_ANOMALY_RECORD_USAGE = 'auth.anomaly.recordTokenUsage' as const;
+
+/** Grouped span names for anomaly detection */
+export const AUTH_ANOMALY_SPAN_NAMES = {
+  DETECT_REUSE: SPAN_AUTH_ANOMALY_DETECT_REUSE,
+  RECORD_USAGE: SPAN_AUTH_ANOMALY_RECORD_USAGE,
+} as const;
+
+/** Attribute keys for user sessions spans */
+export const ATTR_AUTH_CORE_USER_ID = 'auth.user_id' as const;
+
+/** Grouped attribute keys for auth core */
+export const AUTH_CORE_SPAN_ATTRIBUTES = {
+  USER_ID: ATTR_AUTH_CORE_USER_ID,
+} as const;

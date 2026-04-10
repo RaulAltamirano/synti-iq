@@ -15,7 +15,7 @@ Act as a **Staff Software Engineer and Technical Architect** specialized in Type
 Before generating or modifying code in a module:
 
 1. Read existing files in that module (service, controller, DTOs, entities).
-2. For new modules similar to an existing one, use the reference module as template. **When is a module "similar"?** Use the canonical template if the new module has: pagination, filtered queries, observability spans, or multiple services. For simple CRUD without these, use `store` or `user-session` as lighter references.
+2. For new modules similar to an existing one, use the reference module as template. **When is a module "similar"?** Use the canonical template if the new module has: pagination, filtered queries, observability spans, or multiple services. For simple CRUD without these, use `user-session` as a lighter reference.
 3. Canonical reference: [src/\_template/](../src/_template/) — template module with observability, pagination, DTOs, metrics, tests, endpoint docs. The template is not registered in `AppModule`; it exists solely as a reference for copying.
 
 **Required reads before modifying a module:**
@@ -52,6 +52,7 @@ After completing any task, run in order: `yarn build`, `yarn lint`, `yarn test`,
 - **Lint**: Must pass `yarn lint` (no ESLint errors)
 - **Format**: Must pass `yarn format:check` (Prettier)
 - **Tests**: Must pass `yarn test`; new service logic must have corresponding `.spec.ts`
+- **Coverage**: Minimum 70% threshold for statements, branches, functions, and lines (`yarn test:cov`)
 
 ---
 
@@ -119,6 +120,8 @@ After completing any task, run in order: `yarn build`, `yarn lint`, `yarn test`,
 | Validation | class-validator, class-transformer |
 | API Docs   | Swagger/OpenAPI (@nestjs/swagger)  |
 | Auth       | JWT RS256, Passport                |
+| Email      | Resend + React Email               |
+| Tracing    | OpenTelemetry (OTLP)               |
 | Logging    | nestjs-pino (structured)           |
 | Testing    | Jest, Supertest                    |
 
@@ -169,9 +172,10 @@ Note: Some legacy entities use snake_case file names; new modules must use kebab
 2. DTOs (with class-validator)
 3. Entities (TypeORM with `@Entity()`)
 4. Repositories (if custom; else skip)
-5. Services (business logic, `@Injectable()`)
-6. Controllers (endpoints, `@Controller()`)
-7. Module registration (imports, providers)
+5. Factories (if entity construction is complex; else skip)
+6. Services (business logic, `@Injectable()`)
+7. Controllers (endpoints, `@Controller()`)
+8. Module registration (imports, providers)
 
 ---
 
@@ -187,14 +191,45 @@ See [docs/CONVENTIONS.md](docs/CONVENTIONS.md) for full specs:
 
 ## Reference Implementations
 
-| Pattern                                               | Path                                                                                                                        | Use When                                             |
-| ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| Canonical template (observability, pagination, tests) | [src/\_template/](../src/_template/)                                                                                        | New feature modules                                  |
-| Custom repository                                     | [src/user-session/user-session.repository.ts](../src/user-session/user-session.repository.ts)                               | Complex queries                                      |
-| Repository interface                                  | [src/inventory/interfaces/inventory-repository.interface.ts](../src/inventory/interfaces/inventory-repository.interface.ts) | Contract injection                                   |
-| Span constants                                        | [src/\_template/constants/template-span.constants.ts](../src/_template/constants/template-span.constants.ts)                | Observability                                        |
-| Error handling                                        | [src/store/store.service.ts](../src/store/store.service.ts)                                                                 | NotFoundException, validation patterns               |
-| Module structure (imports, exports, providers)        | [src/\_template/template.module.ts](../src/_template/template.module.ts)                                                    | Registering modules with multiple providers, exports |
+| Pattern                                                               | Path                                                                                                                        | Use When                                                                        |
+| --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Canonical template (observability, pagination, tests)                 | [src/\_template/](../src/_template/)                                                                                        | New feature modules                                                             |
+| Custom repository                                                     | [src/user-session/user-session.repository.ts](../src/user-session/user-session.repository.ts)                               | Complex queries                                                                 |
+| Repository interface                                                  | [src/inventory/interfaces/inventory-repository.interface.ts](../src/inventory/interfaces/inventory-repository.interface.ts) | Contract injection                                                              |
+| Span constants                                                        | [src/\_template/constants/template-span.constants.ts](../src/_template/constants/template-span.constants.ts)                | Observability                                                                   |
+| Error handling                                                        | [src/store/services/store-mutation.service.ts](../src/store/services/store-mutation.service.ts)                             | NotFoundException, validation patterns                                          |
+| Facade + sub-services                                                 | [src/store/store.service.ts](../src/store/store.service.ts) + [src/store/services/](../src/store/services/)                 | Service has multiple responsibilities or exceeds ~250 lines                     |
+| Module structure (imports, exports, providers)                        | [src/\_template/template.module.ts](../src/_template/template.module.ts)                                                    | Registering modules with multiple providers, exports                            |
+| Domain sub-modules (nested `*Module` under one folder)                | [src/auth/auth.module.ts](../src/auth/auth.module.ts) + [docs/CONVENTIONS.md](docs/CONVENTIONS.md) — _Domain sub-modules_   | Multiple route prefixes in one bounded context; avoid sibling `*Module` imports |
+| Auth domain (facade, sub-modules, internal services, shared password) | [src/auth/](../src/auth/) + [src/password/](../src/password/)                                                               | JWT/session/2FA/registration patterns; where to put new auth-related code       |
+
+---
+
+## Auth domain (`src/auth`) — layout and quality bar
+
+Use this tree as the **reference** for how authentication is structured in this API. When adding auth-related behavior, pick the **smallest** structure that fits.
+
+### Where code lives
+
+| Location                               | Purpose                                                                                                                                                                                                                                                                                              |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/password/`                        | **Shared** `PasswordModule` (hashing, lockout strategies). Used by auth, user creation, seeds, invitations — **not** nested under `auth/`.                                                                                                                                                           |
+| `src/auth/*.module.ts` (root)          | `AuthModule`: registers `AuthController`, internal `providers`, and **imports** feature sub-modules.                                                                                                                                                                                                 |
+| `src/auth/<feature>/`                  | **Feature sub-module** with its own `*Module` (and often `*Controller`): e.g. `two-factor/`, `session/`, `account-invitation/`. Use when the feature has **its own HTTP surface** or a **clear DI boundary** to export.                                                                              |
+| `src/auth/services/*.service.ts`       | **Internal collaborators** used only as `AuthModule` providers (no dedicated route prefix): e.g. `UserRegistrationService`, `AuthSessionManager`, `AuthMetadataService`. **Flat files** are OK; promote to a subfolder + `*Module` only when the feature grows routes or must be imported elsewhere. |
+| `src/auth/dto/`, `src/auth/guards/`, … | Shared auth DTOs, guards, strategies, factory — as today.                                                                                                                                                                                                                                            |
+
+### NestJS practices (non-negotiables here)
+
+- **Controllers**: business logic stays in services; **no** `@InjectRepository` in controllers.
+- **Session concerns**: prefer `SessionService` (auth session command API) over calling `UserSessionService` directly from `AuthService` when validating ownership / last-used semantics.
+- **Guards / user id**: align with the rest of the API — `@Auth(...)` and `@GetUser('sub')` (JWT `sub`), not ad-hoc guard stacks unless documented.
+- **Transactions**: multi-step writes use a single transaction; **post-commit** work (sessions, outbound email) runs **after** commit (see `UserRegistrationService`).
+- **Observability**: sub-modules that use `ObservabilityService` must **import** `ObservabilityModule` in their `*Module`.
+
+### Documentation and API surface
+
+- New auth HTTP endpoints: add specs in `src/docs/<area>.endpoints.ts` and wire with `@ApiDoc`; update Postman via `yarn postman:build` when collections change.
 
 ---
 
@@ -202,9 +237,8 @@ See [docs/CONVENTIONS.md](docs/CONVENTIONS.md) for full specs:
 
 1. **Entity/table name?** — Check existing entities in `src/*/entities/` or ask
 2. **Which DTO type?** — Create vs Update vs Filter: see [docs/CONVENTIONS.md](docs/CONVENTIONS.md) DTO Types table
-3. **Custom repo vs @InjectRepository?** — Simple CRUD: @InjectRepository. Complex queries: custom repository. See CONVENTIONS > Repository Pattern
-4. **Guard/Pipe needed?** — Check existing in `src/**/*.guard.ts`, `src/**/*.pipe.ts`
-5. **Transactions needed?** — Multiple related writes in one request → use `dataSource.transaction()`. See CONVENTIONS > Repository Pattern > Transactions.
+3. **Guard/Pipe needed?** — Check existing in `src/**/*.guard.ts`, `src/**/*.pipe.ts`
+4. **Transactions needed?** — Multiple related writes in one request → use `dataSource.transaction()`. See CONVENTIONS > Repository Pattern > Transactions.
 
 ### Choosing Between Valid Approaches
 
@@ -212,6 +246,7 @@ See [docs/CONVENTIONS.md](docs/CONVENTIONS.md) for full specs:
 2. **Colocated spec vs **tests**/?** → 1–2 specs: colocated. 3+ specs or shared fixtures/mocks: `__tests__/`.
 3. **New shared utility?** → If used by 2+ modules: `src/shared/`. If module-specific: `src/<module>/utils/`.
 4. **Validation in service vs DTO?** → Format and presence: DTO with class-validator. Business rules (e.g. "store must be open"): service.
+5. **Facade + sub-services vs domain sub-modules?** → One controller and one route prefix: use a single `XxxModule` with a facade and `services/`. Multiple prefixes, separate Swagger surfaces, or strict DI boundaries: use nested `*Module` folders under `src/<domain>/` with the parent module as the only composer—see [docs/CONVENTIONS.md](docs/CONVENTIONS.md) — _Domain sub-modules_.
 
 ---
 

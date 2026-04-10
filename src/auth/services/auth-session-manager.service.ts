@@ -12,6 +12,7 @@ import { AnomalyDetectionService } from './anomaly-detection.service';
 import { CreateUserSessionDto } from 'src/user-session/dto/create-user-session.dto';
 import { TokensUserDto } from 'src/auth/dto';
 import { SessionMetadata } from '../interfaces/session-metadata.interface';
+import { buildSessionKey } from 'src/user-session/constants/user-session-cache.constants';
 
 export interface CreateSessionResult {
   tokens: TokensUserDto;
@@ -150,7 +151,7 @@ export class AuthSessionManager {
     sessionId: string,
     refreshTokenHash: string,
   ): Promise<void> {
-    const sessionKey = `session:${userId}:${sessionId}`;
+    const sessionKey = buildSessionKey(userId, sessionId);
     const currentSession = await this.redisService.get<{
       refreshTokenHash: string;
       isValid: boolean;
