@@ -11,7 +11,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
-import { ProductCategorie } from 'src/product-categorie/entities/product-categorie.entity';
+import { ProductCategorie } from 'src/product-category/entities/product-categorie.entity';
 
 @Entity('product')
 export class Product {

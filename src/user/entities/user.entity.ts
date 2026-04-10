@@ -1,96 +1,63 @@
-import { Field, ID, ObjectType } from '@nestjs/graphql';
-import { UserRole } from 'src/user-role/entities/user-role.entity';
+import { Role } from 'src/role/entities/role.entity';
 import {
-  AfterLoad,
-  BeforeUpdate,
   Column,
   CreateDateColumn,
+  DeleteDateColumn,
   Entity,
-  OneToMany,
+  Index,
+  JoinColumn,
+  ManyToOne,
   OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { UserProfile } from 'src/user_profile/entities/user_profile.entity';
+import { UserProfile } from 'src/user-profile/entities/user_profile.entity';
 
-@ObjectType()
 @Entity('users')
 export class User {
-  @Field(() => ID)
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Field()
+  @Index()
   @Column('text', { unique: true })
   email: string;
 
-  @Column('text', { select: false })
-  password: string;
+  @Column('text', { select: false, nullable: true })
+  password: string | null;
 
-  @Field()
-  @Column('text')
-  fullName: string;
+  @Column({ name: 'first_name' })
+  firstName: string;
 
-  @Field()
+  @Column({ name: 'last_name' })
+  lastName: string;
+
   @Column('bool', { default: true })
   isActive: boolean;
 
-  @Field()
-  @Column('bool', { default: false })
-  isDelete: boolean;
-
-  @Field(() => Date)
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @Field(() => Date, { nullable: true })
-  @Column('timestamp with time zone', { nullable: true })
+  @Index()
+  @Column('timestamp with time zone', { nullable: true, name: 'last_login' })
   lastLogin: Date;
 
-  @Field()
-  @Column('bool', { default: false })
-  isApproved: boolean;
+  @Index()
+  @Column('int', { nullable: false, name: 'role_id' })
+  roleId: number;
 
-  @Field(() => Boolean)
-  @Column('bool', { default: false })
-  isOnline: boolean;
+  @ManyToOne(() => Role, { nullable: false })
+  @JoinColumn({ name: 'role_id' })
+  role: Role;
 
-  @Field(() => Date, { nullable: true })
-  @Column('timestamp with time zone', { nullable: true })
-  lastActivityAt: Date;
-
-  @Field(() => [UserRole], { nullable: true })
-  @OneToMany(() => UserRole, userRole => userRole.user)
-  roles: UserRole[];
-
-  @Column({ nullable: true, select: false })
+  @Column({ name: 'two_factor_secret', nullable: true, select: false })
   twoFactorSecret?: string;
 
-  @Field(() => Date, { nullable: true })
-  @Column('timestamp with time zone', { nullable: true })
-  approvedAt: Date;
-
-  @Field(() => Date, { nullable: true })
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 
-  @Field(() => String, { nullable: true })
-  @Column('uuid', { nullable: true })
-  approvedBy: string;
+  @DeleteDateColumn({ name: 'deleted_at' })
+  deletedAt: Date | null;
 
-  @OneToOne(() => UserProfile, profile => profile.user)
-  profile: UserProfile;
-
-  @BeforeUpdate()
-  updateLastActivity() {
-    this.lastActivityAt = new Date();
-  }
-
-  @AfterLoad()
-  updateOnlineStatus() {
-    const ONLINE_THRESHOLD = 5 * 60 * 1000;
-    this.isOnline = this.lastActivityAt
-      ? new Date().getTime() - this.lastActivityAt.getTime() < ONLINE_THRESHOLD
-      : false;
-  }
+  @OneToOne(() => UserProfile, profile => profile.user, { nullable: true })
+  profile?: UserProfile;
 }

@@ -5,23 +5,22 @@ import {
   Get,
   Req,
   Res,
-  Delete,
-  Param,
   UnauthorizedException,
-  Query,
   HttpCode,
 } from '@nestjs/common';
-
-import { User } from 'src/user/entities/user.entity';
+import { ApiTags } from '@nestjs/swagger';
 import { Auth, GetUser } from './decorator';
-import { GetToken } from 'src/auth/decorator/token.decorator';
 import { LoginUserDto, TokensUserDto } from 'src/auth/dto';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { SignUpDto } from './dto/sign-up.dto';
-import { RefreshTokenDto } from './dto/refresh-token.dto';
-import { SessionFilterDto } from './dto/session-filter.dto';
+import { RegisterBusinessDto } from './dto/register-business.dto';
+import { TokenResponseHelper } from './helpers/token-response.helper';
+import { ApiDoc } from 'src/shared/decorators';
+import { authEndpoints } from 'src/docs/auth.endpoints';
+import { VerifyTotpDto } from './dto/verify-totp.dto';
 
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   private readonly isProduction = process.env.NODE_ENV === 'production';
@@ -34,7 +33,9 @@ export class AuthController {
 
   constructor(private readonly authService: AuthService) {}
 
+  @ApiDoc(authEndpoints, 'signup')
   @Post('signup')
+  @HttpCode(201)
   async signUp(
     @Body() dto: SignUpDto,
     @Req() req: Request,
@@ -42,13 +43,35 @@ export class AuthController {
   ) {
     const result = await this.authService.signUp(dto, req);
     this.setAuthCookies(res, result.tokens);
+    res.setHeader('Location', `/api/user/me`);
     return {
+      message: 'User registered successfully',
       user: result.user,
+      ...TokenResponseHelper.build(result.tokens, result.sessionId),
     };
   }
 
-  @Post('login')
+  @ApiDoc(authEndpoints, 'registerBusiness')
+  @Post('register-business')
   @HttpCode(201)
+  async registerBusiness(
+    @Body() dto: RegisterBusinessDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.registerBusiness(dto, req);
+    this.setAuthCookies(res, result.tokens);
+    res.setHeader('Location', `/api/user/me`);
+    return {
+      message: 'Business account registered successfully',
+      user: result.user,
+      ...TokenResponseHelper.build(result.tokens, result.sessionId),
+    };
+  }
+
+  @ApiDoc(authEndpoints, 'login')
+  @Post('login')
+  @HttpCode(200)
   async login(
     @Body() dto: LoginUserDto,
     @Req() req: Request,
@@ -58,65 +81,81 @@ export class AuthController {
     this.setAuthCookies(res, result.tokens);
     return {
       user: result.user,
+      ...TokenResponseHelper.build(result.tokens, result.sessionId),
     };
   }
-  @Auth()
+  @ApiDoc(authEndpoints, 'logout')
+  @Auth('', [])
   @Post('logout')
-  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const userId = req.user['sub'];
-    const token = req.headers.authorization?.split(' ')[1] || req.cookies?.access_token;
-
-    await this.authService.logout(userId, token);
-    this.clearAuthCookies(res);
-
-    return { success: true };
-  }
-  @Post('refresh')
-  async refreshTokens(
-    @Body() dto: RefreshTokenDto,
+  @HttpCode(200)
+  async logout(
+    @GetUser('sub') userId: string,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const refreshToken = dto.refreshToken || req.cookies?.refresh_token;
+    const accessToken = req.cookies?.access_token ?? '';
+
+    await this.authService.logout(userId, accessToken);
+    this.clearAuthCookies(res);
+
+    return { message: 'Successfully logged out' };
+  }
+
+  @ApiDoc(authEndpoints, 'auth2faSetup')
+  @Auth('', [])
+  @Post('2fa/setup')
+  @HttpCode(200)
+  async setup2fa(@GetUser('sub') userId: string) {
+    return this.authService.setup2fa(userId);
+  }
+
+  @ApiDoc(authEndpoints, 'auth2faVerify')
+  @Auth('', [])
+  @Post('2fa/verify')
+  @HttpCode(200)
+  async verify2fa(@GetUser('sub') userId: string, @Body() dto: VerifyTotpDto) {
+    const result = await this.authService.verify2fa(userId, dto.code);
+    return { backupCodes: result.backupCodes };
+  }
+
+  @ApiDoc(authEndpoints, 'auth2faDisable')
+  @Auth('', [])
+  @Post('2fa/disable')
+  @HttpCode(200)
+  async disable2fa(@GetUser('sub') userId: string, @Body() dto: VerifyTotpDto) {
+    await this.authService.disable2fa(userId, dto.code);
+    return { message: '2FA disabled successfully' };
+  }
+
+  @ApiDoc(authEndpoints, 'auth2faStatus')
+  @Auth('', [])
+  @Get('2fa/status')
+  async get2faStatus(@GetUser('sub') userId: string) {
+    return this.authService.get2faStatus(userId);
+  }
+
+  @ApiDoc(authEndpoints, 'auth2faRegenerateBackupCodes')
+  @Auth('', [])
+  @Post('2fa/regenerate-backup-codes')
+  @HttpCode(200)
+  async regenerateBackupCodes(@GetUser('sub') userId: string) {
+    const backupCodes = await this.authService.regenerateBackupCodes(userId);
+    return { backupCodes };
+  }
+
+  @ApiDoc(authEndpoints, 'refresh')
+  @Post('refresh')
+  @HttpCode(200)
+  async refreshTokens(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const refreshToken = req.cookies?.refresh_token;
 
     if (!refreshToken) {
       throw new UnauthorizedException('Refresh token is required');
     }
 
-    const tokens = await this.authService.refreshTokens({ refreshToken }, req);
-
-    this.setAuthCookies(res, tokens);
-
-    return { success: true };
-  }
-  @Get('logout')
-  @Auth([], [])
-  async logoutWithoutGuard(@GetToken() accessToken: string, @GetUser() user: User) {
-    return this.authService.logout(user.id, accessToken);
-  }
-  @Auth()
-  @Get('profile')
-  async getProfile(@Req() req: Request) {
-    const token = req.headers.authorization?.split(' ')[1];
-    return this.authService.getProfile(token);
-  }
-  @Auth()
-  @Get('sessions')
-  async getActiveSessions(@Req() req: Request, @Query() filters: SessionFilterDto) {
-    const userId = req.user['sub'];
-    return this.authService.getActiveSessions(userId, filters);
-  }
-  @Auth()
-  @Delete('sessions/:sessionId')
-  async deleteDeviceSession(@Req() req: Request, @Param('sessionId') sessionId: string) {
-    const userId = req.user['sub'];
-    return this.authService.deleteDeviceSession(userId, sessionId);
-  }
-  @Auth()
-  @Delete('sessions')
-  async closeAllSessions(@Req() req: Request) {
-    const userId = req.user['sub'];
-    return this.authService.closeAllSessions(userId);
+    const result = await this.authService.refreshTokens({ refreshToken }, req);
+    this.setAuthCookies(res, result.tokens);
+    return TokenResponseHelper.build(result.tokens, result.sessionId);
   }
 
   private setAuthCookies(res: Response, tokens: TokensUserDto): void {

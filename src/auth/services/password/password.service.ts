@@ -5,14 +5,14 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { HashingStrategy } from './strategies/hashing.strategy.ts';
-import { PepperStrategy } from './strategies/pepper.strategy.js';
-import { LockoutStrategy } from './strategies/lockout.strategy.js';
-import { PasswordOptions } from './interfaces/password-options.interface.js';
+import { PepperStrategy } from './strategies/pepper.strategy';
+import { LockoutStrategy } from './strategies/lockout.strategy';
+import { PasswordOptions } from './interfaces/password-options.interface';
 import {
   DEFAULT_SALT_ROUNDS,
   MAX_LOGIN_ATTEMPTS,
   LOCKOUT_DURATION,
-} from './interfaces/password.constants.js';
+} from './interfaces/password.constants';
 
 @Injectable()
 export class PasswordService {

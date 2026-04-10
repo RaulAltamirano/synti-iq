@@ -1,0 +1,34 @@
+---
+description: Technical plan format for AI agent execution - deterministic paths, contracts, zero assumptions
+globs: "**/*.plan.md", "**/plans/**/*.md", "docs/PLAN_TEMPLATE.md"
+alwaysApply: false
+---
+
+# Technical Plan Creation
+
+When creating plans for AI coding agents (Cursor, Windsurf, Graviti):
+
+## Golden Rule
+
+When in doubt about DB relations, entity names, data types, error handling, or third-party libraries: **STOP AND ASK**. Do not assume. Do not infer implementations.
+
+## Required Sections
+
+1. **Entendimiento Técnico** — Architectural summary of the solution
+2. **PREGUNTAS BLOQUEANTES** — Blocking questions, or "Contexto completo. Procediendo con el plan."
+3. **Supuestos y Contratos** — Libraries, patterns, agreed decisions
+4. **Plan de Implementación** — File-oriented steps with exact paths (e.g. `src/module/dto/create-entity.dto.ts`)
+5. **Plan de Testing** — `.spec.ts` cases the agent must implement
+6. **Prevención de Deuda Técnica** — Circular deps, memory, concurrency risks
+
+## Rules
+
+- **Paths**: Absolute from repo root: `src/module/foo.ts`, not `./foo.ts`
+- **Order**: Interfaces → DTOs → Entities → Services → Controllers → Module — to avoid compilation blockers
+- **Terminology**: Nest.js exact (Controllers, Services, Guards, Interceptors, Pipes)
+- **Contracts**: Reference canonical paths from AGENTS.md (e.g. `BasePaginationParams`, `PaginatedResponse<T>`)
+
+## Reference
+
+- Full template: [docs/PLAN_TEMPLATE.md](../docs/PLAN_TEMPLATE.md)
+- CONVENTIONS: [docs/CONVENTIONS.md](../docs/CONVENTIONS.md) — Technical Plan Creation section

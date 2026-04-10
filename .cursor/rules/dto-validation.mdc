@@ -1,0 +1,41 @@
+---
+description: DTO naming, class-validator decorators, mapped types
+globs: src/**/dto/**/*.ts
+alwaysApply: false
+---
+
+# DTOs and Validation
+
+## File Naming
+
+- Files: **kebab-case** — `create-store.dto.ts`, `filter-user.dto.ts`, `update-sale.dto.ts`
+- Classes: **PascalCase** with suffix `Dto` — `CreateStoreDto`, `FilterUserDto`
+
+## class-validator Decorators
+
+- Use explicit decorators: `@IsString()`, `@IsEmail()`, `@IsOptional()`, `@IsUUID()`, `@IsEnum()`, `@IsInt()`, `@Min()`, `@Max()`, etc.
+- Avoid `any`; use concrete types or `Record<string, unknown>` when structure is dynamic.
+- Optional fields: apply `@IsOptional()` before other decorators.
+- Nested objects: `@ValidateNested()` + `@Type(() => NestedDto)`.
+
+## Mapped Types
+
+- `PartialType(CreateDto)` for Update DTOs (all fields optional)
+- `PickType(CreateDto, ['field1', 'field2'])` to pick fields
+- `OmitType(CreateDto, ['id'])` to exclude fields
+- Import from `@nestjs/mapped-types` or `@nestjs/swagger` depending on Swagger usage
+
+## Example
+
+```typescript
+export class CreateStoreDto {
+  @IsString()
+  @MinLength(1)
+  name: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CreateLocationDto)
+  location?: CreateLocationDto;
+}
+```

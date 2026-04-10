@@ -15,12 +15,11 @@ import { PaginatedResponse } from 'src/pagination/interfaces/PaginatedResponse';
 import { FilterUserSessionDto } from './dto/filter-user-session.dto';
 import { DeviceInfoDto } from './dto/device-info.dto';
 import { UserSession } from './entities/user-session.entity';
+import { SESSION_TTL_S, buildSessionKey } from './constants/user-session-cache.constants';
 
 @Injectable()
 export class UserSessionService {
   private readonly logger = new Logger(UserSessionService.name);
-  private readonly SESSION_PREFIX = 'session';
-  private readonly SESSION_TTL = 7 * 24 * 60 * 60;
 
   constructor(
     private readonly userSessionRepository: UserSessionRepository,
@@ -31,7 +30,7 @@ export class UserSessionService {
     this.validateParams(userId, sessionId);
 
     try {
-      const sessionKey = this.getSessionKey(userId, sessionId);
+      const sessionKey = buildSessionKey(userId, sessionId);
       const sessionData = await this.redisService.get<{
         isValid: boolean;
         refreshTokenHash?: string;
@@ -67,12 +66,12 @@ export class UserSessionService {
     this.validateParams(userId, sessionId);
 
     try {
-      const sessionKey = this.getSessionKey(userId, sessionId);
-      await this.redisService.del(sessionKey);
-
       await this.userSessionRepository.update(userId, sessionId, {
         isValid: false,
       });
+
+      const sessionKey = buildSessionKey(userId, sessionId);
+      await this.redisService.del(sessionKey);
     } catch (error) {
       throw this.handleError(error, 'invalidating session');
     }
@@ -108,12 +107,12 @@ export class UserSessionService {
         return;
       }
 
-      const sessionKeys = sessions.map(session => this.getSessionKey(userId, session.sessionId));
+      await this.userSessionRepository.invalidateAllForUser(userId);
+
+      const sessionKeys = sessions.map(session => buildSessionKey(userId, session.sessionId));
       if (sessionKeys.length > 0) {
         await this.redisService.del(...sessionKeys);
       }
-
-      await this.userSessionRepository.invalidateAllForUser(userId);
     } catch (error) {
       throw this.handleError(error, 'invalidating all sessions');
     }
@@ -130,7 +129,7 @@ export class UserSessionService {
 
       if (!sessions || sessions.length === 0) {
         return {
-          data: [],
+          items: [],
           total: 0,
           page: filters.page,
           limit: filters.limit,
@@ -140,7 +139,7 @@ export class UserSessionService {
 
       const mappedSessions = sessions.map(session => this.mapToResponseDto(session));
       return {
-        data: mappedSessions,
+        items: mappedSessions,
         total,
         page: filters.page,
         limit: filters.limit,
@@ -210,12 +209,12 @@ export class UserSessionService {
         return;
       }
 
-      const sessionKeys = sessions.map(session => this.getSessionKey(userId, session.sessionId));
+      await this.userSessionRepository.invalidateByDeviceType(userId, deviceType);
+
+      const sessionKeys = sessions.map(session => buildSessionKey(userId, session.sessionId));
       if (sessionKeys.length > 0) {
         await this.redisService.del(...sessionKeys);
       }
-
-      await this.userSessionRepository.invalidateByDeviceType(userId, deviceType);
     } catch (error) {
       throw this.handleError(error, 'invalidating device sessions');
     }
@@ -232,17 +231,55 @@ export class UserSessionService {
         return;
       }
 
-      const sessionKeys = otherSessions.map(session =>
-        this.getSessionKey(userId, session.sessionId),
-      );
+      await this.userSessionRepository.invalidateAllExcept(userId, currentSessionId);
+
+      const sessionKeys = otherSessions.map(session => buildSessionKey(userId, session.sessionId));
       if (sessionKeys.length > 0) {
         await this.redisService.del(...sessionKeys);
       }
-
-      await this.userSessionRepository.invalidateAllExcept(userId, currentSessionId);
     } catch (error) {
       throw this.handleError(error, 'invalidating other sessions');
     }
+  }
+
+  async invalidateSessionsByDeviceInfo(
+    userId: string,
+    deviceInfo: Partial<{ userAgent: string; ipAddress: string; deviceType: string }>,
+  ): Promise<number> {
+    this.ensureUserId(userId);
+
+    try {
+      const sessions = await this.userSessionRepository.findByDeviceInfo(userId, deviceInfo);
+
+      if (sessions.length === 0) {
+        return 0;
+      }
+
+      const invalidatedCount = await this.userSessionRepository.invalidateByDeviceInfo(
+        userId,
+        deviceInfo,
+      );
+
+      const sessionKeys = sessions.map(session => buildSessionKey(userId, session.sessionId));
+      if (sessionKeys.length > 0) {
+        await this.redisService.del(...sessionKeys);
+        this.logger.debug(
+          `Deleted ${sessionKeys.length} session key(s) from Redis for user ${userId}`,
+        );
+      }
+
+      return invalidatedCount;
+    } catch (error) {
+      throw this.handleError(error, 'invalidating sessions by device info');
+    }
+  }
+
+  async findSessionsByDeviceInfo(
+    userId: string,
+    deviceInfo: Partial<{ userAgent: string; ipAddress: string; deviceType: string }>,
+  ): Promise<UserSession[]> {
+    this.ensureUserId(userId);
+    return this.userSessionRepository.findByDeviceInfo(userId, deviceInfo);
   }
 
   async updateSessionLastUsed(userId: string, sessionId: string): Promise<void> {
@@ -257,7 +294,7 @@ export class UserSessionService {
         throw new NotFoundException('Session not found');
       }
 
-      const sessionKey = this.getSessionKey(userId, sessionId);
+      const sessionKey = buildSessionKey(userId, sessionId);
       const sessionData = await this.redisService.get<{
         refreshTokenHash: string;
         isValid: boolean;
@@ -300,10 +337,6 @@ export class UserSessionService {
     }
   }
 
-  private getSessionKey(userId: string, sessionId: string): string {
-    return `${this.SESSION_PREFIX}:${userId}:${sessionId}`;
-  }
-
   async setSessionInRedisUnified(
     userId: string,
     sessionId: string,
@@ -315,22 +348,8 @@ export class UserSessionService {
       usedTokens?: string[];
     },
   ): Promise<void> {
-    const sessionKey = this.getSessionKey(userId, sessionId);
-    await this.redisService.set(sessionKey, data, this.SESSION_TTL);
-  }
-
-  private async setSessionInRedis(
-    userId: string,
-    sessionId: string,
-    data: {
-      refreshTokenHash?: string;
-      isValid: boolean;
-      lastUsed?: string;
-      deviceInfo?: any;
-    },
-  ): Promise<void> {
-    const sessionKey = this.getSessionKey(userId, sessionId);
-    await this.redisService.set(sessionKey, data, this.SESSION_TTL);
+    const sessionKey = buildSessionKey(userId, sessionId);
+    await this.redisService.set(sessionKey, data, SESSION_TTL_S);
   }
 
   private handleError(error: any, context: string): never {

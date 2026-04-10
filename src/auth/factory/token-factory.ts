@@ -5,11 +5,14 @@ import { v4 as uuidv4 } from 'uuid';
 import { PasswordService } from '../services/password/password.service';
 import { TokensUserDto } from '../dto';
 import { TokenDto } from 'src/shared/jwt-helper/interfaces/token-dto.interface';
+import {
+  SESSION_TTL_S,
+  buildSessionKey,
+} from 'src/user-session/constants/user-session-cache.constants';
 
 @Injectable()
 export class TokenFactory {
   private readonly logger = new Logger(TokenFactory.name);
-  private readonly SESSION_TTL = 7 * 24 * 60 * 60;
   private readonly MAX_STORED_USED_TOKENS = 10;
 
   constructor(
@@ -87,7 +90,7 @@ export class TokenFactory {
     sessionId: string,
     token: string,
   ): Promise<boolean> {
-    const sessionKey = `session:${userId}:${sessionId}`;
+    const sessionKey = buildSessionKey(userId, sessionId);
     const sessionData = await this.redisService.get<{
       refreshTokenHash?: string;
       isValid?: boolean;
@@ -123,7 +126,7 @@ export class TokenFactory {
   }
 
   async invalidateRefreshToken(userId: string, sessionId: string, token: string): Promise<void> {
-    const sessionKey = `session:${userId}:${sessionId}`;
+    const sessionKey = buildSessionKey(userId, sessionId);
     const sessionData = await this.redisService.get<{
       refreshTokenHash: string;
       isValid: boolean;
@@ -153,7 +156,7 @@ export class TokenFactory {
         ...sessionData,
         usedTokens,
       },
-      this.SESSION_TTL,
+      SESSION_TTL_S,
     );
   }
 
@@ -165,7 +168,7 @@ export class TokenFactory {
 
   async deleteRefreshToken(userId: string, sessionId: string): Promise<void> {
     try {
-      const sessionKey = `session:${userId}:${sessionId}`;
+      const sessionKey = buildSessionKey(userId, sessionId);
       await this.redisService.del(sessionKey);
     } catch (error) {
       this.logger.error(`Error deleting session/refresh token: ${error.message}`, error.stack);

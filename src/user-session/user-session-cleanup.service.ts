@@ -1,13 +1,23 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { UserSessionService } from './user-session.service';
+import { SESSION_EXPIRATION_DAYS_DEFAULT } from './constants/user-session-cache.constants';
 
 @Injectable()
 export class UserSessionCleanupService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(UserSessionCleanupService.name);
-  private readonly DEFAULT_EXPIRATION_DAYS = 30;
+  private readonly expirationDays: number;
   private cleanupInterval: NodeJS.Timeout | null = null;
 
-  constructor(private readonly userSessionService: UserSessionService) {}
+  constructor(
+    private readonly userSessionService: UserSessionService,
+    private readonly configService: ConfigService,
+  ) {
+    this.expirationDays = this.configService.get<number>(
+      'SESSION_EXPIRATION_DAYS',
+      SESSION_EXPIRATION_DAYS_DEFAULT,
+    );
+  }
 
   onModuleInit() {
     const now = new Date();
@@ -31,14 +41,14 @@ export class UserSessionCleanupService implements OnModuleInit, OnModuleDestroy 
 
   private async handleSessionCleanup() {
     try {
-      await this.userSessionService.cleanupExpiredSessions(this.DEFAULT_EXPIRATION_DAYS);
+      await this.userSessionService.cleanupExpiredSessions(this.expirationDays);
     } catch (error) {
       this.logger.error(`Session cleanup failed: ${error.message}`, error.stack);
     }
   }
 
   async cleanup(expirationDays?: number): Promise<void> {
-    const days = expirationDays || this.DEFAULT_EXPIRATION_DAYS;
+    const days = expirationDays ?? this.expirationDays;
     await this.userSessionService.cleanupExpiredSessions(days);
   }
 

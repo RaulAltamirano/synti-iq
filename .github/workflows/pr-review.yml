@@ -1,0 +1,485 @@
+name: PR Review Pipeline
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  pull_request:
+    types: [opened, synchronize, closed]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality-fast:
+    permissions:
+      contents: read
+    if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          fetch-depth: 0
+
+      - name: Cache node_modules
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Setup Node
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+        with:
+          node-version: '20.19'
+          cache: 'yarn'
+
+      - name: Enable Yarn
+        run: corepack enable
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile --ignore-scripts
+
+      - name: Audit dependencies
+        run: yarn audit --level high
+
+      - name: Lint
+        env:
+          # 4GB — runners have ~7GB RAM; 8GB heap caused OOM
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: yarn lint
+
+      - name: Check formatting
+        run: yarn format:check
+
+  quality-build:
+    permissions:
+      contents: read
+    if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: Cache node_modules
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Cache Jest
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
+        with:
+          path: .jest-cache
+          key: ${{ runner.os }}-jest-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('src/**/*.ts') }}
+          restore-keys: |
+            ${{ runner.os }}-jest-${{ hashFiles('**/yarn.lock') }}-
+
+      - name: Setup Node
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+        with:
+          node-version: '20.19'
+          cache: 'yarn'
+
+      - name: Enable Yarn
+        run: corepack enable
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile --ignore-scripts
+
+      - name: Build
+        run: yarn build
+
+      - name: Test with coverage
+        run: yarn test:cov
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+
+  sonar:
+    permissions:
+      contents: read
+      pull-requests: write
+    needs: [quality-fast, quality-build]
+    if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          fetch-depth: 0
+
+      - name: Download coverage report
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: coverage-report
+
+      - name: Restore coverage for Sonar and jest-coverage-report
+        run: mkdir -p coverage && cp -r coverage-report/. coverage/
+
+      - name: Coverage PR comment
+        uses: ArtiomTr/jest-coverage-report-action@7f750dd50f5585533321eb7ebc482b936b49a5d4
+        with:
+          coverage-file: ./coverage/coverage-final.json
+          skip-step: all
+          package-manager: yarn
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: SonarCloud Quality Gate check
+        id: sonarqube-quality-gate-check
+        uses: sonarsource/sonarqube-quality-gate-action@cf038b0e0cdecfa9e56c198bbb7d21d751d62c3b
+        continue-on-error: true
+        with:
+          pollingTimeoutSec: 600
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+
+      - name: Resolve Discord thread for PR
+        id: discord-thread
+        if: steps.sonarqube-quality-gate-check.outcome == 'failure'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: echo "id=$(node scripts/get-pr-discord-thread.js 2>/dev/null || true)" >> $GITHUB_OUTPUT
+
+      - name: Post Sonar failure summary (PR + Discord)
+        if: steps.sonarqube-quality-gate-check.outcome == 'failure'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          SONAR_PROJECT_KEY: RaulAltamirano_synti-iq
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DISCORD_THREAD_ID: ${{ steps.discord-thread.outputs.id }}
+          WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node scripts/sonar-failure-pr-comment.js
+
+      - name: Fail if Quality Gate did not pass
+        if: steps.sonarqube-quality-gate-check.outcome == 'failure'
+        run: exit 1
+
+  ai-review:
+    permissions:
+      contents: read
+      pull-requests: write
+    if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: Cache node_modules
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Setup Node
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+        with:
+          node-version: '20.19'
+          cache: 'yarn'
+
+      - name: Enable Yarn
+        run: corepack enable
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile --ignore-scripts
+
+      - name: Run AI Review
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_APP_ID: ${{ secrets.GH_APP_ID }}
+          GH_INSTALLATION_ID: ${{ secrets.GH_INSTALLATION_ID }}
+          GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: node scripts/pr-review.js
+
+  discord-commit-update:
+    permissions:
+      contents: read
+    needs: [discord-notify-new-pr]
+    if: github.event_name == 'pull_request' && github.event.action == 'synchronize' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: Fetch commit details
+        id: fetch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          COMMIT=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.repository }}/commits/${HEAD_SHA}" 2>/dev/null || echo "{}")
+          COMMIT_MSG=$(echo "$COMMIT" | jq -r '.commit.message // ""' 2>/dev/null)
+          COMMIT_AUTHOR=$(echo "$COMMIT" | jq -r '.commit.author.name // .author.login // "unknown"' 2>/dev/null)
+          COMMIT_URL=$(echo "$COMMIT" | jq -r '.html_url // ""' 2>/dev/null)
+          echo "sha=${HEAD_SHA}" >> $GITHUB_OUTPUT
+          echo "message<<MSG_EOF" >> $GITHUB_OUTPUT
+          printf '%s' "$COMMIT_MSG" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "MSG_EOF" >> $GITHUB_OUTPUT
+          echo "author=$COMMIT_AUTHOR" >> $GITHUB_OUTPUT
+          echo "url=${COMMIT_URL:-}" >> $GITHUB_OUTPUT
+
+      - name: Notify Discord - New commit
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          COMMIT_SHA: ${{ steps.fetch.outputs.sha }}
+          COMMIT_MESSAGE: ${{ steps.fetch.outputs.message }}
+          COMMIT_AUTHOR: ${{ steps.fetch.outputs.author }}
+          COMMIT_URL: ${{ steps.fetch.outputs.url }}
+        run: node scripts/discord-notify-commit.js
+
+  discord-notify-new-pr:
+    permissions:
+      contents: read
+      pull-requests: write
+    needs: [ai-review]
+    if: always() && (needs.ai-review.result == 'success' || needs.ai-review.result == 'failure')
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: Setup Node
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+        with:
+          node-version: '20.19'
+
+      - name: Get SonarCloud metrics
+        id: sonar
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          BUGS="0"
+          HOTSPOTS="0"
+          VULNS="0"
+          if [ -n "$SONAR_TOKEN" ]; then
+            RES=$(curl -s -H "Authorization: Bearer ${SONAR_TOKEN}" \
+              "https://sonarcloud.io/api/measures/component?component=RaulAltamirano_synti-iq&metricKeys=bugs,security_hotspots,vulnerabilities" 2>/dev/null || true)
+            if [ -n "$RES" ]; then
+              BUGS=$(echo "$RES" | jq -r '.component.measures[]? | select(.metric=="bugs") | .value // "0"' 2>/dev/null || echo "0")
+              HOTSPOTS=$(echo "$RES" | jq -r '.component.measures[]? | select(.metric=="security_hotspots") | .value // "0"' 2>/dev/null || echo "0")
+              VULNS=$(echo "$RES" | jq -r '.component.measures[]? | select(.metric=="vulnerabilities") | .value // "0"' 2>/dev/null || echo "0")
+            fi
+          fi
+          echo "bugs=${BUGS:-0}" >> $GITHUB_OUTPUT
+          echo "hotspots=${HOTSPOTS:-0}" >> $GITHUB_OUTPUT
+          echo "vulns=${VULNS:-0}" >> $GITHUB_OUTPUT
+
+      - name: Extract roast, rating, summary from last PR comment
+        id: roast
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUM="${{ github.event.pull_request.number }}"
+          COMMENTS=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.repository }}/issues/${PR_NUM}/comments" 2>/dev/null || echo "[]")
+          BODY=$(echo "$COMMENTS" | jq -r '[.[] | select(.body != null and (.body | test("^🤖")))] | last | .body // ""' 2>/dev/null)
+          ROAST=$(echo "$BODY" | perl -0777 -ne 'print $1 if /<!-- DISCORD_ROAST:(.*?)-->/s' 2>/dev/null | head -c 300 | tr -d '\n\r')
+          [ -z "$ROAST" ] && ROAST="Revisión completada."
+          RATING=$(echo "$BODY" | grep -oP '(?<=<!-- DISCORD_RATING:)\d(?= -->)' 2>/dev/null | head -1)
+          [ -z "$RATING" ] && RATING="3"
+          SUMMARY=$(echo "$BODY" | perl -0777 -ne 'print $1 if /<!-- DISCORD_SUMMARY:(.*?)-->/s' 2>/dev/null | head -c 2000 | tr -d '\r')
+          echo "roast<<ROAST_DELIM" >> $GITHUB_OUTPUT
+          printf '%s' "$ROAST" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "ROAST_DELIM" >> $GITHUB_OUTPUT
+          echo "rating=$RATING" >> $GITHUB_OUTPUT
+          echo "summary<<SUMMARY_DELIM" >> $GITHUB_OUTPUT
+          printf '%s' "$SUMMARY" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "SUMMARY_DELIM" >> $GITHUB_OUTPUT
+
+      - name: Fetch linked issue (for branch like 20-task-name)
+        id: issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          ISSUE_NUM=$(echo "$BRANCH" | grep -oP '^\d+' | head -1)
+          if [ -n "$ISSUE_NUM" ]; then
+            RES=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${{ github.repository }}/issues/${ISSUE_NUM}" 2>/dev/null || echo "{}")
+            ISSUE_TITLE=$(echo "$RES" | jq -r '.title // ""' 2>/dev/null)
+            ISSUE_BODY=$(echo "$RES" | jq -r '.body // ""' 2>/dev/null | tr '\n' ' ' | sed 's/^##[^#]* *//' | head -c 2000)
+            ISSUE_URL=$(echo "$RES" | jq -r '.html_url // ""' 2>/dev/null)
+          else
+            ISSUE_TITLE=""
+            ISSUE_BODY=""
+            ISSUE_URL=""
+          fi
+          echo "number=${ISSUE_NUM:-}" >> $GITHUB_OUTPUT
+          echo "title<<ISSUE_TITLE_END" >> $GITHUB_OUTPUT
+          printf '%s' "$ISSUE_TITLE" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "ISSUE_TITLE_END" >> $GITHUB_OUTPUT
+          echo "body<<ISSUE_BODY_END" >> $GITHUB_OUTPUT
+          printf '%s' "$ISSUE_BODY" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "ISSUE_BODY_END" >> $GITHUB_OUTPUT
+          echo "url=${ISSUE_URL:-}" >> $GITHUB_OUTPUT
+
+      - name: Notify Discord - New PR (after AI + Sonar)
+        if: github.event.pull_request != null
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_ACTION: ${{ github.event.action }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_BASE_BRANCH: ${{ github.event.pull_request.base.ref }}
+          ISSUE_NUMBER: ${{ steps.issue.outputs.number }}
+          ISSUE_TITLE: ${{ steps.issue.outputs.title }}
+          ISSUE_BODY: ${{ steps.issue.outputs.body }}
+          ISSUE_URL: ${{ steps.issue.outputs.url }}
+          SONAR_BUGS: ${{ steps.sonar.outputs.bugs }}
+          SONAR_SECURITY_HOTSPOTS: ${{ steps.sonar.outputs.hotspots }}
+          SONAR_VULNERABILITIES: ${{ steps.sonar.outputs.vulns }}
+          SUMMARY_TEXT: ${{ steps.roast.outputs.summary }}
+          RATING: ${{ steps.roast.outputs.rating }}
+        run: node scripts/discord-notify-new-pr.js
+
+  discord-notify:
+    permissions:
+      contents: read
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: Setup Node
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+        with:
+          node-version: '20.19'
+
+      - name: Get SonarCloud metrics
+        id: sonar
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          BUGS="0"
+          HOTSPOTS="0"
+          VULNS="0"
+          if [ -n "$SONAR_TOKEN" ]; then
+            RES=$(curl -s -H "Authorization: Bearer ${SONAR_TOKEN}" \
+              "https://sonarcloud.io/api/measures/component?component=RaulAltamirano_synti-iq&metricKeys=bugs,security_hotspots,vulnerabilities" 2>/dev/null || true)
+            if [ -n "$RES" ]; then
+              BUGS=$(echo "$RES" | jq -r '.component.measures[]? | select(.metric=="bugs") | .value // "0"' 2>/dev/null || echo "0")
+              HOTSPOTS=$(echo "$RES" | jq -r '.component.measures[]? | select(.metric=="security_hotspots") | .value // "0"' 2>/dev/null || echo "0")
+              VULNS=$(echo "$RES" | jq -r '.component.measures[]? | select(.metric=="vulnerabilities") | .value // "0"' 2>/dev/null || echo "0")
+            fi
+          fi
+          echo "bugs=${BUGS:-0}" >> $GITHUB_OUTPUT
+          echo "hotspots=${HOTSPOTS:-0}" >> $GITHUB_OUTPUT
+          echo "vulns=${VULNS:-0}" >> $GITHUB_OUTPUT
+
+      - name: Extract rating, verdict and roast from last PR comment
+        id: roast
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUM="${{ github.event.pull_request.number }}"
+          COMMENTS=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.repository }}/issues/${PR_NUM}/comments" 2>/dev/null || echo "[]")
+          BODY=$(echo "$COMMENTS" | jq -r '[.[] | select(.body != null and (.body | test("^🤖")))] | last | .body // ""' 2>/dev/null)
+          RATING=$(echo "$BODY" | grep -oP '(?<=<!-- DISCORD_RATING:)\d(?= -->)' 2>/dev/null | head -1)
+          [ -z "$RATING" ] && RATING="3"
+          VERDICT=$(echo "$BODY" | perl -0777 -ne 'print $1 if /<!-- DISCORD_VERDICT:(.*?)-->/s' 2>/dev/null | head -c 200 | tr -d '\n\r')
+          ROAST=$(echo "$BODY" | perl -0777 -ne 'print $1 if /<!-- DISCORD_ROAST:(.*?)-->/s' 2>/dev/null | head -c 300 | tr -d '\n\r')
+          echo "rating=$RATING" >> $GITHUB_OUTPUT
+          echo "verdict<<VERDICT_DELIM" >> $GITHUB_OUTPUT
+          printf '%s' "$VERDICT" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "VERDICT_DELIM" >> $GITHUB_OUTPUT
+          echo "roast_fallback<<ROAST_FB_DELIM" >> $GITHUB_OUTPUT
+          printf '%s' "${ROAST:-Revisión completada.}" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "ROAST_FB_DELIM" >> $GITHUB_OUTPUT
+
+      - name: Generate roast with burla (why closed/merged)
+        id: genroast
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_MERGED: ${{ github.event.pull_request.merged }}
+          SONAR_BUGS: ${{ steps.sonar.outputs.bugs }}
+          SONAR_SECURITY_HOTSPOTS: ${{ steps.sonar.outputs.hotspots }}
+          RATING: ${{ steps.roast.outputs.rating }}
+          VERDICT: ${{ steps.roast.outputs.verdict }}
+        run: |
+          echo "roast<<ROAST_EOF" >> $GITHUB_OUTPUT
+          node scripts/generate-close-roast.js >> $GITHUB_OUTPUT
+          echo "ROAST_EOF" >> $GITHUB_OUTPUT
+
+      - name: Notify Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_MERGED: ${{ github.event.pull_request.merged }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          SONAR_BUGS: ${{ steps.sonar.outputs.bugs }}
+          SONAR_SECURITY_HOTSPOTS: ${{ steps.sonar.outputs.hotspots }}
+          SONAR_VULNERABILITIES: ${{ steps.sonar.outputs.vulns }}
+          ROAST_TEXT: ${{ steps.genroast.outputs.roast }}
+          ROAST_FALLBACK: ${{ steps.roast.outputs.roast_fallback }}
+          RATING: ${{ steps.roast.outputs.rating }}
+        run: node scripts/discord-notify.js

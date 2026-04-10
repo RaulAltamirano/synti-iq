@@ -1,67 +1,154 @@
 import { NestFactory } from '@nestjs/core';
+import type { INestApplication } from '@nestjs/common';
 import { AppModule } from './core/app.module';
-import { Logger, ValidationPipe } from '@nestjs/common';
+import { Logger as NestLogger, ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { PaginatedResponseDto } from 'src/pagination/dtos/paginated-response.dto';
+import { ReferralRecordDto } from 'src/referral/dto/referral-record.dto';
+import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.entity';
 import * as cookieParser from 'cookie-parser';
+import { Logger, LoggerErrorInterceptor } from 'nestjs-pino';
+import { RequestIdMiddleware } from './shared/interceptors/request-id.middleware';
 
-async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+const SWAGGER_PATH = 'api/docs';
+const SWAGGER_TITLE = 'SyntiIQ API';
 
-  app.use(cookieParser());
+const SWAGGER_TAGS = [
+  ['Auth', 'Authentication, login, 2FA and sessions'],
+  ['Users', 'User profiles'],
+  ['User Session', 'Active sessions and devices'],
+  ['Referral', 'Referral codes and benefits'],
+  ['Store', 'Stores and cashiers'],
+  ['StoreSchedule', 'Store hours and availability'],
+  ['Product', 'Product catalog'],
+  ['Inventory', 'Stock and inventory'],
+  ['Location', 'Shipping and billing addresses'],
+  ['Statistics', 'Sales analytics and reporting'],
+  ['Shipping', 'Order fulfillment and tracking'],
+  ['Observability', 'Health checks and Prometheus metrics'],
+] as const;
 
-  const config = new DocumentBuilder()
-    .setTitle('Synti IQ E-commerce API')
+function createSwaggerConfig(): ReturnType<DocumentBuilder['build']> {
+  const baseUrl = process.env.API_URL || 'http://localhost:3000/api';
+  const builder = new DocumentBuilder()
+    .setTitle(SWAGGER_TITLE)
     .setDescription(
-      'API for managing store schedules, cashiers, products, inventory, statistics, and shipping operations',
+      'REST API for store management, cashiers, products, inventory, statistics, and shipping operations.',
     )
     .setVersion('1.0')
-    .addTag('store-schedule', 'Store hours and availability management')
-    .addTag('cashier-schedule', 'Cashier shift scheduling and management')
-    .addTag('products', 'Product catalog and management')
-    .addTag('inventory', 'Stock and inventory control')
-    .addTag('statistics', 'Sales analytics and reporting')
-    .addTag('shipping', 'Order fulfillment and delivery tracking')
-    .addBearerAuth()
-    .addSecurity('api_key', {
-      type: 'apiKey',
-      name: 'x-api-key',
-      in: 'header',
-    })
+    .addServer(baseUrl, 'Local / Development');
 
+  if (process.env.API_URL_STAGING) {
+    builder.addServer(process.env.API_URL_STAGING, 'Staging');
+  }
+
+  for (const [name, desc] of SWAGGER_TAGS) {
+    builder.addTag(name, desc);
+  }
+
+  return builder
+    .addCookieAuth('access_token')
+    .addApiKey({ type: 'apiKey', name: 'x-api-key', in: 'header' }, 'api_key')
     .build();
+}
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document, {
+function setupSwagger(app: INestApplication): void {
+  const config = createSwaggerConfig();
+  const document = SwaggerModule.createDocument(app, config, {
+    extraModels: [PaginatedResponseDto, ReferralRecordDto, CashierProfile],
+  });
+  (document.components ??= {}).schemas ??= {};
+  (document.components.schemas as Record<string, unknown>)['ApiErrorDto'] = {
+    type: 'object',
+    properties: {
+      status: { type: 'string', example: 'error' },
+      message: { type: 'string', example: 'Bad Request' },
+      code: { type: 'string', example: 'BAD_REQUEST' },
+      data: { type: 'object', nullable: true, description: 'Always null on error' },
+      errors: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            field: { type: 'string' },
+            code: { type: 'string' },
+            message: { type: 'string' },
+          },
+        },
+      },
+      meta: {
+        type: 'object',
+        properties: {
+          requestId: { type: 'string' },
+          traceId: { type: 'string' },
+          spanId: { type: 'string' },
+          timestamp: { type: 'string' },
+          path: { type: 'string' },
+          statusCode: { type: 'number' },
+        },
+      },
+    },
+  };
+  SwaggerModule.setup(SWAGGER_PATH, app, document, {
     swaggerOptions: {
       persistAuthorization: true,
       tagsSorter: 'alpha',
       operationsSorter: 'alpha',
+      docExpansion: 'list',
     },
-    customSiteTitle: 'Synti IQ API Documentation',
+    customSiteTitle: `${SWAGGER_TITLE} — Documentation`,
   });
+}
 
+function getCorsOrigins(): string[] {
+  const raw = process.env.CORS_ORIGINS?.trim();
+  if (raw) {
+    return raw
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+  }
+  return [process.env.FRONTEND_URL];
+}
+
+function applyGlobalConfig(app: INestApplication): void {
   app.setGlobalPrefix('api');
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
-      transformOptions: {
-        enableImplicitConversion: true,
-      },
+      transformOptions: { enableImplicitConversion: true },
     }),
   );
-
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const corsOrigins = getCorsOrigins();
   app.enableCors({
-    origin: frontendUrl,
+    origin: corsOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    exposedHeaders: ['Set-Cookie'],
+    allowedHeaders: ['Content-Type', 'X-Requested-With', 'X-Request-ID'],
+    exposedHeaders: ['Set-Cookie', 'X-Request-ID', 'Trace-Id', 'Span-Id'],
   });
-
-  await app.listen(3000);
-  Logger.log(`Swagger documentation is available at: ${await app.getUrl()}/api/docs`);
 }
-bootstrap();
+
+async function bootstrap(): Promise<void> {
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  app.useLogger(app.get(Logger));
+  app.useGlobalInterceptors(new LoggerErrorInterceptor());
+  app.use(cookieParser());
+  const requestIdMiddleware = new RequestIdMiddleware();
+  app.use(requestIdMiddleware.use.bind(requestIdMiddleware));
+  setupSwagger(app);
+  applyGlobalConfig(app);
+  const port = Number(process.env.PORT) || 3000;
+  const host = process.env.HOST ?? '0.0.0.0';
+  await app.listen(port, host);
+  const logger = new NestLogger('Bootstrap');
+  logger.log(`🚀 Application is running on: ${await app.getUrl()}`);
+  logger.log(`📚 Swagger: ${await app.getUrl()}/${SWAGGER_PATH}`);
+}
+
+bootstrap().catch(err => {
+  console.error('Bootstrap failed:', err);
+  process.exit(1);
+});

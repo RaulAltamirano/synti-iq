@@ -1,0 +1,38 @@
+{
+  "info": {
+    "_postman_id": "synti-iq-mail",
+    "name": "📧 Mail",
+    "description": "## 📧 Mail Endpoints\n\nDev-only endpoints for testing email delivery.\n\n### Test Welcome Email\n\n`POST /api/mail/test-welcome` — Sends the welcome business email without registering. **Only available when NODE_ENV=development.**\n\nUse this to test the welcome email when your email is already registered (e.g. Resend sandbox only accepts altamirano.developer@gmail.com).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "item": [
+    {
+      "name": "📧 Mail",
+      "item": [
+        {
+          "name": "Test Welcome Email (Dev only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"altamirano.developer@gmail.com\",\n  \"firstName\": \"Tu nombre\",\n  \"lastName\": \"Apellido\",\n  \"businessName\": \"Mi Negocio\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/mail/test-welcome",
+              "host": ["{{base_url}}"],
+              "path": ["api", "mail", "test-welcome"]
+            },
+            "description": "Sends the welcome business email. Only works when NODE_ENV=development.\n\nUse when your email is already registered and you want to test the email without creating a new account."
+          }
+        }
+      ]
+    }
+  ]
+}

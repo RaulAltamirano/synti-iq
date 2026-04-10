@@ -1,191 +1,81 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Inject,
-  Injectable,
-  InternalServerErrorException,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { CashierProfile } from 'src/cashier_profile/entities/cashier_profile.entity';
-import { Repository } from 'typeorm';
+import { Injectable } from '@nestjs/common';
 import { Store } from './entities/store.entity';
+import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.entity';
 import { CreateStoreDto } from './dto/create-store.dto';
-import { Cache } from 'cache-manager';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { CreateCashierAccountDto } from './dto/create-cashier-account.dto';
+import { CreateCashierAccountResponseDto } from './dto/create-cashier-account-response.dto';
+import { CreateUnassignedCashierAccountDto } from 'src/cashier-profile/dto/create-unassigned-cashier-account.dto';
 import { PaginatedResponse } from 'src/pagination/interfaces/PaginatedResponse';
-import { PaginationCacheUtil } from 'src/pagination/utils/PaginationCacheUtil';
 import { StoreFilterDto } from './dto/filter-store-dto';
-import { Location } from 'src/location/entities/location.entity';
-import { LocationService } from 'src/location/location.service';
+import { FilterStoreCashiersDto } from './dto/filter-store-cashiers.dto';
+import { StoreQueryService } from './services/store-query.service';
+import { StoreMutationService } from './services/store-mutation.service';
+import { StoreCashierService } from './services/store-cashier.service';
 
 @Injectable()
 export class StoreService {
-  private readonly CACHE_PREFIX = 'store';
-  private readonly logger = new Logger(StoreService.name);
-
   constructor(
-    @InjectRepository(Store)
-    private readonly storeRepo: Repository<Store>,
-    @InjectRepository(CashierProfile)
-    private readonly cashierRepo: Repository<CashierProfile>,
-    private readonly locationService: LocationService,
-    @Inject(CACHE_MANAGER)
-    private readonly cacheManager: Cache,
+    private readonly storeQueryService: StoreQueryService,
+    private readonly storeMutationService: StoreMutationService,
+    private readonly storeCashierService: StoreCashierService,
   ) {}
 
-  async findAll(filters: StoreFilterDto): Promise<PaginatedResponse<Store>> {
-    const cacheKey = PaginationCacheUtil.buildCacheKey(this.CACHE_PREFIX, filters);
-
-    const cachedResult = await this.cacheManager.get<PaginatedResponse<Store>>(cacheKey);
-    if (cachedResult) {
-      return cachedResult;
-    }
-
-    const queryBuilder = this.storeRepo
-      .createQueryBuilder('store')
-      .leftJoinAndSelect('store.schedules', 'schedules')
-      .leftJoinAndSelect('store.cashiers', 'cashiers')
-      .leftJoinAndSelect('store.paymentMethods', 'paymentMethods');
-
-    this.applyFilters(queryBuilder, filters);
-
-    const countQueryBuilder = queryBuilder.clone();
-    const total = await countQueryBuilder.getCount();
-
-    PaginationCacheUtil.applyPagination(queryBuilder, filters);
-
-    const stores = await queryBuilder.getMany();
-
-    const response = PaginationCacheUtil.createPaginatedResponse({
-      data: stores,
-      total,
-      page: filters.page,
-      limit: filters.limit,
-    });
-
-    await this.cacheManager.set(
-      cacheKey,
-      response,
-      300, // 5 minutos
-    );
-
-    return response;
+  async findAll(filters: StoreFilterDto, userId?: string): Promise<PaginatedResponse<Store>> {
+    return this.storeQueryService.findAll(filters, userId);
   }
 
-  private applyFilters(queryBuilder: any, filters: StoreFilterDto): void {
-    if (filters.name) {
-      queryBuilder.andWhere('store.name LIKE :name', {
-        name: `%${filters.name}%`,
-      });
-    }
-
-    if (filters.isActive !== undefined) {
-      queryBuilder.andWhere('store.isActive = :isActive', {
-        isActive: filters.isActive,
-      });
-    }
-
-    if (filters.minDailySalesTarget !== undefined) {
-      queryBuilder.andWhere('store.dailySalesTarget >= :minTarget', {
-        minTarget: filters.minDailySalesTarget,
-      });
-    }
-
-    if (filters.maxDailySalesTarget !== undefined) {
-      queryBuilder.andWhere('store.dailySalesTarget <= :maxTarget', {
-        maxTarget: filters.maxDailySalesTarget,
-      });
-    }
+  async findOne(id: string, userId?: string): Promise<Store> {
+    return this.storeQueryService.findOne(id, userId);
   }
 
-  async findOne(id: string): Promise<Store> {
-    const store = await this.storeRepo.findOne({
-      where: { id },
-      relations: ['schedules', 'cashiers', 'paymentMethods'],
-    });
-
-    if (!store) {
-      throw new NotFoundException(`Store with id ${id} not found`);
-    }
-
-    return store;
+  async validateStore(storeId: string): Promise<Store> {
+    return this.storeQueryService.validateStore(storeId);
   }
 
-  async create(input: CreateStoreDto): Promise<Store> {
-    try {
-      const { name, location: locationInput } = input;
-
-      const existingStore = await this.storeRepo.findOne({
-        where: { name },
-      });
-      if (existingStore) {
-        throw new ConflictException('Ya existe una tienda con este nombre');
-      }
-
-      let location: Location | undefined;
-      if (locationInput) {
-        location = await this.locationService.createOrFindLocation(locationInput);
-      }
-
-      const store = this.storeRepo.create({
-        ...input,
-        location,
-        isActive: input.isActive ?? true,
-      });
-
-      return await this.storeRepo.save(store);
-    } catch (error) {
-      if (error instanceof ConflictException || error instanceof BadRequestException) {
-        throw error;
-      }
-
-      this.logger.error(`Error al crear tienda: ${error.message}`, error.stack);
-      throw new InternalServerErrorException('No se pudo crear la tienda');
-    }
+  async create(input: CreateStoreDto, userId: string): Promise<Store> {
+    return this.storeMutationService.create(input, userId);
   }
 
-  async remove(id: string): Promise<void> {
-    await this.findOne(id);
-
-    try {
-      await this.storeRepo.delete(id);
-    } catch (error) {
-      throw new BadRequestException('Error deleting store', error);
-    }
+  async remove(id: string, userId?: string): Promise<void> {
+    return this.storeMutationService.remove(id, userId);
   }
 
-  async assignCashierToStore(storeId: string, cashierId: string): Promise<boolean> {
-    const store = await this.findOne(storeId);
-    const cashier = await this.cashierRepo.findOne({
-      where: { id: cashierId },
-    });
-
-    if (!cashier) {
-      throw new NotFoundException('Cashier not found');
-    }
-
-    cashier.store = store;
-    await this.cashierRepo.save(cashier);
-    return true;
+  async getCashiersFromStorePaginated(
+    storeId: string,
+    filters: FilterStoreCashiersDto,
+    userId?: string,
+  ): Promise<PaginatedResponse<CashierProfile>> {
+    return this.storeCashierService.getCashiersFromStorePaginated(storeId, filters, userId);
   }
 
-  async getCashiersFromStore(storeId: string) {
-    const store = await this.findOne(storeId);
-    return store.cashiers;
+  async createCashierUserForStore(
+    storeId: string,
+    dto: CreateCashierAccountDto,
+    ownerUserId: string,
+  ): Promise<CreateCashierAccountResponseDto> {
+    return this.storeCashierService.createCashierUserForStore(storeId, dto, ownerUserId);
   }
-  public async validateStore(storeId: string): Promise<Store> {
-    if (!storeId) {
-      throw new BadRequestException('Store ID is required');
-    }
 
-    const store = await this.storeRepo.findOne({ where: { id: storeId } });
+  async createUnassignedCashierForBusiness(
+    dto: CreateUnassignedCashierAccountDto,
+    ownerUserId: string,
+  ): Promise<CreateCashierAccountResponseDto> {
+    return this.storeCashierService.createUnassignedCashierForBusiness(dto, ownerUserId);
+  }
 
-    if (!store) {
-      throw new NotFoundException(`Store with ID ${storeId} not found`);
-    }
+  async assignCashierToStore(
+    storeId: string,
+    cashierId: string,
+    userId?: string,
+  ): Promise<boolean> {
+    return this.storeCashierService.assignCashierToStore(storeId, cashierId, userId);
+  }
 
-    return store;
+  async removeCashiersFromStore(
+    storeId: string,
+    cashierIds: string[],
+    userId?: string,
+  ): Promise<{ removed: number }> {
+    return this.storeCashierService.removeCashiersFromStore(storeId, cashierIds, userId);
   }
 }

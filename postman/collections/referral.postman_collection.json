@@ -1,0 +1,125 @@
+{
+  "info": {
+    "_postman_id": "synti-iq-referral",
+    "name": "🎁 Referral",
+    "description": "## 🎁 Referral Endpoints\n\nManage referral codes and track referrals for business owners.\n\n### 📋 Endpoints\n\n- **Get My Code**: Get or generate referral code (business_owner)\n- **Get My Referrer**: Get referrer info if registered with a code\n- **Get My Referrals**: List referrals and stats (business_owner)\n- **Validate Code**: Validate a referral code (public)\n- **Generate Code**: Force generate referral code (business_owner)\n\n### 🔒 Auth\n\nMost endpoints require business_owner role. Enable 'Send cookies' in Postman.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "item": [
+    {
+      "name": "🎁 Referral",
+      "description": "## 🎁 Referral Endpoints\n\nManage referral codes and track referrals for business owners.\n\n### 📋 Endpoints\n\n- **Get My Code**: Get or generate referral code (business_owner)\n- **Get My Referrer**: Get referrer info if registered with a code\n- **Get My Referrals**: List referrals and stats (business_owner)\n- **Validate Code**: Validate a referral code (public)\n- **Generate Code**: Force generate referral code (business_owner)\n\n### 🔒 Auth\n\nMost endpoints require business_owner role. Enable 'Send cookies' in Postman.",
+      "item": [
+        {
+          "name": "Get My Code",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/referrals/me/code",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "referral",
+                "my-code"
+              ]
+            },
+            "description": "Get referral code for current business owner. Auto-generates if none exists."
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Referrer",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/referrals/me/referrer",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "referral",
+                "my-referrer"
+              ]
+            },
+            "description": "Get referrer info if current user registered with a referral code."
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Referrals",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/referrals/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "referral",
+                "my-referrals"
+              ]
+            },
+            "description": "List referrals and stats for current business owner."
+          },
+          "response": []
+        },
+        {
+          "name": "Validate Referral Code",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/referrals/validate/:code",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "referral",
+                "validate",
+                ":code"
+              ],
+              "variable": [
+                {
+                  "key": "code",
+                  "value": "ABC123",
+                  "description": "6-12 alphanumeric chars"
+                }
+              ]
+            },
+            "description": "Validate a referral code (public, no auth). Returns isValid, benefits, referrer info."
+          },
+          "response": []
+        },
+        {
+          "name": "Generate Referral Code",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/referrals/me/code",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "referral",
+                "generate"
+              ]
+            },
+            "description": "Force generate a new referral code for business owner. Use if code was lost."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

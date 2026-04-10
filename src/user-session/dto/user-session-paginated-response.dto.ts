@@ -4,7 +4,7 @@ import { UserSessionResponseDto } from './user-session-response.dto';
 export class UserSessionPaginatedResponse {
   @Expose()
   @Type(() => UserSessionResponseDto)
-  data: UserSessionResponseDto[];
+  items: UserSessionResponseDto[];
 
   @Expose()
   total: number;

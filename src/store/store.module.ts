@@ -1,36 +1,33 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { CacheModule } from '@nestjs/cache-manager';
 import { StoreService } from './store.service';
 import { StoreController } from './store.controller';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { CashierProfile } from 'src/cashier_profile/entities/cashier_profile.entity';
+import { StoreQueryService } from './services/store-query.service';
+import { StoreMutationService } from './services/store-mutation.service';
+import { StoreCashierService } from './services/store-cashier.service';
 import { Store } from './entities/store.entity';
-import { Inventory } from 'src/inventory/entities/inventory.entity';
-import { Sale } from 'src/sale/entities/sale.entity';
+import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.entity';
 import { StoreSchedule } from 'src/store-schedule/entities/store-schedule.entity';
 import { PaymentMethod } from 'src/payment-method/entities/payment-method.entity';
-import { CacheModule } from '@nestjs/cache-manager';
 import { Location } from 'src/location/entities/location.entity';
+import { GuardsModule } from 'src/auth/guards/guards.module';
 import { LocationModule } from 'src/location/location.module';
-import { RecurringScheduleTemplate } from 'src/recurring-schedule-template/entities/recurring-schedule-template.entity';
-import { CashierScheduleAssignment } from 'src/cashier-schedule-assignment/entities/cashier-schedule-assignment.entity';
+import { UserProfileModule } from 'src/user-profile/user_profile.module';
+import { UserModule } from 'src/user/user.module';
+import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
   controllers: [StoreController],
-  providers: [StoreService],
+  providers: [StoreService, StoreQueryService, StoreMutationService, StoreCashierService],
   imports: [
+    GuardsModule,
     CacheModule.register(),
     LocationModule,
-    TypeOrmModule.forFeature([
-      Store,
-      Location,
-      CashierProfile,
-      Inventory,
-      Sale,
-      StoreSchedule,
-      RecurringScheduleTemplate,
-      PaymentMethod,
-      CashierScheduleAssignment,
-    ]),
+    UserProfileModule,
+    UserModule,
+    AuthModule,
+    TypeOrmModule.forFeature([Store, Location, CashierProfile, StoreSchedule, PaymentMethod]),
   ],
   exports: [StoreService, TypeOrmModule],
 })

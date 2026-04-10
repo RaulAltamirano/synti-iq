@@ -17,29 +17,44 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { TokenExtractorChain } from './strategies/token-extractor-chain';
 import { TokenFormatValidator } from './strategies/token-format.validator';
 import { CookieTokenExtractor } from './strategies/cookie-token-extractor';
-import { BearerTokenExtractor } from './strategies/bearer-token-xtractor';
 import { AnomalyDetectionService } from './services/anomaly-detection.service';
+import { GuardsModule } from './guards/guards.module';
+import { UserProfileModule } from 'src/user-profile/user_profile.module';
+import { SubscriptionModule } from 'src/subscription/subscription.module';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { User } from 'src/user/entities/user.entity';
+import { Role } from 'src/role/entities/role.entity';
+import { Subscription } from 'src/subscription/entities/subscription.entity';
+import { AuthSessionManager } from './services/auth-session-manager.service';
+import { AuthMetadataService } from './services/auth-metadata.service';
+import { RateLimitService } from './services/rate-limit.service';
+import { ReferralModule } from 'src/referral/referral.module';
+import { TwoFactorService } from './services/two-factor.service';
+import { UserBackupCode } from './entities/user-backup-code.entity';
+import { ObservabilityModule } from 'src/shared/observability/observability.module';
+import { SessionService } from './session/session.service';
 
 @Module({
   controllers: [AuthController],
   providers: [
     AuthService,
+    TwoFactorService,
     TokenFactory,
     JwtStrategy,
     CookieTokenExtractor,
-    BearerTokenExtractor,
     {
       provide: TokenExtractorChain,
-      useFactory: (
-        cookieExtractor: CookieTokenExtractor,
-        bearerExtractor: BearerTokenExtractor,
-      ) => {
-        return new TokenExtractorChain([cookieExtractor, bearerExtractor]);
+      useFactory: (cookieExtractor: CookieTokenExtractor) => {
+        return new TokenExtractorChain([cookieExtractor]);
       },
-      inject: [CookieTokenExtractor, BearerTokenExtractor],
+      inject: [CookieTokenExtractor],
     },
     TokenFormatValidator,
     AnomalyDetectionService,
+    AuthSessionManager,
+    AuthMetadataService,
+    RateLimitService,
+    SessionService,
   ],
   imports: [
     UserModule,
@@ -51,7 +66,13 @@ import { AnomalyDetectionService } from './services/anomaly-detection.service';
     RedisModule,
     CacheModule.register(),
     PassportModule.register({ defaultStrategy: 'jwt' }),
+    GuardsModule,
+    UserProfileModule,
+    SubscriptionModule,
+    ReferralModule,
+    ObservabilityModule,
+    TypeOrmModule.forFeature([User, Role, Subscription, UserBackupCode]),
   ],
-  exports: [AuthService, PassportModule],
+  exports: [AuthService, TwoFactorService, PassportModule, GuardsModule],
 })
 export class AuthModule {}

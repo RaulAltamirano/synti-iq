@@ -1,0 +1,252 @@
+{
+  "info": {
+    "_postman_id": "synti-iq-cashier-schedules",
+    "name": "Cashier Schedules",
+    "description": "Cashier schedule management endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "item": [
+    {
+      "name": "Cashier Schedules",
+      "item": [
+        {
+          "name": "Create Cashier Schedule",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"cashierId\": \"\",\n    \"storeId\": \"\",\n    \"startTime\": \"2024-01-01T09:00:00Z\",\n    \"endTime\": \"2024-01-01T17:00:00Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/cashier-schedules",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "cashier-schedules"
+              ]
+            },
+            "description": "Create a new cashier schedule assignment"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Cashier Schedules",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/cashier-schedules",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "cashier-schedules"
+              ]
+            },
+            "description": "Get all cashier schedules with filters"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Cashier Schedule by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/cashier-schedules/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "cashier-schedules",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get cashier schedule by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Cashier Schedule",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"startTime\": \"2024-01-01T10:00:00Z\",\n    \"endTime\": \"2024-01-01T18:00:00Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/cashier-schedules/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "cashier-schedules",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Update cashier schedule"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Cashier Schedule",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/cashier-schedules/:id",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "cashier-schedules",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Delete cashier schedule"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Cashier Schedules by Cashier",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/cashier-schedules/cashiers/:cashierId/schedules",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "cashier-schedules",
+                "cashiers",
+                ":cashierId",
+                "schedules"
+              ],
+              "variable": [
+                {
+                  "key": "cashierId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get all schedules for a specific cashier"
+          },
+          "response": []
+        },
+        {
+          "name": "Request Shift Swap",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"requestingCashierId\": \"\",\n    \"targetAssignmentId\": \"\",\n    \"reason\": \"Personal emergency\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/cashier-schedules/swap/request",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "cashier-schedules",
+                "swap",
+                "request"
+              ]
+            },
+            "description": "Request a shift swap"
+          },
+          "response": []
+        },
+        {
+          "name": "Confirm Shift Swap",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/cashier-schedules/swap/:assignmentId/confirm",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "cashier-schedules",
+                "swap",
+                ":assignmentId",
+                "confirm"
+              ],
+              "variable": [
+                {
+                  "key": "assignmentId",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Confirm a shift swap request"
+          },
+          "response": []
+        }
+      ],
+      "description": "Cashier schedule management endpoints"
+    }
+  ]
+}

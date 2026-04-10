@@ -72,7 +72,6 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     try {
       const stringValue = this.serialize(value);
       await this.redis.set(key, stringValue, 'EX', ttl);
-      this.logger.debug(`Valor guardado para la clave: ${key}`);
     } catch (error) {
       this.logger.error(`Error al guardar la clave ${key} en Redis:`, error);
       throw new Error(`Error al guardar en Redis: ${error.message}`);
@@ -93,7 +92,6 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   async del(...keys: string[]): Promise<void> {
     try {
       await this.redis.del(...keys);
-      this.logger.debug(`Claves eliminadas: ${keys.join(', ')}`);
     } catch (error) {
       this.logger.error(`Error al eliminar las claves ${keys.join(', ')} de Redis:`, error);
       throw new Error(`Error al eliminar de Redis: ${error.message}`);
@@ -163,7 +161,6 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       const keys = await this.redis.keys(pattern);
       if (keys.length > 0) {
         await this.redis.del(...keys);
-        this.logger.debug(`Limpiadas ${keys.length} claves con patrón: ${pattern}`);
       }
     } catch (error) {
       this.logger.error(`Error al limpiar claves con patrón ${pattern}:`, error);

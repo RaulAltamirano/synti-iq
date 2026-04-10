@@ -1,4 +1,3 @@
-import { InputType, Field } from '@nestjs/graphql';
 import {
   IsUUID,
   IsNotEmpty,
@@ -23,14 +22,12 @@ const daysOfWeek = [
 
 type DayOfWeek = (typeof daysOfWeek)[number];
 
-@InputType()
 export class CreateStoreScheduleDto {
   @ApiProperty({
     description: 'Nombre del horario',
     example: 'Horario de lunes a viernes',
     minLength: 3,
   })
-  @Field()
   @IsString()
   @IsNotEmpty()
   @MinLength(3, { message: 'Name must be at least 3 characters long' })
@@ -41,7 +38,6 @@ export class CreateStoreScheduleDto {
     example: 'Horario especial para días festivos',
     required: false,
   })
-  @Field(() => String, { nullable: true })
   @IsOptional()
   @IsString()
   description?: string;
@@ -50,7 +46,6 @@ export class CreateStoreScheduleDto {
     description: 'ID de la tienda',
     example: '123e4567-e89b-12d3-a456-426614174000',
   })
-  @Field()
   @IsUUID()
   @IsNotEmpty()
   storeId: string;
@@ -60,7 +55,6 @@ export class CreateStoreScheduleDto {
     enum: daysOfWeek,
     example: 'monday',
   })
-  @Field()
   @IsIn(daysOfWeek, {
     message:
       'Invalid day of week. Must be one of: monday, tuesday, wednesday, thursday, friday, saturday, sunday',
@@ -72,7 +66,6 @@ export class CreateStoreScheduleDto {
     description: 'Hora de apertura en formato HH:MM:SS-TZ o HH:MM-TZ',
     example: '09:00:00-05:00',
   })
-  @Field(() => String)
   @IsNotEmpty()
   @Transform(({ value }) => {
     const timeFormatRegex =
@@ -96,7 +89,6 @@ export class CreateStoreScheduleDto {
     description: 'Hora de cierre en formato HH:MM:SS-TZ o HH:MM-TZ',
     example: '18:00:00-05:00',
   })
-  @Field(() => String)
   @IsNotEmpty()
   @Transform(({ value }) => {
     const timeFormatRegex =
@@ -122,7 +114,6 @@ export class CreateStoreScheduleDto {
     default: true,
     required: false,
   })
-  @Field({ nullable: true, defaultValue: true })
   @IsOptional()
   @IsBoolean()
   isActive?: boolean = true;

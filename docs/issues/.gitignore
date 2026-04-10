@@ -1,0 +1,12 @@
+# Ignore draft files (ephemeral, local-only).
+# Keep: README.md, draft-template.md, canonical task docs, audit report
+*.md
+!README.md
+!draft-template.md
+!ci-cd-pipeline-review-task.md
+!store-stats-endpoint-example.md
+!template-docs-improvement-task.md
+!husky-commitlint-fixes-task.md
+!ISSUE_FLOW_AUDIT_REPORT.md
+!issue-pr2-auth-module-decomposition.md
+!issue-pr3-cashier-invitation-flow.md

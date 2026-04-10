@@ -1,8 +1,16 @@
 import { createHash } from 'crypto';
+<<<<<<< feat/harden-pagination-cache-util
 import { SelectQueryBuilder } from 'typeorm';
 import { PaginatedResponse } from '../interfaces/PaginatedResponse';
 import { BasePaginationParams } from '../dtos/base-pagination-params';
 import { CacheService } from 'src/cache/cache.service';
+=======
+import { Logger } from '@nestjs/common';
+import type { SelectQueryBuilder } from 'typeorm';
+import type { PaginatedResponse } from '../interfaces/PaginatedResponse';
+import type { BasePaginationParams } from '../dtos/base-pagination-params';
+import type { CacheService } from 'src/cache/cache.service';
+>>>>>>> dev
 
 /**
  * Interfaz para métricas de paginación
@@ -88,12 +96,12 @@ export class PaginationCacheUtil {
    * Crea una respuesta paginada estandarizada
    */
   static createPaginatedResponse<T>({
-    data,
+    items,
     total,
     page,
     limit,
   }: {
-    data: T[];
+    items: T[];
     total: number;
     page: number;
     limit: number;
@@ -104,7 +112,7 @@ export class PaginationCacheUtil {
     const totalPages = Math.ceil(safeTotal / safeLimit) || 1;
 
     return {
-      data: data || [],
+      items: items || [],
       total: safeTotal,
       page: safePage,
       totalPages,
@@ -166,7 +174,7 @@ export class PaginationCacheUtil {
     cacheService: CacheService,
     cachePrefix: string,
     paginationParams: BasePaginationParams,
-    fetchDataFn: () => Promise<{ data: T[]; total: number }>,
+    fetchDataFn: () => Promise<{ items: T[]; total: number }>,
     options: {
       ttl?: number;
       staleWhileRevalidate?: boolean;
@@ -179,16 +187,20 @@ export class PaginationCacheUtil {
 
     const fetchFreshData = async (): Promise<PaginatedResponse<T>> => {
       try {
-        const { data, total } = await fetchDataFn();
+        const { items, total } = await fetchDataFn();
 
         return this.createPaginatedResponse({
-          data,
+          items,
           total,
           page: Number(paginationParams.page) || 1,
           limit: Number(paginationParams.limit) || 10,
         });
       } catch (error) {
-        console.error('Error fetching paginated data:', error);
+        Logger.error(
+          'Error fetching paginated data',
+          error instanceof Error ? error.stack : String(error),
+          'PaginationCacheUtil',
+        );
         throw error;
       }
     };
@@ -210,7 +222,11 @@ export class PaginationCacheUtil {
 
       return result;
     } catch (error) {
-      console.error(`Error retrieving paginated data for key ${cacheKey}:`, error);
+      Logger.error(
+        `Error retrieving paginated data for key ${cacheKey}`,
+        error,
+        PaginationCacheUtil.name,
+      );
 
       const freshData = await fetchFreshData();
 
@@ -228,14 +244,39 @@ export class PaginationCacheUtil {
     }
   }
 
+<<<<<<< feat/harden-pagination-cache-util
   /**
    * Invalida todas las claves de caché con un prefijo dado
    */
   static async invalidateCache(cacheService: CacheService, prefix: string): Promise<void> {
+=======
+  static async paginateQueryBuilder<T>(
+    queryBuilder: SelectQueryBuilder<T>,
+    filters: BasePaginationParams,
+    options: { columnMap: Record<string, string>; aliasOverride?: string },
+  ): Promise<PaginatedResponse<T>> {
+    const countQueryBuilder = queryBuilder.clone();
+    const total = await countQueryBuilder.getCount();
+    PaginationCacheUtil.applyPagination(queryBuilder, filters, {
+      columnMap: options.columnMap,
+      aliasOverride: options.aliasOverride,
+    });
+    const items = await queryBuilder.getMany();
+    const page = filters.page ?? 1;
+    const limit = filters.limit ?? 10;
+    return PaginationCacheUtil.createPaginatedResponse({ items, total, page, limit });
+  }
+
+  static async invalidateCache(cacheService: any, prefix: string): Promise<void> {
+>>>>>>> dev
     try {
       await cacheService.invalidate(`${prefix}:*`);
     } catch (error) {
-      console.error(`Error invalidating cache with prefix ${prefix}:`, error);
+      Logger.error(
+        `Error invalidating cache with prefix ${prefix}`,
+        error,
+        PaginationCacheUtil.name,
+      );
     }
   }
 }

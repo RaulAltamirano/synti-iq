@@ -5,155 +5,378 @@ import {
   Logger,
   ForbiddenException,
   BadRequestException,
-  HttpException,
-  HttpStatus,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { PasswordService } from './services/password/password.service';
-import { TokenFactory } from 'src/auth/factory/token-factory';
-import { UserSessionService } from 'src/user-session/user-session.service';
+import { SessionService } from 'src/auth/session/session.service';
 import { UserService } from 'src/user/user.service';
 import { SignUpDto } from 'src/auth/dto/sign-up.dto';
+import { RegisterBusinessDto } from 'src/auth/dto/register-business.dto';
 import { AuthResponseDto } from 'src/auth/dto/auth-response.dto';
-import { LoginUserDto, TokensUserDto } from 'src/auth/dto';
+import { LoginUserDto, RefreshTokensResponseDto } from 'src/auth/dto';
 import { RefreshTokenDto } from 'src/auth/dto/refresh-token.dto';
-import { CreateUserSessionDto } from 'src/user-session/dto/create-user-session.dto';
-import { RedisService } from 'src/shared/redis/redis.service';
-import { isIP } from 'net';
-import { SessionFilterDto } from './dto/session-filter.dto';
-import { FilterUserSessionDto } from 'src/user-session/dto/filter-user-session.dto';
-import { PaginatedResponse } from 'src/pagination/interfaces/PaginatedResponse';
-import { UserSessionResponseDto } from 'src/user-session/dto/user-session-response.dto';
-import { UAParser } from 'ua-parser-js';
-import { AnomalyDetectionService } from './services/anomaly-detection.service';
+import { SystemRole } from 'src/shared/enums/roles.enum';
+import { UserProfileService } from 'src/user-profile/user_profile.service';
+import { DataSource, Repository } from 'typeorm';
+import { Subscription } from 'src/subscription/entities/subscription.entity';
+import { SubscriptionStatus } from 'src/subscription/enums/subscription-status.enum';
+import { InjectRepository } from '@nestjs/typeorm';
+import { User } from 'src/user/entities/user.entity';
+import { Role } from 'src/role/entities/role.entity';
+import { AuthSessionManager } from './services/auth-session-manager.service';
+import { AuthMetadataService } from './services/auth-metadata.service';
+import { RateLimitService } from './services/rate-limit.service';
+import { ReferralService } from 'src/referral/referral.service';
+import { MailService } from 'src/mail/mail.service';
+import { TwoFactorService } from './services/two-factor.service';
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
-  private readonly MAX_LOGIN_ATTEMPTS = 5;
-  private readonly LOGIN_ATTEMPT_WINDOW = 15 * 60;
 
   constructor(
     private readonly userRepository: UserService,
-    private readonly sessionService: UserSessionService,
-    private readonly tokenFactory: TokenFactory,
+    private readonly authSessionCommandService: SessionService,
     private readonly passwordService: PasswordService,
-    private readonly redisService: RedisService,
-    private readonly anomalyDetectionService: AnomalyDetectionService,
+    private readonly userProfileService: UserProfileService,
+    private readonly dataSource: DataSource,
+    private readonly sessionManager: AuthSessionManager,
+    private readonly metadataService: AuthMetadataService,
+    private readonly rateLimitService: RateLimitService,
+    private readonly referralService: ReferralService,
+    private readonly mailService: MailService,
+    private readonly twoFactorService: TwoFactorService,
+    @InjectRepository(User)
+    private readonly userEntityRepository: Repository<User>,
+    @InjectRepository(Role)
+    private readonly roleRepository: Repository<Role>,
   ) {}
 
   async signUp(dto: SignUpDto, request?: Request): Promise<AuthResponseDto> {
+    const forcedRole = SystemRole.CUSTOMER;
+
     const existingUser = await this.userRepository.findByEmail(dto.email);
     if (existingUser) {
       throw new UnauthorizedException('Email already in use');
     }
 
-    const hashedPassword = await this.passwordService.hash(dto.password);
-    const user = await this.userRepository.create({
-      ...dto,
-      password: hashedPassword,
-    });
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    if (!user) {
-      throw new InternalServerErrorException('User creation failed');
+    try {
+      const role = await this.roleRepository.findOne({
+        where: { name: forcedRole },
+      });
+
+      if (!role) {
+        throw new InternalServerErrorException('CUSTOMER role not found');
+      }
+
+      const hashedPassword = await this.passwordService.hash(dto.password);
+      const user = this.userEntityRepository.create({
+        email: dto.email,
+        password: hashedPassword,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        roleId: role.id,
+        isActive: true,
+        createdAt: new Date(),
+      });
+
+      const savedUser = await queryRunner.manager.save(user);
+
+      const userProfile = await this.userProfileService.createProfileForUser(
+        savedUser.id,
+        forcedRole,
+        {},
+        queryRunner,
+      );
+
+      if (!userProfile.profileId) {
+        throw new InternalServerErrorException('CustomerProfile was not created during signup');
+      }
+
+      const days = 14;
+      const now = new Date();
+      const trialEnd = new Date(now);
+      trialEnd.setDate(trialEnd.getDate() + days);
+
+      const subscription = queryRunner.manager.create(Subscription, {
+        customerId: userProfile.profileId,
+        status: SubscriptionStatus.TRIALING,
+        trialStart: now,
+        trialEnd: trialEnd,
+        currentPeriodStart: now,
+        currentPeriodEnd: trialEnd,
+        cancelAtPeriodEnd: false,
+      });
+
+      await queryRunner.manager.save(Subscription, subscription);
+
+      const validation = await this.userProfileService.validateProfileCoherence(
+        savedUser.id,
+        queryRunner,
+      );
+      if (!validation.isValid) {
+        this.logger.error(
+          `Profile coherence validation failed after signUp for user ${savedUser.id}: ${validation.errors.join(', ')}`,
+        );
+        throw new BadRequestException(
+          `Profile coherence validation failed: ${validation.errors.join(', ')}`,
+        );
+      }
+
+      await queryRunner.commitTransaction();
+
+      await this.userRepository.updateLastLogin(savedUser.id);
+
+      const metadata = this.metadataService.extractSessionMetadata(request);
+      const { tokens, sessionId } = await this.sessionManager.createSession(savedUser.id, metadata);
+
+      return {
+        user: {
+          id: savedUser.id,
+          email: savedUser.email,
+          firstName: savedUser.firstName,
+          lastName: savedUser.lastName,
+          role: role.name,
+        },
+        tokens,
+        sessionId,
+      };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      this.logger.error(`Error during signUp: ${error.message}`, error.stack);
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async registerBusiness(dto: RegisterBusinessDto, request?: Request): Promise<AuthResponseDto> {
+    const forcedRole = SystemRole.BUSINESS_OWNER;
+
+    const existingUser = await this.userRepository.findByEmail(dto.email);
+    if (existingUser) {
+      throw new UnauthorizedException('Email already in use');
     }
 
-    const metadata = this.extractSessionMetadata(request);
-    const tokens = await this.createUserSession({
-      userId: user.id,
-      ...metadata,
-    });
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    return {
-      user: { id: user.id, email: user.email },
-      tokens,
-    };
+    try {
+      const role = await this.roleRepository.findOne({
+        where: { name: forcedRole },
+      });
+
+      if (!role) {
+        throw new InternalServerErrorException('BUSINESS_OWNER role not found');
+      }
+
+      const hashedPassword = await this.passwordService.hash(dto.password);
+      const user = this.userEntityRepository.create({
+        email: dto.email,
+        password: hashedPassword,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        roleId: role.id,
+        isActive: true,
+        createdAt: new Date(),
+      });
+
+      const savedUser = await queryRunner.manager.save(user);
+
+      const businessProfileData = { name: dto.businessName };
+      const userProfile = await this.userProfileService.createProfileForUser(
+        savedUser.id,
+        forcedRole,
+        businessProfileData,
+        queryRunner,
+      );
+
+      if (!userProfile.profileId) {
+        throw new InternalServerErrorException(
+          'BusinessProfile was not created during registration',
+        );
+      }
+
+      if (dto.referralCode?.trim()) {
+        const referralValidation = await this.referralService.validateCode(dto.referralCode.trim());
+        if (referralValidation.isValid && referralValidation.referralCodeId) {
+          await this.referralService.recordUsage(
+            referralValidation.referralCodeId,
+            savedUser.id,
+            userProfile.profileId,
+            queryRunner,
+          );
+        }
+      }
+
+      await this.referralService.ensureCodeForBusinessProfile(userProfile.profileId, queryRunner);
+
+      const validation = await this.userProfileService.validateProfileCoherence(
+        savedUser.id,
+        queryRunner,
+      );
+      if (!validation.isValid) {
+        this.logger.error(
+          `Profile coherence validation failed after registerBusiness for user ${savedUser.id}: ${validation.errors.join(', ')}`,
+        );
+        throw new BadRequestException(
+          `Profile coherence validation failed: ${validation.errors.join(', ')}`,
+        );
+      }
+
+      await queryRunner.commitTransaction();
+
+      await this.userRepository.updateLastLogin(savedUser.id);
+
+      const metadata = this.metadataService.extractSessionMetadata(request);
+      const { tokens, sessionId } = await this.sessionManager.createSession(savedUser.id, metadata);
+
+      this.mailService
+        .sendWelcomeBusiness({
+          email: savedUser.email,
+          firstName: savedUser.firstName,
+          lastName: savedUser.lastName,
+          businessName: dto.businessName,
+        })
+        .catch((err: Error) => {
+          this.logger.warn(`Welcome email failed for ${savedUser.email}: ${err.message}`);
+        });
+
+      return {
+        user: {
+          id: savedUser.id,
+          email: savedUser.email,
+          firstName: savedUser.firstName,
+          lastName: savedUser.lastName,
+          role: role.name,
+        },
+        tokens,
+        sessionId,
+      };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      this.logger.error(`Error during registerBusiness: ${error.message}`, error.stack);
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async login(dto: LoginUserDto, request?: Request): Promise<AuthResponseDto> {
-    const metadata = this.extractSessionMetadata(request);
-    await this.checkRateLimit(dto.email, metadata.deviceInfo?.ipAddress || 'unknown');
+    const metadata = this.metadataService.extractSessionMetadata(request);
+    const ipAddress = metadata.deviceInfo?.ipAddress || 'unknown';
+    await this.rateLimitService.checkRateLimit(dto.email, ipAddress);
 
     const user = await this.userRepository.findByEmail(dto.email, {
       selectPassword: true,
+      selectTwoFactorSecret: true,
     });
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    if (user.isDelete) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    if (!user.isActive) {
-      throw new UnauthorizedException('Account is inactive. Please contact support.');
-    }
+    this.validateUserStatus(user);
 
     const passwordValid = await this.passwordService.verify(dto.password, user.password, dto.email);
     if (!passwordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const key = `login_attempts:${dto.email}:${metadata.deviceInfo?.ipAddress || 'unknown'}`;
-    await this.redisService.del(key);
+    if (user.twoFactorSecret) {
+      if (!dto.totpCode) {
+        throw new UnauthorizedException({
+          requires_2fa: true,
+          message: 'TOTP code required',
+        });
+      }
 
+      const isValidTotp = await this.twoFactorService.verify(user, dto.totpCode);
+      const isValidBackup =
+        !isValidTotp && (await this.twoFactorService.verifyBackupCode(user.id, dto.totpCode));
+
+      if (!isValidTotp && !isValidBackup) {
+        throw new UnauthorizedException('Invalid TOTP or backup code');
+      }
+    }
+
+    await this.rateLimitService.clearRateLimit(dto.email, ipAddress);
     await this.userRepository.updateLastLogin(user.id);
 
-    const tokens = await this.createUserSession({
-      userId: user.id,
-      deviceInfo: metadata.deviceInfo,
-      lastUsed: metadata.lastUsed,
-      sessionId: undefined,
-      refreshToken: undefined,
+    await this.invalidatePreviousSessions(user.id, metadata);
+
+    const { tokens, sessionId } = await this.sessionManager.createSession(user.id, metadata);
+
+    const userWithRole = await this.userEntityRepository.findOne({
+      where: { id: user.id },
+      relations: ['role'],
     });
 
     return {
-      user: { id: user.id, email: user.email },
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: userWithRole?.firstName,
+        lastName: userWithRole?.lastName,
+        role: userWithRole?.role?.name,
+      },
       tokens,
+      sessionId,
     };
   }
 
-  async getProfile(token: string): Promise<any> {
+  private async invalidatePreviousSessions(
+    userId: string,
+    metadata: { deviceInfo?: { userAgent?: string | null } },
+  ): Promise<void> {
     try {
-      const decoded = this.tokenFactory.decodeToken(token);
-      if (!decoded?.sub) {
-        throw new UnauthorizedException('Token inválido');
-      }
-      const user = await this.userRepository.findById(decoded.sub);
+      if (metadata.deviceInfo?.userAgent) {
+        const invalidatedCount =
+          await this.authSessionCommandService.invalidateSessionsByDeviceInfo(userId, {
+            userAgent: metadata.deviceInfo.userAgent,
+          });
 
-      if (!user) {
-        throw new UnauthorizedException('Usuario no encontrado');
+        if (invalidatedCount > 0) {
+          this.logger.log(
+            `Invalidated ${invalidatedCount} previous session(s) for user ${userId} with userAgent: ${metadata.deviceInfo.userAgent}`,
+          );
+        }
+      } else {
+        this.logger.warn(
+          `Cannot invalidate previous sessions for user ${userId}: userAgent is not available`,
+        );
       }
-
-      return {
-        id: user.id,
-        email: user.email,
-        name: user.fullName,
-        roles: user.roles,
-      };
-    } catch (error) {
-      if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
-        throw new UnauthorizedException('Sesión expirada o inválida');
-      }
-      throw error;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      const stack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(
+        `Failed to invalidate previous sessions for user ${userId}: ${message}`,
+        stack,
+      );
     }
   }
 
   async logout(userId: string, accessToken: string): Promise<void> {
-    const sessionId = this.extractSessionIdFromToken(accessToken, userId);
+    const sessionId = this.sessionManager.extractSessionIdFromToken(accessToken, userId);
     if (!sessionId) {
-      await this.sessionService.invalidateAllSessions(userId);
+      await this.sessionManager.invalidateAllSessions(userId);
       return;
     }
 
-    await this.sessionService.invalidateSession(userId, sessionId);
-    await this.tokenFactory.deleteRefreshToken(userId, sessionId);
+    await this.sessionManager.invalidateSession(userId, sessionId);
   }
 
-  async refreshTokens(dto: RefreshTokenDto, request?: Request): Promise<TokensUserDto> {
-    const { userId, sessionId } = await this.tokenFactory.verifyRefreshToken(dto.refreshToken);
+  async refreshTokens(dto: RefreshTokenDto, request?: Request): Promise<RefreshTokensResponseDto> {
+    const { userId, sessionId } = await this.sessionManager.verifyRefreshToken(dto.refreshToken);
 
-    const isValidSession = await this.sessionService.validateSessionOwnership(userId, sessionId);
+    const isValidSession = await this.authSessionCommandService.validateSessionOwnership(
+      userId,
+      sessionId,
+    );
     if (!isValidSession) {
       throw new UnauthorizedException('Invalid session');
     }
@@ -163,112 +386,26 @@ export class AuthService {
       throw new UnauthorizedException('User not found');
     }
 
-    if (user.isDelete) {
-      throw new UnauthorizedException('User account is no longer active');
-    }
+    this.validateUserStatus(user);
+    await this.authSessionCommandService.updateSessionLastUsed(userId, sessionId);
+    await this.userRepository.updateLastActivity(userId);
 
-    if (!user.isActive) {
-      throw new UnauthorizedException('User account is inactive');
-    }
-
-    await this.sessionService.updateSessionLastUsed(userId, sessionId);
-
-    // Detectar anomalías
-    const metadata = this.extractSessionMetadata(request);
-    const anomaly = await this.anomalyDetectionService.detectTokenReuse(userId, sessionId, {
-      ipAddress: metadata.deviceInfo?.ipAddress,
-      userAgent: metadata.deviceInfo?.userAgent,
-      deviceInfo: metadata.deviceInfo,
-    });
-
-    if (anomaly.isAnomaly) {
-      this.logger.warn(`Anomaly detected during token refresh: ${anomaly.reason}`, {
-        userId,
-        sessionId,
-        severity: anomaly.severity,
-      });
-
-      if (anomaly.severity === 'high') {
-        throw new UnauthorizedException('Security anomaly detected. Please login again.');
-      }
-    }
-
-    await this.tokenFactory.invalidateRefreshToken(userId, sessionId, dto.refreshToken);
-    const { tokens, refreshTokenHash } = await this.tokenFactory.generateTokens(user.id, sessionId);
-
-    const sessionKey = `session:${userId}:${sessionId}`;
-    const currentSession = await this.redisService.get<{
-      refreshTokenHash: string;
-      isValid: boolean;
-      lastUsed?: string;
-      deviceInfo?: any;
-      usedTokens?: string[];
-    }>(sessionKey);
-
-    if (currentSession) {
-      await this.sessionService.setSessionInRedisUnified(userId, sessionId, {
-        refreshTokenHash,
-        isValid: currentSession.isValid,
-        lastUsed: new Date().toISOString(),
-        deviceInfo: currentSession.deviceInfo,
-        usedTokens: currentSession.usedTokens,
-      });
-    } else {
-      const activeSessions = await this.sessionService.findActiveByUserId(userId);
-      const dbSession = activeSessions.find(s => s.sessionId === sessionId);
-
-      await this.sessionService.setSessionInRedisUnified(userId, sessionId, {
-        refreshTokenHash,
-        isValid: dbSession?.isValid ?? true,
-        lastUsed: new Date().toISOString(),
-        deviceInfo: dbSession?.deviceInfo ?? null,
-      });
-    }
-
-    await this.anomalyDetectionService.recordTokenUsage(userId, sessionId, {
-      ipAddress: metadata.deviceInfo?.ipAddress,
-      userAgent: metadata.deviceInfo?.userAgent,
-      deviceInfo: metadata.deviceInfo,
-    });
-
-    return tokens;
+    const metadata = this.metadataService.extractSessionMetadata(request);
+    return this.sessionManager.refreshSession(userId, sessionId, dto.refreshToken, metadata);
   }
 
-  async getActiveSessions(
-    userId: string,
-    filters: SessionFilterDto,
-  ): Promise<PaginatedResponse<UserSessionResponseDto>> {
-    const filterDto: FilterUserSessionDto = {
-      page: filters.page,
-      limit: filters.limit,
-      isValid: filters.isValid,
-      lastUsedAfter: filters.lastUsedAfter,
-      lastUsedBefore: filters.lastUsedBefore,
-    };
-    return this.sessionService.getActiveSessions(userId, filterDto);
-  }
-
-  async deleteDeviceSession(userId: string, sessionId: string): Promise<void> {
-    await this.sessionService.invalidateSession(userId, sessionId);
-  }
-
-  async closeAllSessions(userId: string): Promise<void> {
-    const activeSessions = await this.sessionService.findActiveByUserId(userId);
-    await this.sessionService.invalidateAllSessions(userId);
-
-    const sessionKeys = activeSessions.map(session => `session:${userId}:${session.sessionId}`);
-    if (sessionKeys.length > 0) {
-      await this.redisService.del(...sessionKeys);
-    }
-  }
-
-  async validateUserAndSession(userId: string, sessionId?: string, tokenId?: string): Promise<any> {
+  async validateUserAndSession(userId: string, sessionId?: string): Promise<User> {
     try {
       if (!userId) {
         throw new UnauthorizedException('User ID is required');
       }
 
-      const user = await this.validateUser(userId);
+      const user = await this.userRepository.findById(userId);
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
+
+      this.validateUserStatus(user);
 
       if (!sessionId) {
         this.logger.warn(`Session ID missing for user: ${userId}`);
@@ -292,169 +429,74 @@ export class AuthService {
     }
   }
 
-  async validateToken(userId: string, tokenId: string): Promise<void> {
-    try {
-      const payload = this.tokenFactory.verifyAccessToken(tokenId);
-
-      if (!payload || payload.sub !== userId) {
-        throw new ForbiddenException('Token user ID mismatch');
-      }
-
-      if (!payload.sid) {
-        throw new UnauthorizedException('Session ID missing in token');
-      }
-
-      await this.validateSession(userId, payload.sid);
-    } catch (error) {
-      if (error instanceof UnauthorizedException || error instanceof ForbiddenException) {
-        throw error;
-      }
-
-      this.logger.error(`Token validation failed: ${error.message}`, error.stack);
-      throw new UnauthorizedException('Invalid access token');
+  async setup2fa(userId: string): Promise<{ secret: string; qrCode: string }> {
+    const user = await this.userEntityRepository.findOne({
+      where: { id: userId, isDelete: false },
+      select: ['id', 'email'],
+    });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
     }
+    return this.twoFactorService.generateSecret(user);
   }
 
-  private async validateUser(userId: string): Promise<any> {
+  async verify2fa(userId: string, code: string): Promise<{ backupCodes: string[] }> {
+    const user = await this.userEntityRepository.findOne({
+      where: { id: userId },
+      select: ['id', 'email'],
+    });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    const result = await this.twoFactorService.verifyAndActivate(user, code);
+    return { backupCodes: result.backupCodes };
+  }
+
+  async disable2fa(userId: string, code: string): Promise<void> {
+    await this.twoFactorService.disable(userId, code);
+  }
+
+  async get2faStatus(userId: string): Promise<{
+    enabled: boolean;
+    method: 'authenticator' | null;
+    backupCodesRemaining: number;
+  }> {
     const user = await this.userRepository.findById(userId);
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
+    return this.twoFactorService.getStatus(user);
+  }
 
+  async regenerateBackupCodes(userId: string): Promise<string[]> {
+    const status = await this.get2faStatus(userId);
+    if (!status.enabled) {
+      throw new BadRequestException('2FA is not enabled');
+    }
+    return this.twoFactorService.regenerateBackupCodes(userId);
+  }
+
+  private validateUserStatus(user: User): void {
     if (user.isDelete) {
       throw new UnauthorizedException('User account is no longer active');
     }
 
     if (!user.isActive) {
-      throw new UnauthorizedException('User account is inactive');
+      throw new UnauthorizedException('Account is inactive. Please contact support.');
     }
-
-    return user;
   }
 
   private async validateSession(userId: string, sessionId: string): Promise<void> {
-    const isValid = await this.sessionService.validateSessionOwnership(userId, sessionId);
+    const isValid = await this.authSessionCommandService.validateSessionOwnership(
+      userId,
+      sessionId,
+    );
     if (!isValid) {
       this.logger.warn(`Session validation failed: userId=${userId}, sessionId=${sessionId}`);
       throw new UnauthorizedException('Invalid session');
     }
 
-    await this.sessionService.updateSessionLastUsed(userId, sessionId);
-  }
-
-  private extractSessionMetadata(request?: Request): any {
-    if (!request) {
-      return {
-        lastUsed: new Date(),
-      };
-    }
-
-    const userAgent = request.headers['user-agent'];
-    const forwardedFor = request.headers['x-forwarded-for']?.toString();
-    const ipAddress = forwardedFor ? forwardedFor.split(',')[0].trim() : null;
-
-    const uaParser = new UAParser(userAgent);
-    const deviceInfo = {
-      deviceType: this.determineDeviceType(uaParser.getDevice().type),
-      deviceName: uaParser.getDevice().model || uaParser.getOS().name,
-      browser: uaParser.getBrowser().name,
-      browserVersion: uaParser.getBrowser().version,
-      os: uaParser.getOS().name,
-      osVersion: uaParser.getOS().version,
-      userAgent: userAgent || null,
-      ipAddress: isIP(ipAddress) ? ipAddress : null,
-    };
-
-    return {
-      deviceInfo,
-      lastUsed: new Date(),
-    };
-  }
-
-  private determineDeviceType(deviceType: string | undefined): string {
-    if (!deviceType) return 'desktop';
-
-    switch (deviceType.toLowerCase()) {
-      case 'mobile':
-        return 'mobile';
-      case 'tablet':
-        return 'tablet';
-      default:
-        return 'desktop';
-    }
-  }
-
-  private extractSessionIdFromToken(accessToken: string, userId: string): string | null {
-    try {
-      const decoded = this.tokenFactory.verifyAccessToken(accessToken);
-      if (decoded.sub !== userId) {
-        throw new UnauthorizedException('Invalid token ownership');
-      }
-      return decoded.sid;
-    } catch (error) {
-      const unverified = this.tokenFactory.decodeToken(accessToken);
-      return unverified?.sub === userId ? unverified.sid : null;
-    }
-  }
-
-  private async checkRateLimit(email: string, ip: string): Promise<void> {
-    const key = `login_attempts:${email}:${ip}`;
-    const attempts = await this.redisService.incr(key);
-
-    if (attempts === 1) {
-      await this.redisService.expire(key, this.LOGIN_ATTEMPT_WINDOW);
-    }
-
-    if (attempts > this.MAX_LOGIN_ATTEMPTS) {
-      throw new HttpException(
-        'Too many login attempts. Please try again later.',
-        HttpStatus.TOO_MANY_REQUESTS,
-      );
-    }
-  }
-
-  private async createUserSession(dto: CreateUserSessionDto): Promise<TokensUserDto> {
-    try {
-      if (!dto.userId) {
-        throw new BadRequestException('User ID is required');
-      }
-
-      const sessionId = this.tokenFactory.generateId();
-
-      const { tokens, refreshTokenHash } = await this.tokenFactory.generateTokens(
-        dto.userId,
-        sessionId,
-      );
-
-      const createSessionDto: CreateUserSessionDto = {
-        userId: dto.userId,
-        refreshToken: refreshTokenHash,
-        sessionId,
-        deviceInfo: dto.deviceInfo,
-        lastUsed: dto.lastUsed || new Date(),
-      };
-
-      await this.sessionService.createSession(createSessionDto);
-
-      await this.sessionService.setSessionInRedisUnified(dto.userId, sessionId, {
-        refreshTokenHash,
-        isValid: true,
-        lastUsed: (dto.lastUsed || new Date()).toISOString(),
-        deviceInfo: dto.deviceInfo,
-      });
-
-      return tokens;
-    } catch (error) {
-      this.logger.error(
-        `Error creating user session for user ${dto?.userId}: ${error.message}`,
-        error.stack,
-      );
-
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-
-      throw new InternalServerErrorException('Failed to create user authentication session');
-    }
+    await this.authSessionCommandService.updateSessionLastUsed(userId, sessionId);
+    await this.userRepository.updateLastActivity(userId);
   }
 }

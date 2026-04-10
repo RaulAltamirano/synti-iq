@@ -1,8 +1,8 @@
-import { CashierProfile } from 'src/cashier_profile/entities/cashier_profile.entity';
+import { BusinessProfile } from 'src/business-profile/entities/business_profile.entity';
+import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.entity';
 import { Inventory } from 'src/inventory/entities/inventory.entity';
 import { Location } from 'src/location/entities/location.entity';
 import { PaymentMethod } from 'src/payment-method/entities/payment-method.entity';
-import { RecurringScheduleTemplate } from 'src/recurring-schedule-template/entities/recurring-schedule-template.entity';
 import { Sale } from 'src/sale/entities/sale.entity';
 import { StoreSchedule } from 'src/store-schedule/entities/store-schedule.entity';
 import {
@@ -15,6 +15,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
+  OneToOne,
   JoinColumn,
 } from 'typeorm';
 
@@ -26,9 +27,16 @@ export class Store {
   @Column({ length: 100, nullable: false })
   name: string;
 
-  @ManyToOne(() => Location, { eager: true })
+  @OneToOne(() => Location, { eager: true, nullable: true })
   @JoinColumn({ name: 'location_id' })
-  location: Location;
+  location: Location | null;
+
+  @Column({ name: 'business_profile_id', type: 'uuid' })
+  businessProfileId: string;
+
+  @ManyToOne(() => BusinessProfile, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'business_profile_id' })
+  businessProfile: BusinessProfile;
 
   @Column({ nullable: true })
   phoneNumber: string;
@@ -45,13 +53,8 @@ export class Store {
   @OneToMany(() => Sale, sale => sale.store)
   sales: Sale[];
 
-  @OneToMany(() => StoreSchedule, schedule => schedule.store)
+  @OneToMany(() => StoreSchedule, schedule => schedule.store, { cascade: ['insert'] })
   schedules: StoreSchedule[];
-
-  @OneToMany(() => RecurringScheduleTemplate, template => template.store, {
-    cascade: true,
-  })
-  recurringTemplates: RecurringScheduleTemplate[];
 
   @OneToMany(() => CashierProfile, cashier => cashier.store)
   cashiers: CashierProfile[];

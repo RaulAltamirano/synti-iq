@@ -1,0 +1,35 @@
+---
+description: Core rules applicable to the entire project - zero assumptions, strict typing
+alwaysApply: true
+---
+
+# Synti-IQ API — Core Rules
+
+## Golden Rule
+
+When in doubt about database relations, table/entity names, key data types, error handling, or third-party libraries: **STOP AND ASK**. Do not assume. Do not infer implementations or variable names.
+
+## TypeScript Strictness
+
+- Avoid `any` in production code. Use concrete types in DTOs and services.
+- In `.spec.ts` files, `any` is acceptable with justification for mocks when necessary; prefer typed mocks when possible.
+- Use `Record<string, unknown>` instead of `any` for dynamic objects when no more specific type exists.
+
+## Imports
+
+- Prefer absolute prefix `src/` for cross-module imports: `import { X } from 'src/module/...'`
+- Use relative imports (`./`, `../`) only within the same module.
+
+## Naming
+
+- Files: kebab-case (e.g. `create-store.dto.ts`)
+- Classes: PascalCase (e.g. `CreateStoreDto`)
+- Modules and folders: kebab-case (e.g. `store-schedule`, `user-session`)
+
+## Logging
+
+- Use NestJS `Logger` (`@nestjs/common`). Never use `console.log`, `console.error`, or `console.warn` in production code.
+
+## Verification
+
+Before considering a task complete, verify: `yarn build`, `yarn lint`, `yarn test`, `yarn format:check`. For data contracts (DTOs, interfaces), consult canonical paths in AGENTS.md.

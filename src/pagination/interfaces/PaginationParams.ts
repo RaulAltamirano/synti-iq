@@ -1,15 +1,4 @@
-import { Type } from 'class-transformer';
-import { IsInt, Max, Min } from 'class-validator';
-
-export class PaginationParams {
-  @IsInt()
-  @Min(1)
-  @Type(() => Number)
-  page: number = 1;
-
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  @Type(() => Number)
-  limit: number = 10;
-}
+/**
+ * @deprecated Use BasePaginationParams from src/pagination/dtos/base-pagination-params.ts instead.
+ */
+export { BasePaginationParams as PaginationParams } from 'src/pagination/dtos/base-pagination-params';
