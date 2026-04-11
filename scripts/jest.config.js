@@ -1,6 +1,8 @@
 /** Jest config for scripts/ tests. Run with: yarn test:scripts or yarn test:cov */
 module.exports = {
   rootDir: '..',
+  modulePathIgnorePatterns: ['<rootDir>/.worktrees/'],
+  watchPathIgnorePatterns: ['<rootDir>/.worktrees/'],
   testMatch: ['<rootDir>/scripts/**/*.spec.js'],
   testEnvironment: 'node',
   coverageProvider: 'v8',

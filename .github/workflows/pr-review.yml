@@ -46,8 +46,8 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile --ignore-scripts
 
-      - name: Audit dependencies
-        run: yarn audit --level high
+      - name: Audit dependencies (high/critical gate)
+        run: yarn audit:high-gate
 
       - name: Lint
         env:
