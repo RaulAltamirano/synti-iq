@@ -65,8 +65,8 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: echo "$PR_TITLE" | npx commitlint
 
-      - name: Audit dependencies
-        run: yarn audit --level high
+      - name: Audit dependencies (high/critical gate)
+        run: yarn audit:high-gate
 
       - name: Lint
         env:
