@@ -116,7 +116,7 @@
   "devDependencies": {
     "@nestjs/cli": "^11.0.16",
     "@nestjs/schematics": "^11.0.9",
-    "@nestjs/testing": "^11.1.18",
+    "@nestjs/testing": "^11.1.19",
     "@octokit/auth-app": "^8.2.0",
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",
