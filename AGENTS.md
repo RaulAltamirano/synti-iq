@@ -256,6 +256,64 @@ Create an ADR when: (a) introducing new technology or dependency, (b) changing a
 
 ---
 
+## Knowledge Graph (graphify)
+
+A pre-built knowledge graph of `src/auth/` and `src/user-profile/` lives in `graphify-out/`.
+
+**Before answering architectural questions or modifying these modules, consult the graph.**
+
+### Key facts (as of last run)
+
+| Node                      | Edges | Role                                                     |
+| ------------------------- | ----- | -------------------------------------------------------- |
+| `TwoFactorService`        | 17    | Bridges cache/validation layer ↔ core 2FA logic          |
+| `AuthService`             | 16    | Bridges auth operations ↔ anomaly detection              |
+| `AuthController`          | 14    | HTTP entry point for all auth flows                      |
+| `UserProfileService`      | 13    | Central hub for profile lifecycle                        |
+| `UserRegistrationService` | 10    | Orchestrates signup + business registration transactions |
+| `AuthSessionManager`      | 10    | Owns session create/invalidate/refresh lifecycle         |
+
+### Known structural issue
+
+`TwoFactorService` is split across two files — migration in progress:
+
+- **Old location**: `src/auth/services/two-factor.service.ts` (`.generateSecret`, `.verify`, `.disable`, etc.)
+- **New location**: `src/auth/two-factor/two-factor.service.ts` (`.generateSecretForUserId`, `.verifyAndActivateForUserId`, etc.)
+
+Do not add new methods to the old location. New 2FA logic goes in `src/auth/two-factor/`.
+
+### Communities (29 detected)
+
+| Community                          | Key files                                                              |
+| ---------------------------------- | ---------------------------------------------------------------------- |
+| User Profile Lifecycle             | `profile-activity`, `profile-approval`, `profile-creation`, strategies |
+| Auth Core & Anomaly Detection      | `AnomalyDetectionService`, `AuthService`, `auth-metadata`              |
+| Two-Factor Auth Cache & Validation | `auth-cache.constants`, TOTP validators, `TwoFactorController`         |
+| Account Invitation Flow            | `AccountInvitation` entity, controller, `accept-invitation` DTO        |
+| Session Management                 | `SessionController`, `SessionModule`, `SessionService`                 |
+| 2FA Service Logic                  | `TwoFactorService`, backup codes, secret generation                    |
+| Auth Service Operations            | `AuthService` login/logout/refresh/disable2fa                          |
+| JWT Guards & Decorators            | `JwtAuthGuard`, `GuardsModule`, `Auth()` decorator                     |
+| User Registration                  | `UserRegistrationService`, business + signup transactions              |
+| Session Manager                    | `AuthSessionManager`, session lifecycle                                |
+
+### Outputs
+
+- `graphify-out/graph.html` — interactive graph (open in browser)
+- `graphify-out/GRAPH_REPORT.md` — full audit report
+- `graphify-out/graph.json` — raw graph data (278 nodes, 365 edges)
+- `graphify-out/obsidian/` — Obsidian vault (open folder as vault)
+
+### Keeping it current
+
+After modifying `src/auth/` or `src/user-profile/`, re-run:
+
+```bash
+/graphify src/auth src/user-profile --update
+```
+
+---
+
 ## References
 
 - **Development workflow**: [docs/DEVELOPMENT_WORKFLOW.md](docs/DEVELOPMENT_WORKFLOW.md) — Full flow from issue creation to merge
