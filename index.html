@@ -2,11 +2,33 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,500&display=swap"
+      rel="stylesheet"
+    />
     <link rel="icon" type="image/svg+xml" href="./src/assets/logo.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>SyntiIQ</title>
   </head>
   <body>
+    <!-- Must mirror readStoredPreference() in src/modules/shared/theme/theme-preference.ts (FOUC prevention). -->
+    <script>
+      (function () {
+        var KEY = 'synti-iq-theme-preference';
+        var saved = localStorage.getItem(KEY);
+        var dark;
+        if (saved === 'system' || saved === null) {
+          dark = globalThis.matchMedia('(prefers-color-scheme: dark)').matches;
+        } else {
+          dark = saved === 'dark';
+        }
+        document.documentElement.classList.toggle('dark', dark);
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+        document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+      })();
+    </script>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

@@ -1,115 +1,168 @@
-import { computed, onMounted, onUnmounted, ref } from 'vue';
-import logo from '../../../../assets/logo.svg'
-
+import { computed, onUnmounted, ref, watch } from 'vue';
+import Logo from '../Logo/Logo.vue';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import { faMoon, faSun } from '@fortawesome/free-solid-svg-icons';
 import { useRouter } from 'vue-router';
-import { useThemeStore } from '../../store/ThemeStore';
-import { storeToRefs } from 'pinia';
+import { useTheme } from '../../composables/useTheme';
+import { useNotificationStore } from '../../store/NotificationStore';
 import { useAuth } from '../../../auth/composables/useAuth';
-
+import { useAuthStore } from '../../../auth/stores/authStore';
+import { Avatar, Badge, RoleIcon } from '../../../ui/components';
 
 export default {
   name: 'Navbar',
   components: {
     FontAwesomeIcon,
+    Avatar,
+    Badge,
+    RoleIcon,
+    Logo,
   },
   setup() {
-    const themeStore = useThemeStore()
-    const { isDark } = storeToRefs(themeStore)
-    const { logout } = useAuth()
-    const router = useRouter()
-    const wishlistCount = ref(1)
-    const cartCount = ref(1)
-    const userName = ref("Juan")
-    const showDropdown = ref(false)
+    const { isDark, themeStore } = useTheme();
+    const authStore = useAuthStore();
+    const { logout } = useAuth();
+    const router = useRouter();
+
+    const wishlistCount = ref(0);
+    const cartCount = ref(0);
+    const showDropdown = ref(false);
+    const dropdownRef = ref<HTMLElement | null>(null);
     const cartAnimation = ref(false);
     const wishlistAnimation = ref(false);
-    const isScrolled = ref()
-    const userAvatar = ref('https://cdn.prod.website-files.com/6365d860c7b7a7191055eb8a/65a752b0fec11d8c4c9beaf7_Olivia%20Rhye-p-500.jpg')
-    const hasNewNotifications = ref(false)
-    const notificationCount = ref(1)
+    const notificationStore = useNotificationStore();
+    const notificationPanelRef = ref<HTMLElement | null>(null);
 
-    // Methods
-    const toggleDropdown = () => {
-      showDropdown.value = !showDropdown.value
-    }
-
-    const closeDropdown = () => {
-      showDropdown.value = false
-    }
-
-    const navigateTo = (route: string) => {
-      router.push({ name: route })
-      closeDropdown()
-    }
-
-    const onLogout = async () => {
-      logout()
-      // router.push({ name: 'Login' })
-      closeDropdown()
-    }
-
-    // Scroll handler
-    const handleScroll = () => {
-      isScrolled.value = window.scrollY > 20
-    }
-
-    // Lifecycle
-    onMounted(() => {
-      window.addEventListener('scroll', handleScroll)
-    })
-
-    onUnmounted(() => {
-      window.removeEventListener('scroll', handleScroll)
-    })
-
-    // Menu items configuration
-    const menuItems = computed(() => [
-      {
-        label: 'Mi Perfil',
-        icon: 'user',
-        action: () => navigateTo('Profile')
-      },
-      {
-        label: 'Cerrar Sesión',
-        icon: 'sign-out-alt',
-        action: onLogout,
-        danger: true
+    const currentUser = computed(() => authStore.currentUser);
+    const userId = computed(() => currentUser.value?.id || '');
+    const userName = computed(
+      () =>
+        [currentUser.value?.firstName, currentUser.value?.lastName].filter(Boolean).join(' ') || ''
+    );
+    const userEmail = computed(() => currentUser.value?.email || '');
+    const userRole = computed(() => currentUser.value?.role || '');
+    const userInitials = computed(() => {
+      const { firstName, lastName } = currentUser.value || {};
+      if (firstName && lastName) {
+        return (firstName[0] + lastName[0]).toUpperCase();
       }
-    ])
-    const navClasses = computed(() => {
-      return {
-        'bg-white/90 shadow-black/5': !isDark.value && isScrolled.value,
-        'bg-white/60': !isDark.value && !isScrolled.value,
-        'bg-gray-900/90 shadow-gray-900/20': isDark.value && isScrolled.value,
-        'bg-gray-900/60': isDark.value && !isScrolled.value,
-      };
+      if (firstName) return firstName[0].toUpperCase();
+      if (lastName) return lastName[0].toUpperCase();
+      return '';
     });
 
+    const toggleDropdown = () => {
+      showDropdown.value = !showDropdown.value;
+    };
+
+    const closeDropdown = () => {
+      showDropdown.value = false;
+    };
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (dropdownRef.value && !dropdownRef.value.contains(target)) {
+        closeDropdown();
+      }
+    };
+
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && showDropdown.value) {
+        closeDropdown();
+      }
+    };
+
+    watch(showDropdown, (isOpen) => {
+      if (isOpen) {
+        document.addEventListener('click', handleClickOutside, true);
+        document.addEventListener('keydown', handleEscapeKey);
+      } else {
+        document.removeEventListener('click', handleClickOutside, true);
+        document.removeEventListener('keydown', handleEscapeKey);
+      }
+    });
+
+    const navigateTo = (route: string) => {
+      router.push({ name: route });
+      closeDropdown();
+    };
+
+    const onLogout = async () => {
+      logout();
+      closeDropdown();
+    };
+
+    onUnmounted(() => {
+      document.removeEventListener('click', handleClickOutside, true);
+      document.removeEventListener('keydown', handleEscapeKey);
+      document.removeEventListener('click', handleNotificationClickOutside, true);
+    });
+
+    const menuItems = computed(() => [
+      {
+        label: 'My Profile',
+        icon: 'user',
+        action: () => navigateTo('Profile'),
+      },
+      {
+        label: 'Log out',
+        icon: 'sign-out-alt',
+        action: onLogout,
+        danger: true,
+      },
+    ]);
     const changeTheme = () => {
-      themeStore.toggleTheme()
-    }
+      themeStore.toggleTheme();
+    };
+
+    const toggleNotifications = () => {
+      notificationStore.toggleNotificationPanel();
+    };
+
+    const handleNotificationClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (notificationPanelRef.value && !notificationPanelRef.value.contains(target)) {
+        notificationStore.closeNotificationPanel();
+      }
+    };
+
+    watch(
+      () => notificationStore.showNotificationPanel,
+      (isOpen) => {
+        if (isOpen) {
+          document.addEventListener('click', handleNotificationClickOutside, true);
+        } else {
+          document.removeEventListener('click', handleNotificationClickOutside, true);
+        }
+      }
+    );
 
     return {
-      logo,
+      /** Pass `IconDefinition` objects — avoids string lookup and survives minification. */
+      faMoon,
+      faSun,
       wishlistCount,
       cartCount,
       changeTheme,
       toggleDropdown,
-      hasNewNotifications,
+      toggleNotifications,
+      notificationStore,
+      notificationPanelRef,
+      userId,
       userName,
+      userEmail,
+      userRole,
+      userInitials,
+      currentUser,
       closeDropdown,
-      notificationCount,
+      dropdownRef,
       onLogout,
       showDropdown,
-      navClasses,
       cartAnimation,
       wishlistAnimation,
       menuItems,
       navigateTo,
-      isScrolled,
-      userAvatar,
       isDark,
-    }
+    };
   },
 };

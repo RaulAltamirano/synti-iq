@@ -1,14 +1,12 @@
-<script lang="ts" src="./App.ts"/>
+<script lang="ts" src="./App.ts" />
 
 <template>
-  <div id="app">
-    <main>
-      <RouterView />
-    </main>
-    <NotificationModal/>
-  </div>
+  <ToastProvider>
+    <div id="app">
+      <main>
+        <RouterView />
+      </main>
+    </div>
+    <ConfirmModalProvider />
+  </ToastProvider>
 </template>
-
-<style>
-
-</style>

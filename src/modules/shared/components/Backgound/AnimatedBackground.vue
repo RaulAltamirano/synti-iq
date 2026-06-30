@@ -1,177 +1,507 @@
-<script lang="ts" src="./AnimatedBackground.ts" />
+<script setup lang="ts">
+import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue';
+import { useMediaQuery, useResizeObserver } from '@vueuse/core';
+import { MEDIA_BELOW_MD } from '@/modules/shared/constants/viewport-media';
 
+export type BeamsIntensity = 'subtle' | 'medium' | 'strong';
+
+const props = withDefaults(
+  defineProps<{
+    intensity?: BeamsIntensity;
+  }>(),
+  {
+    intensity: 'strong',
+  },
+);
+
+interface Beam {
+  x: number;
+  y: number;
+  width: number;
+  length: number;
+  angle: number;
+  speed: number;
+  opacity: number;
+  hue: number;
+  pulse: number;
+  pulseSpeed: number;
+}
+
+const MINIMUM_BEAMS = 20;
+const BEAM_COUNT = Math.floor(MINIMUM_BEAMS * 1.5);
+
+const opacityMap: Record<BeamsIntensity, number> = {
+  subtle: 0.7,
+  medium: 0.85,
+  strong: 1,
+};
+
+const RENDER_SCALE = 0.5;
+
+const canvasRef = ref<HTMLCanvasElement | null>(null);
+const beamsRootRef = ref<HTMLElement | null>(null);
+const beams = shallowRef<Beam[]>([]);
+let ctx: CanvasRenderingContext2D | null = null;
+let rafId = 0;
+let isUnmounted = false;
+let canvasWidth = 0;
+let canvasHeight = 0;
+
+const motionPreferenceQuery =
+  typeof globalThis.matchMedia === 'function'
+    ? globalThis.matchMedia('(prefers-reduced-motion: reduce)')
+    : null;
+
+const prefersReducedMotion = ref(motionPreferenceQuery?.matches ?? false);
+
+const isMobileViewport = useMediaQuery(MEDIA_BELOW_MD);
+
+const runCanvasBeams = computed(
+  () => !prefersReducedMotion.value && !isMobileViewport.value,
+);
+
+function readMotionPreference(): void {
+  prefersReducedMotion.value = motionPreferenceQuery?.matches ?? false;
+}
+
+function stopCanvasLoop(): void {
+  globalThis.cancelAnimationFrame(rafId);
+  rafId = 0;
+}
+
+const intensityFactor = computed(() => opacityMap[props.intensity]);
+
+function createBeam(width: number, height: number): Beam {
+  const angle = -35 + Math.random() * 10;
+  return {
+    x: Math.random() * width * 1.5 - width * 0.25,
+    y: Math.random() * height * 1.5 - height * 0.25,
+    width: 30 + Math.random() * 60,
+    length: height * 2.5,
+    angle,
+    speed: 0.6 + Math.random() * 1.2,
+    opacity: 0.12 + Math.random() * 0.16,
+    hue: 190 + Math.random() * 70,
+    pulse: Math.random() * Math.PI * 2,
+    pulseSpeed: 0.02 + Math.random() * 0.03,
+  };
+}
+
+function resetBeam(beam: Beam, index: number, totalBeams: number, cw: number, ch: number): void {
+  const column = index % 3;
+  const spacing = cw / 3;
+  beam.y = ch + 100;
+  beam.x = column * spacing + spacing / 2 + (Math.random() - 0.5) * spacing * 0.5;
+  beam.width = 100 + Math.random() * 100;
+  beam.speed = 0.5 + Math.random() * 0.4;
+  beam.hue = 190 + (index * 70) / totalBeams;
+  beam.opacity = 0.2 + Math.random() * 0.1;
+}
+
+function drawBeam(context: CanvasRenderingContext2D, beam: Beam, factor: number): void {
+  context.save();
+  context.translate(beam.x, beam.y);
+  context.rotate((beam.angle * Math.PI) / 180);
+
+  const pulsingOpacity =
+    beam.opacity * (0.8 + Math.sin(beam.pulse) * 0.2) * factor;
+
+  const gradient = context.createLinearGradient(0, 0, 0, beam.length);
+  gradient.addColorStop(0, `hsla(${beam.hue}, 85%, 65%, 0)`);
+  gradient.addColorStop(0.1, `hsla(${beam.hue}, 85%, 65%, ${pulsingOpacity * 0.5})`);
+  gradient.addColorStop(0.4, `hsla(${beam.hue}, 85%, 65%, ${pulsingOpacity})`);
+  gradient.addColorStop(0.6, `hsla(${beam.hue}, 85%, 65%, ${pulsingOpacity})`);
+  gradient.addColorStop(0.9, `hsla(${beam.hue}, 85%, 65%, ${pulsingOpacity * 0.5})`);
+  gradient.addColorStop(1, `hsla(${beam.hue}, 85%, 65%, 0)`);
+
+  context.fillStyle = gradient;
+  context.fillRect(-beam.width / 2, 0, beam.width, beam.length);
+  context.restore();
+}
+
+function syncCanvasSize(): void {
+  const canvas = canvasRef.value;
+  if (!canvas) return;
+
+  const cw = canvas.clientWidth;
+  const ch = canvas.clientHeight;
+  if (cw === 0 || ch === 0) return;
+
+  canvasWidth = cw;
+  canvasHeight = ch;
+
+  canvas.width = Math.round(cw * RENDER_SCALE);
+  canvas.height = Math.round(ch * RENDER_SCALE);
+
+  ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  ctx.setTransform(RENDER_SCALE, 0, 0, RENDER_SCALE, 0, 0);
+
+  beams.value = Array.from({ length: BEAM_COUNT }, () => createBeam(cw, ch));
+}
+
+function animate(): void {
+  if (!ctx || !runCanvasBeams.value) return;
+
+  const cw = canvasWidth;
+  const ch = canvasHeight;
+  const factor = intensityFactor.value;
+
+  ctx.clearRect(0, 0, cw, ch);
+
+  const list = beams.value;
+  const n = list.length;
+  for (let i = 0; i < n; i++) {
+    const beam = list[i];
+    if (!beam) continue;
+    beam.y -= beam.speed;
+    beam.pulse += beam.pulseSpeed;
+    if (beam.y + beam.length < -100) {
+      resetBeam(beam, i, n, cw, ch);
+    }
+    drawBeam(ctx, beam, factor);
+  }
+
+  rafId = globalThis.requestAnimationFrame(animate);
+}
+
+function startLoop(): void {
+  stopCanvasLoop();
+  if (!runCanvasBeams.value) return;
+  rafId = globalThis.requestAnimationFrame(animate);
+}
+
+watch(
+  runCanvasBeams,
+  (enabled) => {
+    if (enabled) {
+      void nextTick(() => {
+        if (isUnmounted) return;
+        syncCanvasSize();
+        startLoop();
+      });
+    } else {
+      stopCanvasLoop();
+    }
+  },
+  { flush: 'post', immediate: true },
+);
+
+onMounted(() => {
+  motionPreferenceQuery?.addEventListener('change', readMotionPreference);
+  readMotionPreference();
+});
+
+onUnmounted(() => {
+  isUnmounted = true;
+  motionPreferenceQuery?.removeEventListener('change', readMotionPreference);
+  stopCanvasLoop();
+  ctx = null;
+  beams.value = [];
+});
+
+useResizeObserver(beamsRootRef, () => {
+  if (!runCanvasBeams.value) return;
+  syncCanvasSize();
+  startLoop();
+});
+
+</script>
 
 <template>
-  <div @mousemove="handleMouseMove">
-    <!-- Light Theme -->
-    <Transition name="theme">
-      <div v-show="!isDark" class="absolute inset-0">
-        <div class="relative w-full h-screen overflow-hidden">
-          <div class="absolute inset-0 bg-gradient-to-br from-teal-50 via-zinc-50 to-indigo-50">
-            <div class="absolute inset-0">
-              <div
-                class="absolute inset-0 bg-[linear-gradient(to_right,#6366F110_1px,transparent_1px),linear-gradient(to_bottom,#6366F110_1px,transparent_1px)] bg-[size:2rem_2rem]" />
-              <div
-                class="absolute inset-0 bg-[radial-gradient(circle_800px_at_var(--mouse-x)_var(--mouse-y),rgba(99,102,241,0.06),transparent_100%)]"
-                :style="`--mouse-x: ${mousePosition.x}px; --mouse-y: ${mousePosition.y}px`" />
-            </div>
+  <div
+    class="fixed inset-0 -z-10 overflow-hidden"
+    :class="{ 'animated-bg--lite': isMobileViewport }"
+    aria-hidden="true"
+  >
+    <div
+      class="abs-fill layer-fade transition-opacity duration-500 ease-in-out opacity-100 dark:opacity-0 dark:pointer-events-none"
+    >
+      <div
+        class="abs-fill"
+        style="
+        background: linear-gradient(150deg,
+          #ffffff       0%,
+          #f5f8ff      30%,
+          #eef4ff      60%,
+          #f9fbff     100%
+        );
+      "
+      />
 
-            <div class="fixed top-0 -left-48 w-80 h-80">
-              <div
-                class="absolute top-1/2 left-1/2 w-32 h-32 bg-gradient-to-br from-emerald-400/20 to-sky-400/20 rounded-full blur-3xl transform -translate-x-1/2 -translate-y-1/2 animate-[spin_100s_linear_infinite] will-change-transform" />
-            </div>
+      <div class="orb orb-light-1 animate-drift-a" />
+      <div class="orb orb-light-2 animate-drift-b" />
+      <div class="orb orb-light-3 animate-drift-c" />
 
-            <div class="fixed -left-32 top-0 w-40 h-40">
-              <div class="w-full h-full">
-                <div
-                  class="absolute bg-gradient-to-br from-violet-400/20 via-indigo-400/20 to-teal-400/20 rounded-[60%_40%_30%_70%/60%_30%_70%_40%] blur-3xl animate-morph will-change-transform" />
-              </div>
-            </div>
+      <div class="abs-fill noise-overlay" style="opacity: 0.028" />
+    </div>
 
-            <div class="fixed right-0 top-1/3 w-35 h-35">
-              <div class="w-full h-full">
-                <div
-                  class="absolute bg-gradient-to-bl from-sky-400/20 via-emerald-400/20 to-indigo-400/20 rounded-[40%_60%_70%_30%/40%_70%_30%_60%] blur-3xl animate-morph-delayed will-change-transform" />
-              </div>
-            </div>
-          </div>
-        </div>
+    <div
+      class="abs-fill layer-fade transition-opacity duration-500 ease-in-out opacity-0 dark:opacity-100 pointer-events-none dark:pointer-events-auto"
+    >
+      <div
+        class="abs-fill"
+        style="
+        background: linear-gradient(160deg,
+          #08101f       0%,
+          #030712      40%,
+          #060e1c      75%,
+          #030712     100%
+        );
+      "
+      />
+
+      <div v-if="runCanvasBeams" ref="beamsRootRef" class="abs-fill beams-stack">
+        <canvas ref="canvasRef" class="abs-fill beams-canvas pointer-events-none" />
+        <div class="abs-fill beams-veil pointer-events-none" />
       </div>
-    </Transition>
 
-    <!-- Dark Theme -->
-    <Transition name="theme">
-      <div v-show="isDark" class="absolute inset-0">
-        <div class="absolute inset-0 transition-all duration-500"
-          :class="{ 'opacity-100': isDark, 'opacity-0': !isDark }">
-          <div class="absolute inset-0 bg-gradient-to-br from-black via-gray-900 to-black">
-            <div class="absolute inset-0">
-              <svg class="absolute inset-0 w-full h-full opacity-[0.09]" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                  <pattern id="dark-grid" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
-                    <path d="M0 0h40v40H0V0z" fill="none" />
-                    <circle cx="20" cy="20" r="1" fill="#60A5FA" />
-                  </pattern>
-                </defs>
-                <rect width="100%" height="100%" fill="url(#dark-grid)" />
-              </svg>
+      <div
+        class="abs-fill"
+        style="
+        background: radial-gradient(ellipse 70% 45% at 50% -5%,
+          rgba(29, 78, 216, 0.13)  0%,
+          rgba(30, 58, 138, 0.05) 55%,
+          transparent             100%
+        );
+      "
+      />
 
-              <!-- Dark Mode Ambient Effects -->
-              <div
-                class="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full filter blur-4xl animate-float">
-              </div>
-              <div
-                class="absolute bottom-1/4 right-1/4 w-64 h-64 bg-indigo-500/10 rounded-full filter blur-4xl animate-float-delayed">
-              </div>
-              <div
-                class="absolute top-1/3 right-1/3 w-80 h-80 bg-pink-500/10 rounded-full filter blur-4xl animate-float-slow">
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Transition>
+      <div class="orb orb-dark-1 animate-drift-a" />
+      <div class="orb orb-dark-2 animate-drift-b" />
+
+      <div class="abs-fill noise-overlay" style="opacity: 0.045" />
+    </div>
   </div>
 </template>
 
-<style>
-.theme-enter-active,
-.theme-leave-active {
-  transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+<style scoped>
+.abs-fill {
+  position: absolute;
+  inset: 0;
 }
 
-.theme-enter-from,
-.theme-leave-to {
-  opacity: 0;
+.layer-fade {
+  position: absolute;
+  inset: 0;
 }
 
-@keyframes morph {
+.beams-stack {
+  overflow: hidden;
+}
+
+.beams-canvas {
+  filter: blur(38px);
+}
+
+.animated-bg--lite .noise-overlay {
+  display: none;
+}
+
+.animated-bg--lite .animate-drift-a,
+.animated-bg--lite .animate-drift-b,
+.animated-bg--lite .animate-drift-c {
+  animation: none;
+}
+
+.animated-bg--lite .orb-light-1 {
+  filter: blur(40px);
+  opacity: 0.55;
+}
+
+.animated-bg--lite .orb-light-2 {
+  filter: blur(36px);
+  opacity: 0.65;
+}
+
+.animated-bg--lite .orb-light-3 {
+  filter: blur(32px);
+  opacity: 0.28;
+}
+
+.animated-bg--lite .orb-dark-1 {
+  filter: blur(48px);
+  opacity: 0.12;
+}
+
+.animated-bg--lite .orb-dark-2 {
+  filter: blur(40px);
+  opacity: 0.08;
+}
+
+.beams-veil {
+  background: rgba(10, 10, 10, 0.05);
+  -webkit-backdrop-filter: blur(50px);
+  backdrop-filter: blur(50px);
+  animation: beams-veil-pulse 10s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .beams-veil {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+@keyframes beams-veil-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  will-change: transform;
+}
+
+.orb-light-1 {
+  width: 680px;
+  height: 680px;
+  top: -140px;
+  right: -80px;
+  background: radial-gradient(
+    circle,
+    var(--color-primary-100) 0%,
+    transparent 70%
+  );
+  filter: blur(72px);
+  opacity: 0.75;
+}
+
+.orb-light-2 {
+  width: 500px;
+  height: 500px;
+  bottom: -120px;
+  left: -60px;
+  background: radial-gradient(
+    circle,
+    var(--color-primary-50) 0%,
+    transparent 70%
+  );
+  filter: blur(64px);
+  opacity: 0.9;
+}
+
+.orb-light-3 {
+  width: 300px;
+  height: 300px;
+  top: 42%;
+  left: 58%;
+  background: radial-gradient(
+    circle,
+    var(--color-info-100) 0%,
+    transparent 70%
+  );
+  filter: blur(56px);
+  opacity: 0.35;
+}
+
+.orb-dark-1 {
+  width: 750px;
+  height: 750px;
+  top: -220px;
+  left: calc(25% - 120px);
+  background: radial-gradient(
+    circle,
+    var(--color-primary-800) 0%,
+    transparent 65%
+  );
+  filter: blur(110px);
+  opacity: 0.16;
+}
+
+.orb-dark-2 {
+  width: 540px;
+  height: 540px;
+  bottom: -160px;
+  right: calc(15% - 80px);
+  background: radial-gradient(
+    circle,
+    var(--color-primary-700) 0%,
+    transparent 65%
+  );
+  filter: blur(90px);
+  opacity: 0.1;
+}
+
+.noise-overlay {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+  pointer-events: none;
+}
+
+.animate-drift-a {
+  animation: drift-a 30s ease-in-out infinite;
+}
+.animate-drift-b {
+  animation: drift-b 38s ease-in-out infinite;
+}
+.animate-drift-c {
+  animation: drift-c 46s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-drift-a,
+  .animate-drift-b,
+  .animate-drift-c {
+    animation: none;
+  }
+}
+
+@keyframes drift-a {
   0% {
-    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
-    transform: translate(0) rotate(0deg);
+    transform: translate(0px, 0px) scale(1);
   }
-
-  50% {
-    border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%;
-    transform: translate(-20px, 20px) rotate(3deg);
+  20% {
+    transform: translate(24px, -18px) scale(1.03);
   }
-
+  45% {
+    transform: translate(-14px, 28px) scale(0.97);
+  }
+  70% {
+    transform: translate(18px, 10px) scale(1.02);
+  }
   100% {
-    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
-    transform: translate(0) rotate(0deg);
+    transform: translate(0px, 0px) scale(1);
   }
 }
 
-@keyframes morph-delayed {
+@keyframes drift-b {
   0% {
-    border-radius: 40% 60% 70% 30% / 40% 70% 30% 60%;
-    transform: translate(0) rotate(0deg);
+    transform: translate(0px, 0px) scale(1);
   }
-
-  50% {
-    border-radius: 70% 30% 40% 60% / 30% 40% 60% 70%;
-    transform: translate(20px, -20px) rotate(-3deg);
+  25% {
+    transform: translate(-22px, 16px) scale(1.04);
   }
-
+  55% {
+    transform: translate(18px, -26px) scale(0.96);
+  }
+  80% {
+    transform: translate(-8px, 18px) scale(1.01);
+  }
   100% {
-    border-radius: 40% 60% 70% 30% / 40% 70% 30% 60%;
-    transform: translate(0) rotate(0deg);
+    transform: translate(0px, 0px) scale(1);
   }
 }
 
-.animate-morph {
-  animation: morph 25s infinite ease-in-out;
-}
-
-.animate-morph-delayed {
-  animation: morph-delayed 30s infinite ease-in-out;
-}
-
-@keyframes float {
-
-  0%,
+@keyframes drift-c {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  35% {
+    transform: translate(36px, 20px) scale(1.05);
+  }
+  65% {
+    transform: translate(-18px, 32px) scale(0.94);
+  }
   100% {
-    transform: translate(0, 0);
+    transform: translate(0px, 0px) scale(1);
   }
-
-  50% {
-    transform: translate(10px, -10px);
-  }
-}
-
-@keyframes float-delayed {
-
-  0%,
-  100% {
-    transform: translate(0, 0);
-  }
-
-  50% {
-    transform: translate(-15px, 15px);
-  }
-}
-
-@keyframes float-slow {
-
-  0%,
-  100% {
-    transform: translate(0, 0);
-  }
-
-  50% {
-    transform: translate(15px, 15px);
-  }
-}
-
-.animate-float {
-  animation: float 6s ease-in-out infinite;
-}
-
-.animate-float-delayed {
-  animation: float-delayed 7s ease-in-out infinite;
-}
-
-.animate-float-slow {
-  animation: float-slow 8s ease-in-out infinite;
 }
 </style>

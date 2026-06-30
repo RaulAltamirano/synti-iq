@@ -5,11 +5,9 @@
     <!-- Botón con animaciones -->
     <button
       ref="buttonRef"
-      @click="toggleTheme"
       aria-label="Change theme"
-      class="fixed z-50 p-3 rounded-full shadow-lg bg-white/80 dark:bg-gray-800/80 backdrop-blur-md
-             transition-all bottom-4 right-4 md:top-4 md:bottom-auto md:right-4
-             hover:shadow-2xl"
+      class="fixed z-50 p-3 rounded-full shadow-lg bg-white/80 dark:bg-gray-800/80 backdrop-blur-md transition-all bottom-4 right-4 md:top-4 md:bottom-auto md:right-4 hover:shadow-2xl"
+      @click="toggleTheme"
     >
       <div class="relative w-6 h-6">
         <Transition name="icon" mode="out-in">
@@ -56,7 +54,9 @@
 /* Transiciones del icono */
 .icon-enter-active,
 .icon-leave-active {
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
 }
 .icon-enter-from,
 .icon-leave-to {
@@ -64,6 +64,3 @@
   transform: scale(0.8);
 }
 </style>
-
-
-

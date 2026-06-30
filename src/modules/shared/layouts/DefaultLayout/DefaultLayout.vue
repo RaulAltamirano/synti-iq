@@ -1,39 +1,26 @@
 <script lang="ts" src="./DefaultLayout.ts" />
 
 <template>
-  <div class="min-h-screen w-full transition-colors duration-300 overflow-x-hidden"
-    :class="[isDark ? 'bg-gray-900 text-white' : 'bg-white text-gray-800']">
-    <!-- Scroll Progress Indicator -->
-    <div class="fixed top-0 left-0 w-full h-1 z-[60]">
-      <div
-        class="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-r-full transition-all duration-150 ease-out"
-        :style="{ width: `${scrollProgress}%` }" />
-    </div>
-
+  <div
+    class="min-h-screen w-full overflow-x-hidden text-gray-800 dark:text-white"
+  >
     <!-- Navbar con useMotion -->
-    <div
-      ref="navbar"
-      class="fixed top-0 w-full z-50"
-    >
+    <div ref="navbar" class="fixed top-0 w-full z-50">
       <Navbar />
     </div>
 
     <main class="pt-16">
       <!-- AnimatedBackground con useMotion -->
-      <div
-        ref="animatedBackground"
-        class="fixed inset-0 z-0"
-      >
+      <div ref="animatedBackground" class="fixed inset-0 z-0">
         <AnimatedBackground />
       </div>
 
-      <!-- Contenido principal con useMotion -->
-      <div ref="scrollContainer" class="relative z-10 custom-scrollbar">
+      <div
+        ref="scrollContainer"
+        class="relative z-10 custom-scrollbar min-h-screen"
+      >
         <RouterView v-slot="{ Component }">
-          <div
-            ref="routerView"
-            class="relative z-10"
-          >
+          <div ref="routerView" class="relative z-10">
             <component :is="Component" />
           </div>
         </RouterView>
@@ -43,12 +30,12 @@
       <Transition name="fade">
         <button
           v-show="showScrollTop"
+          type="button"
+          class="fixed bottom-8 right-8 p-3 rounded-full bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-md border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900 z-50 max-md:hidden"
+          aria-label="Volver arriba"
           @click="scrollToTop"
-          class="fixed bottom-8 right-8 p-3 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 
-                 text-white shadow-lg hover:shadow-xl transition-all duration-300 
-                 hover:scale-110 z-50 group"
         >
-          <!-- <ChevronUp class="w-6 h-6 transition-transform duration-300 group-hover:-translate-y-1" /> -->
+          <FontAwesomeIcon icon="chevron-up" class="w-5 h-5" />
         </button>
       </Transition>
     </main>
@@ -59,7 +46,7 @@
 /* Estilos personalizados para el scrollbar */
 .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: theme('colors.blue.500') theme('colors.gray.200');
+  scrollbar-color: var(--color-primary) var(--color-gray-200);
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -67,33 +54,35 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: theme('colors.gray.200');
+  background: var(--color-gray-200);
   border-radius: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, theme('colors.blue.500'), theme('colors.purple.500'));
+  background: linear-gradient(to bottom, var(--color-primary), #8b5cf6);
   border-radius: 4px;
   transition: all 0.3s ease;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(to bottom, theme('colors.blue.600'), theme('colors.purple.600'));
+  background: linear-gradient(to bottom, var(--color-primary-600), #7c3aed);
 }
 
 /* Dark mode scrollbar */
 .dark .custom-scrollbar {
-  scrollbar-color: theme('colors.blue.400') theme('colors.gray.700');
+  scrollbar-color: var(--color-primary-400) var(--color-gray-700);
 }
 
 .dark .custom-scrollbar::-webkit-scrollbar-track {
-  background: theme('colors.gray.700');
+  background: var(--color-gray-700);
 }
 
 /* Animaciones */
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
 }
 
 .fade-enter-from,
@@ -107,7 +96,6 @@
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
-
 
 /* Optimizaciones para dispositivos táctiles */
 @media (hover: none) {

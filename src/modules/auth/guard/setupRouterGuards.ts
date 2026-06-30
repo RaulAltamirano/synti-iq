@@ -1,100 +1,88 @@
 import { NavigationGuardNext, RouteLocationNormalized, Router } from 'vue-router';
+import type { User } from '../interfaces/auth.types';
 import { useAuthStore } from '../stores/authStore';
-import { useTokenService } from '../composables/tokenService';
+import { getPostAuthRedirect } from '../utils/post-auth-redirect.util';
+import '../interfaces/auth.types';
+
+function collectRouteMeta(to: RouteLocationNormalized): {
+  requiresAuth: boolean;
+  roles: string[];
+  permissions: string[];
+} {
+  const result = {
+    requiresAuth: false,
+    roles: [] as string[],
+    permissions: [] as string[],
+  };
+
+  for (const record of to.matched) {
+    if (record.meta.requiresAuth) {
+      result.requiresAuth = true;
+    }
+    if (record.meta.roles && Array.isArray(record.meta.roles)) {
+      result.roles.push(...record.meta.roles);
+    }
+    if (record.meta.permissions && Array.isArray(record.meta.permissions)) {
+      result.permissions.push(...record.meta.permissions);
+    }
+  }
+
+  result.roles = [...new Set(result.roles)];
+  result.permissions = [...new Set(result.permissions)];
+
+  return result;
+}
 
 export const setupRouterGuards = (router: Router) => {
-  let isVerifyingSession = false;
+  router.beforeEach(
+    async (
+      to: RouteLocationNormalized,
+      _from: RouteLocationNormalized,
+      next: NavigationGuardNext
+    ) => {
+      const authStore = useAuthStore();
 
-  router.beforeEach(async (
-    to: RouteLocationNormalized,
-    from: RouteLocationNormalized,
-    next: NavigationGuardNext
-  ) => {
-    const authStore = useAuthStore();
-    const tokenService = useTokenService();
+      if (!authStore.isInitialized) {
+        await authStore.initializeAuth();
+      }
 
-    // Verificar si la ruta requiere autenticación
-    const requiresAuth = to.matched.some((record) => record.meta.requiresAuth);
-    const requiredRoles = to.meta.roles as string[] | undefined;
+      const { requiresAuth, roles, permissions } = collectRouteMeta(to);
 
-    try {
       if (!requiresAuth) {
-        if (authStore.isAuthenticated && to.path.startsWith('/auth')) {
-          return next({ name: 'Home' });
+        const isSetPassword = to.path === '/auth/set-password' || to.name === 'SetPassword';
+        if (authStore.isAuthenticated && to.path.startsWith('/auth') && !isSetPassword) {
+          const user = authStore.currentUser;
+          return next(user ? getPostAuthRedirect(user as User) : { name: 'Home' });
         }
         return next();
       }
 
       if (!authStore.isAuthenticated) {
-        if (!isVerifyingSession) {
-          isVerifyingSession = true;
-          try {
-            const userData = await tokenService.verifySession();
-            console.log({userData});
-          } catch (error) {
-            console.error('Error al verificar sesión:', error);
-            isVerifyingSession = false;
-            return next({ 
-              name: 'Login',
-              query: { redirect: to.fullPath }
-            });
-          }
-          isVerifyingSession = false;
-        } else {
-          return next({ name: 'Loading' });
-        }
-      }
-
-      if (!authStore.isAuthenticated) {
-        console.warn('Usuario no autenticado, redirigiendo a login.');
         return next({
           name: 'Login',
-          query: { redirect: to.fullPath }
+          query: { redirect: to.fullPath },
         });
       }
 
-      // if (requiredRoles?.length) {
-      //   const hasRequiredRole = requiredRoles.some((role) => authStore.hasRole(role));
-      //   if (!hasRequiredRole) {
-      //     return next({ name: 'Forbidden' });
-      //   }
-      // }
+      if (to.name === 'Home' && authStore.currentUser?.role?.toLowerCase() === 'cashier') {
+        return next(getPostAuthRedirect(authStore.currentUser as User));
+      }
 
-      // // 5. Validar estado del token
-      // try {
-      //   await tokenService.validateAccessToken();
-      // } catch (error) {
-      //   console.warn('Token inválido o expirado, intentando refresh...');
-      //   try {
-      //     await tokenService.refreshAccessToken();
-      //   } catch (refreshError) {
-      //     console.error('Error al refrescar el token:', refreshError);
-      //     authStore.clearSession();
-      //     return next({ 
-      //       name: 'Login',
-      //       query: { redirect: to.fullPath }
-      //     });
-      //   }
-      // }
+      if (roles.length > 0) {
+        const hasRequiredRole = roles.some((role) => authStore.hasRole(role));
+        if (!hasRequiredRole) {
+          return next({ name: 'Forbidden' });
+        }
+      }
 
-      // 6. Permitir la navegación
+      if (permissions.length > 0) {
+        const hasRequiredPermission = authStore.hasAnyPermission(permissions);
+        if (!hasRequiredPermission) {
+          return next({ name: 'Forbidden' });
+        }
+      }
+
       return next();
-
-    } catch (error) {
-      console.error('Error en la protección de rutas:', error);
-      // authStore.clearSession();
-      return next({ 
-        name: 'Login',
-        query: { redirect: to.fullPath }
-      });
     }
-  });
-
-  // Guardia después de cada navegación
-  router.afterEach((to) => {
-    // Resetear el flag de verificación si estábamos en la página de loading
-    if (to.name !== 'Loading') {
-      isVerifyingSession = false;
-    }
-  });
+  );
 };

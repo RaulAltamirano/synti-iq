@@ -1,13 +1,13 @@
-import Navbar from '../../shared/components/Navbar/Navbar.vue';
-import NotificationModal from '../../shared/components/NotificationModal/NotificationModal.vue';
+import { ToastProvider } from '../../ui/components';
+import { ConfirmModalProvider } from '../../shared/components/ConfirmModal';
 
 export default {
   name: 'App',
   components: {
-    Navbar,
-    NotificationModal
+    ToastProvider,
+    ConfirmModalProvider,
   },
   setup() {
     return {};
-  }
-}
+  },
+};

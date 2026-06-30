@@ -1,4 +1,5 @@
 import { ref, computed, watch, readonly } from 'vue';
+import { useToast } from '@/modules/ui/components';
 
 interface PaymentMethod {
   id: string;
@@ -16,8 +17,7 @@ export default {
     // --- State ---
     const modalOpen = ref(true);
     const currentStep = ref(1);
-    const showToast = ref(false);
-    const toastMessage = ref('');
+    const toast = useToast();
 
     const selectedCarrier = ref<string | null>(null);
     const phoneNumber = ref('');
@@ -35,7 +35,7 @@ export default {
       { id: 'att', name: 'AT&T' },
       { id: 'unefon', name: 'Unefon' },
       { id: 'bait', name: 'BAI' },
-      { id: 'virgin', name: 'Virgin Mobile' }
+      { id: 'virgin', name: 'Virgin Mobile' },
     ]);
 
     const paymentMethods = readonly<PaymentMethod[]>([
@@ -43,31 +43,31 @@ export default {
         id: 'credit_card',
         name: 'Tarjeta de crédito/débito',
         description: 'Pago con tarjeta Visa, Mastercard o Amex',
-        icon: ['fas', 'credit-card']
+        icon: ['fas', 'credit-card'],
       },
       {
         id: 'paypal',
         name: 'PayPal',
         description: 'Paga con tu cuenta PayPal',
-        icon: ['fab', 'paypal']
+        icon: ['fab', 'paypal'],
       },
       {
         id: 'spei',
         name: 'Transferencia SPEI',
         description: 'Pago por transferencia bancaria',
-        icon: ['fas', 'building-columns']
+        icon: ['fas', 'building-columns'],
       },
       {
         id: 'oxxo',
         name: 'Pago en OXXO',
         description: 'Paga en efectivo en cualquier OXXO',
-        icon: ['fas', 'store']
-      }
+        icon: ['fas', 'store'],
+      },
     ]);
 
     // --- Computed ---
-    const selectedCarrierName = computed(() =>
-      carriers.find(c => c.id === selectedCarrier.value)?.name ?? ''
+    const selectedCarrierName = computed(
+      () => carriers.find((c) => c.id === selectedCarrier.value)?.name ?? ''
     );
 
     const formattedPhoneNumber = computed(() => {
@@ -141,24 +141,17 @@ export default {
 
     const confirmRecharge = async () => {
       try {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
         transactionId.value = `TXN-${Math.floor(Math.random() * 1_000_000)
           .toString()
           .padStart(6, '0')}`;
         currentStep.value = 5;
-        showToastMessage(`Recarga de $${selectedAmount.value} aplicada correctamente`);
+        toast.success(`Recarga de $${selectedAmount.value} aplicada correctamente`);
 
         if (saveContact.value) saveToHistory();
-      } catch (error) {
-        showToastMessage('Error al procesar la recarga');
-        console.error('Error processing recharge:', error);
+      } catch {
+        toast.error('Error al procesar la recarga');
       }
-    };
-
-    const showToastMessage = (message: string) => {
-      toastMessage.value = message;
-      showToast.value = true;
-      setTimeout(() => (showToast.value = false), 3000);
     };
 
     const saveToHistory = () => {
@@ -168,7 +161,7 @@ export default {
         phoneNumber: phoneNumber.value,
         amount: selectedAmount.value,
         date: new Date().toISOString(),
-        transactionId: transactionId.value
+        transactionId: transactionId.value,
       });
       localStorage.setItem('rechargeHistory', JSON.stringify(history));
     };
@@ -177,8 +170,6 @@ export default {
       // State
       modalOpen,
       currentStep,
-      showToast,
-      toastMessage,
       selectedCarrier,
       phoneNumber,
       saveContact,
@@ -204,7 +195,7 @@ export default {
       selectPaymentMethod,
       nextStep,
       prevStep,
-      confirmRecharge
+      confirmRecharge,
     };
-  }
+  },
 };

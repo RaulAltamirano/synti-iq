@@ -1,11 +1,11 @@
 <script lang="ts" src="./Products.ts" />
 
 <template>
-    <div class="p-16">
-      
-     <!-- Barra de Filtros, Búsqueda y Ordenamiento -->
-     <div
-      class="sticky top-0 z-20 bg-white shadow-lg py-4 px-4 flex flex-col md:flex-row justify-between items-center">
+  <div class="p-16">
+    <!-- Barra de Filtros, Búsqueda y Ordenamiento -->
+    <div
+      class="sticky top-0 z-20 bg-white shadow-lg py-4 px-4 flex flex-col md:flex-row justify-between items-center"
+    >
       <h2 class="text-lg md:text-3xl font-bold text-gray-800">Productos</h2>
       <div class="flex flex-wrap space-x-4 items-center mt-4 md:mt-0">
         <!-- Campo de Búsqueda -->
@@ -24,7 +24,8 @@
         <!-- Selector de Ordenamiento -->
         <select
           v-model="sortOrder"
-          class="p-2 border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+          class="p-2 border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
           <option value="default">Ordenar por</option>
           <option value="price-asc">Precio: menor a mayor</option>
           <option value="price-desc">Precio: mayor a menor</option>
@@ -33,22 +34,33 @@
       </div>
     </div>
 
-      <!-- Contenedor de Tarjetas de Productos -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-4">
-        <ProductCard v-for="product in paginatedProducts" :key="product.id" :product="product"
-          @quick-view="openQuickView" />
-      </div>
-
-      <!-- Componente de Paginación -->
-      <Pagination :current-page="currentPage" :total-pages="totalPages" :max-pages-to-show="5"
-        :on-page-change="goToPage" />
-
-      <!-- Modal de Vista Rápida -->
-      <QuickView :isOpen="isQuickViewOpen" :product="selectedProduct" @close="closeQuickView"
-        @add-to-cart="handleAddToCart" />
+    <!-- Contenedor de Tarjetas de Productos -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mt-4">
+      <ProductCard
+        v-for="product in paginatedProducts"
+        :key="product.id"
+        :product="product"
+        @quick-view="openQuickView"
+      />
     </div>
-</template>
 
+    <!-- Componente de Paginación -->
+    <Pagination
+      :current-page="currentPage"
+      :total-pages="totalPages"
+      :max-pages-to-show="5"
+      :on-page-change="goToPage"
+    />
+
+    <!-- Modal de Vista Rápida -->
+    <QuickView
+      :is-open="isQuickViewOpen"
+      :product="selectedProduct"
+      @close="closeQuickView"
+      @add-to-cart="handleAddToCart"
+    />
+  </div>
+</template>
 
 <style scoped>
 /* Contenedor mínimo para productos */

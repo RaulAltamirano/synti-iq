@@ -1,184 +1,185 @@
-import { ApiService } from "@/modules/services/api-service";
-import { AUTH_CONSTANTS } from "@/modules/services/constants/constants-api";
-import { SecureStorage } from "@/modules/services/secure-storage";
-import { defineStore } from "pinia";
-import { reactive, computed, readonly } from "vue";
-import { Tokens, UserSession } from "../interfaces/auth.types";
+import { ApiService } from '@/modules/services/api-service';
+import { AUTH_CONSTANTS } from '@/modules/services/constants/constants-api';
+import { defineStore } from 'pinia';
+import { reactive, computed, readonly } from 'vue';
+import type { User, ApiResponse, AuthData } from '../interfaces/auth.types';
+import { securityLogger } from '../services/securityLogger';
 
 const apiService = ApiService.getInstance();
-const secureStorage = SecureStorage.getInstance();
+
+type UserPermission = string;
+
+const SESSION_ID_STORAGE_KEY = 'syntiiq_session_id';
 
 export const useAuthStore = defineStore('auth', () => {
-  // Estado privado
-  const state = reactive<any>({
-    user: secureStorage.getUser<UserSession>(),
-    tokens: secureStorage.getTokens(),
+  const loadSessionIdFromStorage = (): string | null => {
+    try {
+      return sessionStorage.getItem(SESSION_ID_STORAGE_KEY);
+    } catch {
+      return null;
+    }
+  };
+
+  const saveSessionIdToStorage = (sessionId: string): void => {
+    try {
+      sessionStorage.setItem(SESSION_ID_STORAGE_KEY, sessionId);
+    } catch {}
+  };
+
+  const clearSessionIdFromStorage = (): void => {
+    try {
+      sessionStorage.removeItem(SESSION_ID_STORAGE_KEY);
+    } catch {}
+  };
+
+  const state = reactive<{
+    user: User | null;
+    sessionId: string | null;
+    initialized: boolean;
+    loading: boolean;
+    error: Error | null;
+  }>({
+    user: null,
+    sessionId: loadSessionIdFromStorage(),
+    initialized: false,
     loading: false,
-    error: null
+    error: null,
   });
 
-  // Timeout para detección de inactividad
   let inactivityTimer: number | null = null;
+  let inactivityListenersRegistered = false;
+  let sessionExpiredListenerRegistered = false;
+  let forbiddenListenerRegistered = false;
 
-  // Getters
-  const isAuthenticated = computed(() => !!state.user && !!state.tokens);
-  const accessToken = computed(() => state.tokens?.accessToken.token || null);
-  const refreshToken = computed(() => state.tokens?.refreshToken.token || null);
-  const currentUser = computed(() => readonly(state.user) || null);
+  const isAuthenticated = computed(() => !!state.user);
+  const currentUser = computed(() => (state.user ? readonly(state.user) : null));
+  const currentSessionId = computed(() => state.sessionId);
   const isLoading = computed(() => state.loading);
+  const isInitialized = computed(() => state.initialized);
   const authError = computed(() => state.error);
 
-  // Verificador de permisos
   const hasPermission = (permission: UserPermission): boolean => {
     return state.user?.permissions?.includes(permission) || false;
   };
 
   const hasAnyPermission = (permissions: UserPermission[]): boolean => {
     if (!state.user?.permissions?.length) return false;
-    return permissions.some(perm => state.user!.permissions!.includes(perm));
+    return permissions.some((perm) => state.user!.permissions!.includes(perm));
   };
 
   const hasAllPermissions = (permissions: UserPermission[]): boolean => {
     if (!state.user?.permissions?.length) return false;
-    return permissions.every(perm => state.user!.permissions!.includes(perm));
+    return permissions.every((perm) => state.user!.permissions!.includes(perm));
   };
 
   const hasRole = (role: string): boolean => {
-    return state.user?.roles?.includes(role) || false;
+    return state.user?.role === role;
   };
 
-  // Verificar expiración de tokens
-  const isTokenExpired = (expiresAt: number): boolean => {
-    // Añadir un buffer de 10 segundos
-    return Date.now() >= (expiresAt - 10000);
-  };
-
-  const checkAndRefreshTokens = async (): Promise<boolean> => {
-    if (!state.tokens) return false;
-
-    // Si el token de acceso está por expirar pero el refresh no
-    if (
-      isTokenExpired(state.tokens.accessToken.expiresAt) &&
-      !isTokenExpired(state.tokens.refreshToken.expiresAt)
-    ) {
-      try {
-        state.loading = true;
-        const response = await apiService.api.post('/auth/refresh', {
-          refreshToken: state.tokens.refreshToken.token
-        });
-
-        const newTokens = validateToken(response.data);
-        setTokens(newTokens);
-
-        return true;
-      } catch (error) {
-        await logout();
-        return false;
-      } finally {
-        state.loading = false;
-      }
+  const resetInactivityTimer = (): void => {
+    if (inactivityTimer !== null) {
+      window.clearTimeout(inactivityTimer);
     }
 
-    // Si ambos tokens expiraron
-    if (isTokenExpired(state.tokens.refreshToken.expiresAt)) {
-      await logout();
-      return false;
-    }
+    if (!state.user) return;
 
-    return true;
+    inactivityTimer = window.setTimeout(() => {
+      securityLogger.sessionTimeout();
+      logout();
+      window.dispatchEvent(new CustomEvent('auth:session-timeout'));
+    }, AUTH_CONSTANTS.SESSION_TIMEOUT);
   };
 
-  // Métodos para gestionar sesión
-  const setSession = (session: UserSession, tokens: Tokens): void => {
-    try {
-      // Validar datos
+  const setupInactivityMonitor = (): void => {
+    resetInactivityTimer();
 
-      // Actualizar estado
-      state.user = session;
-      secureStorage.setUser(tokens);
+    if (inactivityListenersRegistered) return;
+    inactivityListenersRegistered = true;
 
-      setTokens(tokens);
-      state.error = null;
+    const events = ['mousemove', 'keypress', 'click', 'scroll', 'touchstart'];
+    events.forEach((event) => {
+      window.addEventListener(event, resetInactivityTimer);
+    });
+  };
 
-      // Iniciar monitor de inactividad
-      setupInactivityMonitor();
+  const clearInactivityMonitor = (): void => {
+    if (inactivityTimer !== null) {
+      window.clearTimeout(inactivityTimer);
+      inactivityTimer = null;
+    }
 
-      // Registrar evento para escuchar expiración de sesión
-      window.addEventListener('auth:session-expired', handleSessionExpired);
-
-    } catch (error) {
-      state.error = error instanceof Error ? error : new Error('Unknown error in setSession');
-      throw state.error;
+    if (inactivityListenersRegistered) {
+      const events = ['mousemove', 'keypress', 'click', 'scroll', 'touchstart'];
+      events.forEach((event) => {
+        window.removeEventListener(event, resetInactivityTimer);
+      });
+      inactivityListenersRegistered = false;
     }
   };
 
-  const setTokens = (tokens: Tokens): void => {
-    try {
-      state.tokens = tokens;
-      secureStorage.setTokens(tokens);
-
-      // Configurar el servicio API
-      apiService.setTokens(tokens);
-    } catch (error) {
-      state.error = error instanceof Error ? error : new Error('Invalid token format');
-      throw state.error;
-    }
+  const registerSessionExpiredListener = (): void => {
+    if (sessionExpiredListenerRegistered) return;
+    window.addEventListener('auth:session-expired', handleSessionExpired);
+    sessionExpiredListenerRegistered = true;
   };
 
-  const login = async (email: string, password: string): Promise<UserSession> => {
+  const handleForbidden = (): void => {
+    securityLogger.accessDenied();
+    window.dispatchEvent(
+      new CustomEvent('auth:forbidden-alert', {
+        detail: { message: 'You do not have permission to perform this action.' },
+      })
+    );
+  };
+
+  const registerForbiddenListener = (): void => {
+    if (forbiddenListenerRegistered) return;
+    window.addEventListener('auth:forbidden', handleForbidden);
+    forbiddenListenerRegistered = true;
+  };
+
+  const initializeAuth = async (): Promise<boolean> => {
+    if (state.initialized) return !!state.user;
+
     try {
       state.loading = true;
-      state.error = null;
-
-      // Implementar protección contra ataques de fuerza bruta
-      const loginAttempts = getLoginAttempts(email);
-      if (loginAttempts >= 5) {
-        const lastAttempt = getLastLoginAttempt(email);
-        const cooldownPeriod = 15 * 60 * 1000; // 15 minutos
-
-        if (Date.now() - lastAttempt < cooldownPeriod) {
-          throw new Error('Too many login attempts. Please try again later.');
-        } else {
-          resetLoginAttempts(email);
-        }
-      }
-
-      const response = await apiService.api.post('/auth/login', { email, password });
-
-      const session = response.data.user
-      const tokens = response.data.tokens
-
-      setSession(session, tokens);
-      resetLoginAttempts(email);
-
-      return session;
-    } catch (error) {
-      incrementLoginAttempts(email);
-      if (error instanceof Error) {
-        state.error = error;
-      } else {
-        state.error = new Error('Login failed');
-      }
-      throw state.error;
+      const response = await apiService.api.get<ApiResponse<User>>('/user/me');
+      state.user = response.data.data;
+      setupInactivityMonitor();
+      registerSessionExpiredListener();
+      registerForbiddenListener();
+      return true;
+    } catch {
+      state.user = null;
+      return false;
     } finally {
+      state.initialized = true;
       state.loading = false;
     }
+  };
+
+  const setUser = (user: User, sessionId?: string): void => {
+    state.user = user;
+    if (sessionId) {
+      state.sessionId = sessionId;
+      saveSessionIdToStorage(sessionId);
+    }
+    state.initialized = true;
+    state.error = null;
+    setupInactivityMonitor();
+    registerSessionExpiredListener();
+    registerForbiddenListener();
   };
 
   const logout = async (): Promise<void> => {
     try {
       state.loading = true;
-      if (state.tokens) {
-        // Intenta invalidar el token en el servidor
+      if (state.user) {
         try {
           await apiService.api.post('/auth/logout');
-        } catch (error) {
-          // Si falla, continuamos con el logout local
-          console.error('Error during server logout:', error);
-        }
+        } catch {}
       }
-    } catch (error) {
-      console.error('Logout error:', error);
+    } catch {
     } finally {
       clearSession();
       state.loading = false;
@@ -186,106 +187,40 @@ export const useAuthStore = defineStore('auth', () => {
   };
 
   const clearSession = (): void => {
-    // Remover listener de evento
-    window.removeEventListener('auth:session-expired', handleSessionExpired);
-
-    // Limpiar timeout
-    if (inactivityTimer !== null) {
-      window.clearTimeout(inactivityTimer);
-      inactivityTimer = null;
+    if (sessionExpiredListenerRegistered) {
+      window.removeEventListener('auth:session-expired', handleSessionExpired);
+      sessionExpiredListenerRegistered = false;
     }
-
-    // Restablecer el estado
+    if (forbiddenListenerRegistered) {
+      window.removeEventListener('auth:forbidden', handleForbidden);
+      forbiddenListenerRegistered = false;
+    }
+    clearInactivityMonitor();
     state.user = null;
-    state.tokens = null;
+    state.sessionId = null;
+    clearSessionIdFromStorage();
     state.error = null;
-
-    // Limpiar almacenamiento y tokens de API
-    secureStorage.clearAll();
-    apiService.clearTokens();
-  };
-
-  // Control de intentos de login (protección contra fuerza bruta)
-  const LOGIN_ATTEMPTS_PREFIX = 'login_attempts_';
-  const LOGIN_LAST_ATTEMPT_PREFIX = 'login_last_attempt_';
-
-  const getLoginAttempts = (email: string): number => {
-    const key = `${LOGIN_ATTEMPTS_PREFIX}${email}`;
-    return parseInt(sessionStorage.getItem(key) || '0', 10);
-  };
-
-  const getLastLoginAttempt = (email: string): number => {
-    const key = `${LOGIN_LAST_ATTEMPT_PREFIX}${email}`;
-    return parseInt(sessionStorage.getItem(key) || '0', 10);
-  };
-
-  const incrementLoginAttempts = (email: string): void => {
-    const key = `${LOGIN_ATTEMPTS_PREFIX}${email}`;
-    const lastKey = `${LOGIN_LAST_ATTEMPT_PREFIX}${email}`;
-    const attempts = getLoginAttempts(email) + 1;
-    sessionStorage.setItem(key, attempts.toString());
-    sessionStorage.setItem(lastKey, Date.now().toString());
-  };
-
-  const resetLoginAttempts = (email: string): void => {
-    const key = `${LOGIN_ATTEMPTS_PREFIX}${email}`;
-    const lastKey = `${LOGIN_LAST_ATTEMPT_PREFIX}${email}`;
-    sessionStorage.removeItem(key);
-    sessionStorage.removeItem(lastKey);
-  };
-
-  // Control de inactividad
-  const setupInactivityMonitor = (): void => {
-    if (inactivityTimer !== null) {
-      window.clearTimeout(inactivityTimer);
-    }
-
-    inactivityTimer = window.setTimeout(() => {
-      logout();
-      window.dispatchEvent(new CustomEvent('auth:session-timeout'));
-    }, AUTH_CONSTANTS.SESSION_TIMEOUT);
-
-    // Reiniciar el temporizador en actividad del usuario
-    const resetTimer = (): void => {
-      if (inactivityTimer !== null) {
-        window.clearTimeout(inactivityTimer);
-        setupInactivityMonitor();
-      }
-    };
-
-    // Eventos para detectar actividad
-    window.addEventListener('mousemove', resetTimer);
-    window.addEventListener('keypress', resetTimer);
-    window.addEventListener('click', resetTimer);
-    window.addEventListener('scroll', resetTimer);
-    window.addEventListener('touchstart', resetTimer);
   };
 
   const handleSessionExpired = (): void => {
+    securityLogger.sessionExpired();
     clearSession();
     window.dispatchEvent(new CustomEvent('auth:session-expired-alert'));
   };
 
-  // Devolver API pública del store
   return {
-    // Getters
     isAuthenticated,
+    isInitialized,
     currentUser,
-    accessToken,
-    refreshToken,
+    currentSessionId,
     isLoading,
     authError,
-
-    // Verificadores de permisos
     hasPermission,
     hasAnyPermission,
     hasAllPermissions,
     hasRole,
-
-    // Métodos de autenticación
-    login,
+    initializeAuth,
     logout,
-    setSession,
-    checkAndRefreshTokens,
+    setUser,
   };
 });

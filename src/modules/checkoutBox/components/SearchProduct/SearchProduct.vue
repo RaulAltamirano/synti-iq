@@ -1,102 +1,157 @@
 <script lang="ts" src="./SearchProduct.ts" />
 
 <template>
-  <div class="flex gap-4 items-start">
-    <!-- Contenedor de búsqueda con posición relativa para el dropdown -->
+  <div class="flex flex-col gap-4 items-start sm:flex-row">
+    <!-- Contenedor principal -->
     <div class="relative flex-1">
       <div class="transition-colors duration-300 bg-white dark:bg-gray-800 rounded-lg shadow-md">
-        <!-- Barra de búsqueda con animación de enfoque -->
-        <div class="flex items-center p-3 transition-all duration-300 rounded-lg" :class="{
-          'ring-2 ring-blue-500 shadow-blue-100 dark:shadow-blue-900/20': isFocused,
-          'bg-gray-50 dark:bg-gray-700': !isFocused
-        }">
-          <i class="px-2 transition-colors duration-300 text-gray-400 dark:text-gray-500"
-            :class="{ 'text-blue-500 dark:text-blue-400': isFocused }">
-            <font-awesome-icon :icon="['fas', 'magnifying-glass']" />
+        <!-- Barra de búsqueda -->
+        <div
+          class="flex items-center p-2 transition-all duration-300 rounded-lg"
+          :class="[
+            isFocused
+              ? 'ring-2 ring-blue-500 shadow-blue-100 dark:shadow-blue-900/20'
+              : 'bg-gray-50 dark:bg-gray-700',
+          ]"
+        >
+          <!-- Ícono de búsqueda -->
+          <i
+            class="px-2 transition-colors duration-300 text-gray-400 dark:text-gray-500"
+            :class="{ 'text-blue-500 dark:text-blue-400': isFocused }"
+          >
+            <font-awesome-icon :icon="['fas', 'magnifying-glass']" aria-hidden="true" />
           </i>
-          <input type="text" v-model="searchQuery" placeholder="Buscar producto..." @input="handleSearch"
-            @focus="handleFocus" @blur="handleBlur"
-            class="flex-grow border-none outline-none transition-colors duration-300 bg-transparent text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 py-1" />
-          <!-- Botón para limpiar búsqueda con animación -->
-          <button v-if="searchQuery.length > 0" @click="clearSearch"
-            class="p-1 rounded-full transition-all duration-200 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600">
-            <font-awesome-icon :icon="['fas', 'times-circle']" />
+
+          <!-- Campo de entrada -->
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Buscar producto..."
+            class="flex-grow border-none outline-none transition-colors duration-300 bg-transparent text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 py-1"
+            aria-label="Campo de búsqueda de productos"
+            @focus="handleFocus"
+            @blur="handleBlur"
+          />
+
+          <!-- Botón para limpiar búsqueda -->
+          <button
+            v-if="searchQuery.length > 0"
+            class="p-1 rounded-full transition-all duration-200 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600"
+            aria-label="Limpiar búsqueda"
+            @click="clearSearch"
+          >
+            <font-awesome-icon :icon="['fas', 'times-circle']" aria-hidden="true" />
           </button>
-          <!-- Spinner durante la búsqueda -->
-          <div v-if="isLoading" class="ml-2">
-            <svg class="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none"
-              viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-              </path>
-            </svg>
+
+          <!-- Ícono de carga -->
+          <div v-if="searchStore.isLoading && !showDropdown" class="ml-2" aria-live="polite">
+            <font-awesome-icon
+              :icon="['fas', 'spinner']"
+              class="animate-spin text-blue-500 h-5 w-5"
+              aria-hidden="true"
+            />
           </div>
         </div>
 
-        <!-- Resultados desplegables con animaciones - CONTENIDO ABSOLUTO -->
+        <!-- Dropdown de resultados -->
         <transition name="fade">
-          <div v-if="showDropdown && filteredProducts.length > 0"
-            class="absolute w-full z-50 mt-2 bg-white dark:bg-gray-800 shadow-lg rounded-lg max-h-64 overflow-y-auto custom-scrollbar border border-gray-100 dark:border-gray-700">
-            <ul>
-              <li v-for="(product, index) in filteredProducts" :key="product.id"
+          <div
+            v-if="showDropdown && searchStore.filteredProducts.length > 0"
+            ref="listContainerRef"
+            class="absolute w-full z-50 mt-2 bg-white dark:bg-gray-800 shadow-lg rounded-lg max-h-64 overflow-y-auto custom-scrollbar border border-gray-100 dark:border-gray-700"
+            role="listbox"
+            aria-label="Resultados de búsqueda"
+          >
+            <transition-group name="list-fade" tag="ul">
+              <li
+                v-for="product in searchStore.filteredProducts"
+                :key="product.id"
                 class="group flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-all duration-200 border-b border-gray-100 dark:border-gray-700 last:border-none"
-                @click="selectProduct(product)">
-                <!-- Información del producto con efectos hover -->
+                role="option"
+                :aria-selected="false"
+                @click="selectProduct(product)"
+              >
+                <!-- Imagen del producto -->
                 <div class="flex items-center space-x-4">
-                  <div class="relative overflow-hidden rounded-lg w-14 h-14 bg-gray-100 dark:bg-gray-700">
-                    <img v-if="product.image" :src="product.image" alt="Imagen de producto"
-                      class="w-full h-full object-cover transform transition-transform duration-300 group-hover:scale-110"
-                      />
+                  <div
+                    class="relative overflow-hidden rounded-lg w-14 h-14 bg-gray-100 dark:bg-gray-700"
+                  >
+                    <img
+                      v-if="product.image"
+                      :src="product.image"
+                      :alt="`Imagen de ${product.name}`"
+                      class="w-full h-full object-cover transform transition-transform duration-300 group-hover:scale-105 group-hover:rotate-1 product-image"
+                      loading="lazy"
+                    />
                   </div>
+                  <!-- Detalles del producto -->
                   <div>
-                    <h4 class="text-sm font-semibold transition-colors duration-300 text-gray-700 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                    <h4
+                      class="text-sm font-semibold transition-colors duration-300 text-gray-700 dark:text-gray-200 group-hover:text-blue-600 dark:group-hover:text-blue-400"
+                    >
                       {{ product.name }}
                     </h4>
-                    <p class="text-xs transition-colors duration-300 text-gray-500 dark:text-gray-400 mt-1">
-                      {{ product.characteristics }}
+                    <p
+                      class="text-xs transition-colors duration-300 text-gray-500 dark:text-gray-400 mt-1"
+                    >
+                      {{ product.description }}
                     </p>
                   </div>
                 </div>
-                <!-- Precio con animación -->
+                <!-- Precio y marca -->
                 <div class="flex flex-col items-end">
-                  <p class="text-sm font-bold transition-colors duration-300 text-blue-600 dark:text-blue-400">
-                    ${{ formatPrice(product.price) }}
+                  <p class="text-sm font-bold text-blue-600 dark:text-blue-400">
+                    ${{ product.sellingPrice }}
                   </p>
                   <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    {{ product.category }}
+                    {{ product.brand }}
                   </div>
                 </div>
               </li>
-            </ul>
+            </transition-group>
+
+            <!-- Indicador de carga de más resultados -->
+            <div
+              v-if="searchStore.hasMoreResults"
+              ref="loadingMoreRef"
+              class="p-3 text-center text-sm text-gray-500 dark:text-gray-400"
+            >
+              <transition name="fade">
+                <div v-if="searchStore.isLoading">
+                  <font-awesome-icon
+                    :icon="['fas', 'spinner']"
+                    class="animate-spin text-blue-500"
+                    aria-hidden="true"
+                  />
+                  <span class="ml-2">Cargando más productos...</span>
+                </div>
+                <div v-else>Desplázate para cargar más resultados</div>
+              </transition>
+            </div>
           </div>
 
-          <!-- Mensaje de no resultados con animación -->
-          <div v-else-if="showDropdown && searchQuery.length > 0 && !isLoading && !filteredProducts.length"
-            class="mt-2 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 text-center transition-colors duration-300 border border-gray-100 dark:border-gray-700">
-            <font-awesome-icon :icon="['fas', 'search']" class="text-3xl mb-2 text-gray-300 dark:text-gray-600" />
+          <!-- Mensaje cuando no hay resultados -->
+          <div
+            v-else-if="showDropdown && searchQuery.length > 0 && !searchStore.isLoading"
+            class="absolute w-full z-50 mt-2 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 text-center transition-colors duration-300 border border-gray-100 dark:border-gray-700"
+            aria-live="polite"
+          >
+            <font-awesome-icon
+              :icon="['fas', 'search']"
+              class="text-3xl mb-2 text-gray-300 dark:text-gray-600"
+              aria-hidden="true"
+            />
             <p class="text-gray-500 dark:text-gray-400 text-sm">
-              No se encontraron productos para "<span class="font-medium">{{ searchQuery }}</span>".
+              No se encontraron productos para
+              <span class="font-medium">{{ searchQuery }}</span
+              >.
             </p>
-            <button @click="clearSearch"
-              class="mt-2 text-xs text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors duration-200">
+            <button
+              class="mt-2 text-xs text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors duration-200"
+              @click="clearSearch"
+            >
               Limpiar búsqueda
             </button>
-          </div>
-
-          <!-- Estado de carga -->
-          <div v-else-if="showDropdown && isLoading"
-            class="mt-2 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-8 text-center transition-colors duration-300 border border-gray-100 dark:border-gray-700">
-            <div class="flex flex-col items-center justify-center">
-              <svg class="animate-spin h-8 w-8 text-blue-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-                viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"></circle>
-                <path class="opacity-75" fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                </path>
-              </svg>
-              <p class="text-gray-500 dark:text-gray-400 text-sm">Buscando productos...</p>
-            </div>
           </div>
         </transition>
       </div>
@@ -105,6 +160,7 @@
 </template>
 
 <style scoped>
+/* Estilos personalizados */
 .custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
@@ -127,14 +183,26 @@
   background-color: rgba(156, 163, 175, 0.3);
 }
 
-/* Animación para los resultados de búsqueda */
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.3s, transform 0.3s;
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
 }
 
 .fade-enter-from,
 .fade-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.list-fade-enter-active,
+.list-fade-leave-active {
+  transition: all 0.3s ease;
+}
+
+.list-fade-enter-from,
+.list-fade-leave-to {
   opacity: 0;
   transform: translateY(10px);
 }

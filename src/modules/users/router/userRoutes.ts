@@ -12,47 +12,40 @@ export const userRoutes: RouteRecordRaw[] = [
         name: 'Users',
         meta: {
           requiresAuth: true,
-          roles: ['admin'],
-          title: 'User List'
+          // roles: ['admin'],
+          title: 'User List',
         },
-        component: () =>
-          import(
-            /* webpackChunkName: "users-list" */ '../../users/pages/Users.vue'
-          ),
+        component: () => import(/* webpackChunkName: "users-list" */ '../../users/pages/Users.vue'),
       },
       {
         path: 'add',
         name: 'AddUser',
         meta: {
           requiresAuth: true,
-          roles: ['admin'],
-          title: 'Add User'
+          // roles: ['admin'],
+          title: 'Add User',
         },
         component: () =>
-          import(
-            /* webpackChunkName: "user-add" */ '../pages/FormUser/FormUser.vue'
-          ),
+          import(/* webpackChunkName: "user-add" */ '../pages/FormUser/FormUser.vue'),
       },
       {
         path: 'edit/:id',
         name: 'EditUser',
         meta: {
           requiresAuth: true,
-          roles: ['admin'],
-          title: 'Edit User'
+          // roles: ['admin'],
+          title: 'Edit User',
         },
         component: () =>
-          import(
-            /* webpackChunkName: "user-edit" */ '../pages/FormUser/FormUser.vue'
-          ),
+          import(/* webpackChunkName: "user-edit" */ '../pages/FormUser/FormUser.vue'),
       },
       {
         path: 'dashboard/:id',
         name: 'UserDashboard',
         meta: {
           requiresAuth: true,
-          roles: ['admin'],
-          title: 'User Dashboard'
+          // roles: ['admin'],
+          title: 'User Dashboard',
         },
         component: () =>
           import(

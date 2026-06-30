@@ -1,4 +1,4 @@
-<script lang="ts" src="./ProductCard.ts"/> 
+<script lang="ts" src="./ProductCard.ts" />
 
 <template>
   <div
@@ -27,10 +27,7 @@
       <div class="flex items-center space-x-2 mt-1">
         <p class="text-gray-600 text-sm">
           <span class="text-lg font-bold">${{ product.price }}</span>
-          <span
-            v-if="product.originalPrice"
-            class="text-gray-400 line-through text-sm ml-2"
-          >
+          <span v-if="product.originalPrice" class="text-gray-400 line-through text-sm ml-2">
             ${{ product.originalPrice }}
           </span>
         </p>
@@ -44,9 +41,7 @@
           icon="star"
           :class="{ 'text-yellow-400': i <= product.rating, 'text-gray-300': i > product.rating }"
         />
-        <span class="text-gray-600 text-sm ml-2">
-          ({{ product.rating.toFixed(1) }})
-        </span>
+        <span class="text-gray-600 text-sm ml-2"> ({{ product.rating.toFixed(1) }}) </span>
       </div>
 
       <!-- Descripción -->
@@ -61,20 +56,18 @@
     >
       <button
         class="p-2 bg-white rounded-full shadow hover:bg-gray-100 border border-gray-200 transition-all"
-        @click="$emit('add-to-wishlist', product)"
         aria-label="Add to Wishlist"
+        @click="$emit('add-to-wishlist', product)"
       >
         <font-awesome-icon icon="heart" class="text-red-500" />
       </button>
       <button
         class="p-2 bg-white rounded-full shadow hover:bg-gray-100 border border-gray-200 transition-all"
-        @click="$emit('quick-view', product)"
         aria-label="Quick View"
+        @click="$emit('quick-view', product)"
       >
         <font-awesome-icon icon="eye" class="text-gray-600" />
       </button>
     </div>
   </div>
 </template>
-
-    

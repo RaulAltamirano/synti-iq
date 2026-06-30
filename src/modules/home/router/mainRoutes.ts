@@ -1,45 +1,51 @@
 import { RouteRecordRaw } from 'vue-router';
 import DefaultLayout from '../../shared/layouts/DefaultLayout/DefaultLayout.vue';
 
-
 const mainRoutes: RouteRecordRaw[] = [
   {
     path: '/',
     component: DefaultLayout,
     meta: { requiresAuth: true },
+    redirect: '/home',
     children: [
       {
-        path: '/home',
+        path: 'home',
         name: 'Home',
-        meta: { 
+        meta: {
           requiresAuth: true,
-          roles: ['user', 'admin'],
-          title: 'Dashboard'
+          title: 'Dashboard',
         },
         component: () => import(/* webpackChunkName: "home-module" */ '../../home/pages/Home.vue'),
       },
       {
-        path: '/cart',
+        path: 'cart',
         name: 'Cart',
-        component: () => import(/* webpackChunkName: "cart-module" */ '../../products/components/Cart/Cart.vue'),
+        component: () =>
+          import(/* webpackChunkName: "cart-module" */ '../../products/components/Cart/Cart.vue'),
       },
       {
-        path: '/wishlist',
+        path: 'wishlist',
         name: 'Wishlist',
-        component: () => import(/* webpackChunkName: "wishlist-module" */ '../../home/pages/Home.vue'),
+        component: () =>
+          import(/* webpackChunkName: "wishlist-module" */ '../../home/pages/Home.vue'),
       },
       {
-        path: '/products',
+        path: 'products',
         name: 'Products',
-        component: () => import(/* webpackChunkName: "products-module" */ '../../products/pages/Products/Products.vue'),
+        component: () =>
+          import(
+            /* webpackChunkName: "products-module" */ '../../products/pages/Products/Products.vue'
+          ),
       },
       {
-        path: '/profile',
-        name: 'Profile',
-        component: () => import(/* webpackChunkName: "profile-module" */ '../../profile/page/Profile/Profile.vue'),
+        path: 'gallery',
+        name: 'Gallery',
+        meta: { title: 'Gallery' },
+        component: () =>
+          import(/* webpackChunkName: "gallery-module" */ '../../home/pages/Gallery/Gallery.vue'),
       },
     ],
   },
 ];
 
-export default mainRoutes
+export default mainRoutes;

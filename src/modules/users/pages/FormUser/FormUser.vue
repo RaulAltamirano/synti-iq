@@ -1,221 +1,513 @@
-<script lang="ts" src="./FormUser.ts" />
+<script setup lang="ts">
+import { computed, reactive, ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { useMotion } from '@vueuse/motion';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import { useTheme } from '@/modules/shared/composables/useTheme';
+import TitleCard from '@/modules/shared/components/TitleCard/TitleCard.vue';
+import { Button, Card, Input, Select, Stepper, Textarea } from '@/modules/ui';
+import type { StepperStep, SelectOption } from '@/modules/ui';
+
+type RoleId = 'customer' | 'delivery' | 'cashier';
+
+interface DeliveryLocation {
+  name: string;
+  address: string;
+  reference: string;
+  isDefault: boolean;
+}
+
+interface ProfileType {
+  id: RoleId;
+  title: string;
+  description: string;
+  icon: string;
+  colorClass: string;
+}
+
+const USER_FORM_WIZARD_STEP = {
+  ROLE: 1,
+  BASIC: 2,
+  DETAILS: 3,
+} as const;
+
+const SECTION_DIVIDER_CLASSES = 'flex flex-col divide-y divide-gray-200 dark:divide-gray-700';
+
+const PROFILE_TYPES: readonly ProfileType[] = [
+  {
+    id: 'customer',
+    title: 'Customer',
+    description: 'Standard customer profile for placing orders.',
+    icon: 'user',
+    colorClass: 'bg-info',
+  },
+  {
+    id: 'delivery',
+    title: 'Delivery',
+    description: 'Delivery agent profile with zones and vehicle details.',
+    icon: 'truck',
+    colorClass: 'bg-success',
+  },
+  {
+    id: 'cashier',
+    title: 'Cashier',
+    description: 'Store cashier profile with shift and branch assignment.',
+    icon: 'cash-register',
+    colorClass: 'bg-primary',
+  },
+];
+
+const DEPARTMENT_OPTIONS: SelectOption[] = [
+  { label: 'Sales', value: 'sales' },
+  { label: 'Operations', value: 'operations' },
+  { label: 'Customer Service', value: 'customer-service' },
+  { label: 'Logistics', value: 'logistics' },
+];
+
+const STORE_OPTIONS: SelectOption[] = [
+  { label: 'Main Store', value: 'main-store' },
+  { label: 'Downtown Branch', value: 'downtown-branch' },
+  { label: 'Shopping Mall', value: 'shopping-mall' },
+  { label: 'Express Store', value: 'express-store' },
+];
+
+const VEHICLE_OPTIONS: SelectOption[] = [
+  { label: 'Motorcycle', value: 'motorcycle' },
+  { label: 'Car', value: 'car' },
+  { label: 'Bicycle', value: 'bicycle' },
+];
+
+const DELIVERY_ZONES = [
+  { label: 'North Zone', value: 'north' },
+  { label: 'South Zone', value: 'south' },
+  { label: 'East Zone', value: 'east' },
+  { label: 'West Zone', value: 'west' },
+];
+
+const wizardSteps: StepperStep[] = [
+  { id: 1, title: 'User role', shortTitle: 'Role', icon: 'users' },
+  { id: 2, title: 'Basic information', shortTitle: 'Data', icon: 'id-card' },
+  { id: 3, title: 'Role details', shortTitle: 'Details', icon: 'sliders' },
+];
+
+const router = useRouter();
+const { isDark } = useTheme();
+
+const formPageRef = ref<HTMLElement | null>(null);
+
+useMotion(formPageRef, {
+  initial: { opacity: 0, y: 12 },
+  enter: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.45, ease: [0.25, 0.1, 0.25, 1] },
+  },
+});
+
+const currentStep = ref<number>(USER_FORM_WIZARD_STEP.ROLE);
+const isSubmitting = ref(false);
+const successMessage = ref('');
+
+const formData = reactive({
+  role: 'customer' as RoleId,
+  name: '',
+  email: '',
+  phone: '',
+  department: '',
+  store: '',
+  notes: '',
+  delivery: {
+    vehicleType: '',
+    licensePlate: '',
+    preferredZones: [] as string[],
+  },
+  cashier: {
+    cashierNumber: '',
+    shiftStartTime: '',
+    shiftEndTime: '',
+  },
+  locations: [] as DeliveryLocation[],
+});
+
+const totalSteps = wizardSteps.length;
+const isDeliveryRole = computed(() => formData.role === 'delivery');
+const isCashierRole = computed(() => formData.role === 'cashier');
+
+const selectRole = (roleId: RoleId) => {
+  formData.role = roleId;
+};
+
+const addLocation = () => {
+  formData.locations.push({
+    name: '',
+    address: '',
+    reference: '',
+    isDefault: formData.locations.length === 0,
+  });
+};
+
+const removeLocation = (index: number) => {
+  formData.locations.splice(index, 1);
+  if (formData.locations.length > 0 && !formData.locations.some((location) => location.isDefault))
+    formData.locations[0].isDefault = true;
+};
+
+const setDefaultLocation = (index: number) => {
+  formData.locations.forEach((location, locationIndex) => {
+    location.isDefault = locationIndex === index;
+  });
+};
+
+const togglePreferredZone = (zoneValue: string) => {
+  if (formData.delivery.preferredZones.includes(zoneValue)) {
+    formData.delivery.preferredZones = formData.delivery.preferredZones.filter(
+      (existingZone) => existingZone !== zoneValue
+    );
+    return;
+  }
+  formData.delivery.preferredZones.push(zoneValue);
+};
+
+const goBack = () => {
+  if (currentStep.value > USER_FORM_WIZARD_STEP.ROLE) currentStep.value -= 1;
+};
+
+const cancelForm = () => {
+  router.back();
+};
+
+const handleFormSubmit = async () => {
+  successMessage.value = '';
+
+  if (currentStep.value < totalSteps) {
+    currentStep.value += 1;
+    return;
+  }
+
+  isSubmitting.value = true;
+  await new Promise((resolve) => setTimeout(resolve, 700));
+  isSubmitting.value = false;
+  successMessage.value = 'User data is ready. Endpoint integration is pending.';
+};
+</script>
 
 <template>
-  <div class="flex justify-center items-center min-h-screen transition-colors duration-300">
+  <div
+    class="min-h-screen w-full px-4 py-8 transition-colors duration-300"
+    :class="isDark ? 'text-white' : 'text-gray-800'"
+  >
+    <div ref="formPageRef" class="mx-auto flex w-full max-w-4xl flex-col gap-6 sm:gap-8">
+      <TitleCard title="New user" icon="user-plus" :actions="[]" />
 
-    <div class="flex flex-col p-6 max-w-6xl w-full space-y-6 relative rounded-xl " :class="[
-      isDark
-        ? 'bg-gray-900/40 text-white'
-        : 'bg-white/80 text-gray-800 shadow-lg'
-    ]"> <!-- Header -->
-      <TitleCard title="New user" icon="user-plus" :actions="[
-        { icon: 'eye', click: togglePreview },
-        { icon: 'cog', click: openSettings },
-        // { icon: 'chart-bar', click: showReports }
-      ]" />
+      <Stepper v-model="currentStep" :steps="wizardSteps" :animated="true" />
 
+      <form class="flex flex-col pb-6" aria-label="Create user form" @submit.prevent="handleFormSubmit">
+        <div v-if="currentStep === USER_FORM_WIZARD_STEP.ROLE" class="flex flex-col gap-4">
+          <Card variant="default" padding="lg">
+            <div :class="SECTION_DIVIDER_CLASSES">
+              <section class="space-y-5 py-6 first:pt-0">
+                <header class="space-y-1">
+                  <h2 class="text-lg font-semibold">Choose a profile type</h2>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">
+                    Keep all users in one flow, including delivery users.
+                  </p>
+                </header>
 
-      <!-- Form -->
-      <!-- Profile Type Selection -->
-      <Motion :initial="{ opacity: 0, y: 20 }" :enter="{ opacity: 1, y: 0 }" :transition="{ duration: 0.5 }">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div v-for="profile in profileTypes" :key="profile.id"
-            class="relative p-6 rounded-xl cursor-pointer transition-all duration-300 hover:shadow-lg transform hover:scale-105"
-            :class="[
-              selectedProfile?.id === profile.id ? 'ring-2 ring-blue-500' : 'bg-white dark:bg-gray-800',
-              isDark ? 'hover:bg-gray-700' : 'hover:bg-gray-50'
-            ]" @click="selectProfile(profile)">
-            <div :class="['w-12 h-12 rounded-full flex items-center justify-center mb-4', profile.color]">
-              <FontAwesomeIcon :icon="profile.icon" class="text-white" />
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <button
+                    v-for="profile in PROFILE_TYPES"
+                    :key="profile.id"
+                    type="button"
+                    class="rounded-xl border p-4 text-left transition-all"
+                    :class="
+                      formData.role === profile.id
+                        ? 'border-primary bg-primary/10 ring-1 ring-primary/20'
+                        : 'border-gray-200 hover:border-primary/40 dark:border-gray-700 dark:hover:border-primary/50'
+                    "
+                    @click="selectRole(profile.id)"
+                  >
+                    <div
+                      class="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full text-white"
+                      :class="profile.colorClass"
+                    >
+                      <FontAwesomeIcon :icon="profile.icon" />
+                    </div>
+                    <h3 class="font-semibold">{{ profile.title }}</h3>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                      {{ profile.description }}
+                    </p>
+                  </button>
+                </div>
+              </section>
             </div>
-            <h3 class="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100">{{ profile.title }}</h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400">{{ profile.description }}</p>
-          </div>
+          </Card>
         </div>
-      </Motion>
 
-      <!-- Basic Information -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="space-y-2">
-          <label class="block text-sm font-medium">Name</label>
-          <input v-model="user.name" type="text" class="w-full p-2 rounded-lg border transition-colors"
-            :class="[isDark ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300']" />
+        <div v-else-if="currentStep === USER_FORM_WIZARD_STEP.BASIC" class="flex flex-col gap-4">
+          <Card variant="default" padding="lg">
+            <div :class="SECTION_DIVIDER_CLASSES">
+              <section class="grid grid-cols-1 gap-4 py-6 first:pt-0 md:grid-cols-2">
+                <Input
+                  v-model="formData.name"
+                  full-width
+                  label="Name"
+                  placeholder="Enter full name"
+                  required
+                />
+                <Input
+                  v-model="formData.email"
+                  type="email"
+                  full-width
+                  label="Email"
+                  placeholder="user@synti-iq.com"
+                  required
+                />
+                <Input
+                  v-model="formData.phone"
+                  type="tel"
+                  full-width
+                  label="Phone"
+                  placeholder="+1 000 000 0000"
+                />
+                <Select
+                  v-model="formData.department"
+                  :options="DEPARTMENT_OPTIONS"
+                  full-width
+                  label="Department"
+                  placeholder="Select department"
+                />
+              </section>
+
+              <section class="grid grid-cols-1 gap-4 py-6 md:grid-cols-2">
+                <Select
+                  v-if="isDeliveryRole || isCashierRole"
+                  v-model="formData.store"
+                  :options="STORE_OPTIONS"
+                  full-width
+                  label="Assigned store"
+                  placeholder="Select store"
+                />
+                <Textarea
+                  v-model="formData.notes"
+                  full-width
+                  :class="isDeliveryRole || isCashierRole ? 'md:col-span-1' : 'md:col-span-2'"
+                  label="Internal notes"
+                  placeholder="Optional notes for this user"
+                  :rows="3"
+                />
+              </section>
+            </div>
+          </Card>
         </div>
-        <div class="space-y-2">
-          <label class="block text-sm font-medium">Email</label>
-          <input v-model="user.email" type="email" class="w-full p-2 rounded-lg border transition-colors"
-            :class="[isDark ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300']" />
-        </div>
-      </div>
 
-      <!-- Dynamic Form -->
-      <Motion v-if="selectedProfile" :initial="{ opacity: 0 }" :enter="{ opacity: 1 }"
-        :transition="{ duration: 0.5, delay: 0.2 }">
-        <form @submit.prevent="handleSubmit" class="space-y-6">
-          <!-- Basic Information -->
+        <div v-else class="flex flex-col gap-4">
+          <Card variant="default" padding="lg">
+            <div :class="SECTION_DIVIDER_CLASSES">
+              <section v-if="isDeliveryRole" class="space-y-4 py-6 first:pt-0">
+                <header class="space-y-1">
+                  <h2 class="text-lg font-semibold">Delivery settings</h2>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">
+                    Configure vehicle details, zones, and delivery locations.
+                  </p>
+                </header>
 
-          <!-- Encabezado -->
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Delivery Locations</h3>
-            <button @click="addNewLocation"
-              class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-transform hover:scale-105">
-              <FontAwesomeIcon icon="plus" />
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <Select
+                    v-model="formData.delivery.vehicleType"
+                    :options="VEHICLE_OPTIONS"
+                    full-width
+                    label="Vehicle type"
+                    placeholder="Select vehicle"
+                  />
+                  <Input
+                    v-model="formData.delivery.licensePlate"
+                    full-width
+                    label="License plate"
+                    placeholder="ABC-123"
+                  />
+                </div>
 
-            </button>
-          </div>
-
-          <div v-if="user.locations.length > 0" class="space-y-4">
-            <div v-for="(location, index) in user.locations" :key="index" ref="cardMotion"
-              class="rounded-lg p-4 relative bg-white dark:bg-gray-800 hover:border-blue-500 transition-all hover:scale-[1.02] shadow-sm">
-
-              <!-- Nombre y Establecer por Defecto -->
-              <div class="flex justify-between items-start">
-                <div class="space-y-2 flex-1">
-                  <div class="flex items-center gap-2">
-                    <input v-model="location.name" type="text" placeholder="Location name (e.g. Home, Work)"
-                      class="text-lg font-medium bg-transparent border-none focus:ring-0 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 w-full" />
-                    <span v-if="location.isDefault"
-                      class="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-200 text-blue-800 dark:text-blue-900 rounded-full flex items-center gap-1">
-                      <FontAwesomeIcon icon="star" /> Default
-                    </span>
+                <div class="space-y-2">
+                  <p class="text-sm font-medium">Preferred zones</p>
+                  <div class="flex flex-wrap gap-2">
+                    <Button
+                      v-for="zone in DELIVERY_ZONES"
+                      :key="zone.value"
+                      type="button"
+                      size="sm"
+                      :variant="
+                        formData.delivery.preferredZones.includes(zone.value) ? 'primary' : 'secondary'
+                      "
+                      @click="togglePreferredZone(zone.value)"
+                    >
+                      {{ zone.label }}
+                    </Button>
                   </div>
-                  <!-- Dirección -->
-                  <textarea v-model="location.address" placeholder="Full address"
-                    class="w-full p-2 rounded-lg  resize-none bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
-                    rows="2"></textarea>
-                  <input v-model="location.reference" type="text" placeholder="Reference (optional)"
-                    class="w-full p-2 rounded-lg  bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500" />
                 </div>
-              </div>
 
-              <!-- Botones de Acción -->
-              <div class="flex justify-end gap-2 mt-4">
-                <button v-if="!location.isDefault" @click="setDefaultLocation(index)"
-                  class="flex items-center gap-1 px-3 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors">
-                  <FontAwesomeIcon icon="star" /> Set Default
-                </button>
-                <button @click="removeLocation(index)"
-                  class="flex items-center gap-1 px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900 rounded-lg hover:bg-red-100 dark:hover:bg-red-800 transition-colors">
-                  <FontAwesomeIcon icon="trash" /> Remove
-                </button>
-              </div>
+                <div class="space-y-3">
+                  <div class="flex items-center justify-between">
+                    <h3 class="font-medium">Delivery locations</h3>
+                    <Button type="button" size="sm" icon="plus" @click="addLocation"> Add location </Button>
+                  </div>
 
-              <!-- Mapa / Selector -->
-              <div v-if="location.coordinates"
-                class="mt-4 h-40 bg-gray-100 dark:bg-gray-700 rounded-lg relative overflow-hidden border border-gray-200 dark:border-gray-600">
-                <img
-                  :src="`https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Ftse2.mm.bing.net%2Fth%3Fid%3DOIP.JvDUdKbds5u-QGJLdyhxaAHaDe%26pid%3DApi&f=1&ipt=a61849e041cab2189cf6c9c16d9c1d700905f057ff9d127094991481cb37263e&ipo=images`"
-                  alt="Map preview" class="w-full h-full object-cover rounded-lg" />
-                <button @click="openMapPicker(index)"
-                  class="absolute bottom-2 right-2 flex items-center gap-1 px-3 py-1 bg-white dark:bg-gray-800 rounded-lg shadow hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm">
-                  <Edit class="w-4 h-4" /> Update location
-                </button>
-              </div>
-              <button v-else @click="openMapPicker(index)"
-                class="mt-4 w-full p-4 border-2 border-dashed rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-500 dark:hover:border-gray-400 transition-colors flex items-center justify-center gap-2 bg-gray-50 dark:bg-gray-700">
-                <MapPin class="w-5 h-5" /> Click to set location on map
-              </button>
+                  <div v-if="formData.locations.length === 0" class="rounded-lg border border-dashed p-4 text-sm">
+                    No locations added yet.
+                  </div>
+
+                  <div v-else class="space-y-3">
+                    <Card
+                      v-for="(location, index) in formData.locations"
+                      :key="`location-${index}`"
+                      variant="outlined"
+                      padding="md"
+                    >
+                      <div class="space-y-3">
+                        <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                          <Input
+                            v-model="location.name"
+                            full-width
+                            :label="`Location ${index + 1}`"
+                            placeholder="Home, Work, etc."
+                          />
+                          <Input
+                            v-model="location.reference"
+                            full-width
+                            label="Reference"
+                            placeholder="Optional reference"
+                          />
+                        </div>
+                        <Textarea
+                          v-model="location.address"
+                          full-width
+                          label="Address"
+                          placeholder="Full delivery address"
+                          :rows="2"
+                        />
+                        <div class="flex flex-wrap justify-end gap-2">
+                          <Button
+                            v-if="!location.isDefault"
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            icon="star"
+                            @click="setDefaultLocation(index)"
+                          >
+                            Set default
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="error"
+                            icon="trash"
+                            @click="removeLocation(index)"
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  </div>
+                </div>
+              </section>
+
+              <section v-else-if="isCashierRole" class="space-y-4 py-6 first:pt-0">
+                <header class="space-y-1">
+                  <h2 class="text-lg font-semibold">Cashier settings</h2>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">
+                    Assign branch info and define work shift.
+                  </p>
+                </header>
+
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <Input
+                    v-model="formData.cashier.cashierNumber"
+                    full-width
+                    label="Cashier number"
+                    placeholder="CA-001"
+                  />
+                  <Input
+                    v-model="formData.cashier.shiftStartTime"
+                    full-width
+                    type="time"
+                    label="Shift start"
+                  />
+                  <Input
+                    v-model="formData.cashier.shiftEndTime"
+                    full-width
+                    type="time"
+                    label="Shift end"
+                  />
+                </div>
+              </section>
+
+              <section v-else class="space-y-2 py-6 first:pt-0">
+                <h2 class="text-lg font-semibold">Customer profile ready</h2>
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                  No extra fields are required for customer users.
+                </p>
+              </section>
             </div>
+          </Card>
+        </div>
+
+        <div class="mt-6 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:gap-4">
+          <Button
+            v-if="currentStep > USER_FORM_WIZARD_STEP.ROLE"
+            type="button"
+            variant="secondary"
+            class="min-h-11 w-full touch-manipulation sm:w-auto"
+            @click="goBack"
+          >
+            Back
+          </Button>
+
+          <Button
+            v-if="currentStep === USER_FORM_WIZARD_STEP.ROLE"
+            type="button"
+            variant="ghost"
+            class="min-h-11 w-full touch-manipulation sm:order-first sm:w-auto"
+            @click="cancelForm"
+          >
+            Cancel
+          </Button>
+
+          <div class="flex flex-1 gap-3 sm:justify-end">
+            <Button
+              v-if="currentStep < totalSteps"
+              type="submit"
+              variant="primary"
+              class="min-h-11 flex-1 touch-manipulation sm:flex-none"
+            >
+              Next
+            </Button>
+            <Button
+              v-else
+              type="submit"
+              variant="primary"
+              class="min-h-11 flex-1 touch-manipulation sm:flex-none"
+              :loading="isSubmitting"
+              :disabled="isSubmitting"
+            >
+              Create user
+            </Button>
           </div>
+        </div>
 
-          <!-- Estado Vacío -->
-          <div v-else class="text-center py-8 text-gray-500 dark:text-gray-400">
-            <p>No locations added yet</p>
-            <p class="text-sm">You can add your first delivery location now or do it later</p>
-          </div>
+        <button
+          v-if="currentStep > USER_FORM_WIZARD_STEP.ROLE"
+          type="button"
+          class="mt-3 min-h-11 rounded text-sm hover:underline focus:outline-none focus:ring-2 focus:ring-primary touch-manipulation sm:mt-2 sm:min-h-0"
+          :class="isDark ? 'text-gray-400' : 'text-gray-500'"
+          @click="cancelForm"
+        >
+          Cancel
+        </button>
 
-          <!-- Role Specific Fields -->
-          <Motion v-if="selectedProfile.id === 'delivery'" :initial="{ opacity: 0 }" :enter="{ opacity: 1 }"
-            :transition="{ duration: 0.5, delay: 0.3 }">
-            <div class="space-y-6">
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="space-y-2">
-                  <label class="block text-sm font-medium">Vehicle Type</label>
-                  <select v-model="user.delivery.vehicleType" class="w-full p-2 rounded-lg border transition-colors"
-                    :class="[isDark ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300']">
-                    <option value="">Select vehicle type</option>
-                    <option value="motorcycle">Motorcycle</option>
-                    <option value="car">Car</option>
-                    <option value="bicycle">Bicycle</option>
-                  </select>
-                </div>
-                <div class="space-y-2">
-                  <label class="block text-sm font-medium">License Plate</label>
-                  <input v-model="user.delivery.licensePlate" type="text"
-                    class="w-full p-2 rounded-lg border transition-colors"
-                    :class="[isDark ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300']" />
-                </div>
-              </div>
-              <div class="space-y-2">
-                <label class="block text-sm font-medium">Preferred Zones</label>
-                <select v-model="user.delivery.preferredZones" multiple
-                  class="w-full p-2 rounded-lg border transition-colors"
-                  :class="[isDark ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300']">
-                  <option value="north">North Zone</option>
-                  <option value="south">South Zone</option>
-                  <option value="east">East Zone</option>
-                  <option value="west">West Zone</option>
-                </select>
-              </div>
-            </div>
-          </Motion>
-
-          <!-- Cashier Specific Fields -->
-          <Motion v-if="selectedProfile.id === 'cashier'" :initial="{ opacity: 0 }" :enter="{ opacity: 1 }"
-            :transition="{ duration: 0.5, delay: 0.3 }">
-            <div class="space-y-6">
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="space-y-2">
-                  <label class="block text-sm font-medium">Branch Office</label>
-                  <select v-model="user.cashier.branchOffice" class="w-full p-2 rounded-lg border transition-colors"
-                    :class="[isDark ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300']">
-                    <option value="">Select branch</option>
-                    <option v-for="store in stores" :key="store" :value="store">
-                      {{ store }}
-                    </option>
-                  </select>
-                </div>
-                <div class="space-y-2">
-                  <label class="block text-sm font-medium">Cashier Number</label>
-                  <input v-model="user.cashier.cashierNumber" type="text"
-                    class="w-full p-2 rounded-lg border transition-colors"
-                    :class="[isDark ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300']" />
-                </div>
-              </div>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="space-y-2">
-                  <label class="block text-sm font-medium">Shift Start Time</label>
-                  <input v-model="user.cashier.shiftStartTime" type="time"
-                    class="w-full p-2 rounded-lg border transition-colors"
-                    :class="[isDark ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300']" />
-                </div>
-                <div class="space-y-2">
-                  <label class="block text-sm font-medium">Shift End Time</label>
-                  <input v-model="user.cashier.shiftEndTime" type="time"
-                    class="w-full p-2 rounded-lg border transition-colors"
-                    :class="[isDark ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300']" />
-                </div>
-              </div>
-            </div>
-          </Motion>
-
-          <!-- Submit Button -->
-          <Motion :initial="{ opacity: 0, y: 20 }" :enter="{ opacity: 1, y: 0 }"
-            :transition="{ duration: 0.5, delay: 0.4 }">
-            <div class="flex justify-end gap-3 pt-6">
-              <button type="button" class="px-4 py-2 rounded-lg transition-colors"
-                :class="[isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200']"
-                @click="$router.back()">
-                Cancel
-              </button>
-              <button type="submit" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white"
-                :disabled="loading">
-                {{ loading ? 'Saving...' : 'Save' }}
-              </button>
-            </div>
-          </Motion>
-        </form>
-      </Motion>
+        <p v-if="successMessage" class="mt-4 text-sm font-medium text-success">
+          {{ successMessage }}
+        </p>
+      </form>
     </div>
   </div>
 </template>

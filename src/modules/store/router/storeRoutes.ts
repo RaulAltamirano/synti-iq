@@ -12,8 +12,8 @@ export const storeRoutes: RouteRecordRaw[] = [
         name: 'StoreDashboard',
         meta: {
           requiresAuth: true,
-          roles: ['admin'],
-          title: 'Store Dashboard'
+          roles: ['admin', 'business_owner'],
+          title: 'Store Dashboard',
         },
         component: () =>
           import(
@@ -25,26 +25,35 @@ export const storeRoutes: RouteRecordRaw[] = [
         name: 'AddStore',
         meta: {
           requiresAuth: true,
-          roles: ['admin'],
-          title: 'Add Store'
+          roles: ['admin', 'business_owner'],
+          title: 'Add Store',
+        },
+        component: () =>
+          import(/* webpackChunkName: "add-store" */ '../pages/StoreForm/StoreForm.vue'),
+      },
+      {
+        path: ':id/cashiers',
+        name: 'StoreCashiers',
+        meta: {
+          requiresAuth: true,
+          roles: ['admin', 'business_owner'],
+          title: 'Store Cashiers',
         },
         component: () =>
           import(
-            /* webpackChunkName: "add-store" */ '../pages/StoreForm/StoreForm.vue'
+            /* webpackChunkName: "store-cashiers" */ '../pages/StoreCashiers/StoreCashiers.vue'
           ),
       },
       {
-        path: 'edit/:id',
-        name: 'EditStore',
+        path: ':id',
+        name: 'StoreDetails',
         meta: {
           requiresAuth: true,
-          roles: ['admin'],
-          title: 'Edit Store'
+          roles: ['admin', 'business_owner'],
+          title: 'Store Details',
         },
         component: () =>
-          import(
-            /* webpackChunkName: "edit-store" */ '../pages/StoreForm/StoreForm.vue'
-          ),
+          import(/* webpackChunkName: "store-details" */ '../pages/StoreDetails/StoreDetails.vue'),
       },
     ],
   },

@@ -1,24 +1,36 @@
-import { defineComponent, ref } from 'vue';
+import { defineComponent, ref, type PropType } from 'vue';
 import { useRouter } from 'vue-router';
-import { useTheme } from '../../composables/useTheme';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { useMotion } from '@vueuse/motion';
+import { Button } from '../../../ui/components';
+
+interface TitleCardAction {
+  icon: string;
+  click: () => void;
+  label?: string;
+}
 
 export default defineComponent({
-  name: "TitleCard",
+  name: 'TitleCard',
+  components: {
+    FontAwesomeIcon,
+    Button,
+  },
   props: {
     title: { type: String, required: true },
-    icon: { type: String, required: true }, 
-    actions: { type: Array, default: () => [] }, 
-  },
-  components: {
-    useMotion,
-    FontAwesomeIcon,
+    icon: { type: String, required: true },
+    actions: {
+      type: Array as PropType<TitleCardAction[]>,
+      default: () => [],
+    },
+    showBackButton: {
+      type: Boolean,
+      default: true,
+    },
   },
   setup() {
-    const { isDark } = useTheme()
-    const router = useRouter()
-    const motionElement = ref(null); 
+    const router = useRouter();
+    const motionElement = ref<HTMLElement | null>(null);
 
     useMotion(motionElement, {
       initial: { y: -20, opacity: 0 },
@@ -33,10 +45,14 @@ export default defineComponent({
       },
     });
 
+    const goBack = () => {
+      router.go(-1);
+    };
+
     return {
-      isDark,
       router,
       motionElement,
-    }
+      goBack,
+    };
   },
 });

@@ -1,27 +1,17 @@
-import { ref } from "vue";
+import { ref } from 'vue';
+import type { User, ApiResponse } from '../interfaces/auth.types';
+import { ApiService } from '@/modules/services/api-service';
 
-import { jwtDecode } from "jwt-decode";
-import {  UserSession } from "../interfaces/auth.types";
-import { ApiService } from "@/modules/services/api-service";
+const apiService = ApiService.getInstance();
 
 export const useTokenService = () => {
   const isLoading = ref(false);
 
-  const isTokenExpired = (token: string): boolean => {
-    try {
-      const decoded = jwtDecode<{ exp: number }>(token);
-      const currentTime = Date.now() / 1000;
-      return decoded.exp <= currentTime + 5 * 60;
-    } catch {
-      return true;
-    }
-  };
-
-  const verifySession = async () : Promise<UserSession>=> {
+  const verifySession = async (): Promise<User> => {
     try {
       isLoading.value = true;
-      const response = await apiService.api.get<UserSession>('/auth/me');
-      return response.data;
+      const response = await apiService.api.get<ApiResponse<User>>('/user/me');
+      return response.data.data;
     } catch (error) {
       throw error;
     } finally {
@@ -29,9 +19,7 @@ export const useTokenService = () => {
     }
   };
 
-
   return {
-    isTokenExpired,
     verifySession,
     isLoading,
   };

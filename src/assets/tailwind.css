@@ -1,3 +1,210 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* 1. Tokens semánticos y composites (colores numéricos los genera @theme abajo) */
+@import '../modules/ui/styles/tokens.css';
+
+/* 2. Tailwind v4 */
+@import 'tailwindcss';
+
+/* 3. Dark mode manual — ThemeStore hace classList.toggle('dark') en <html>
+ *    Sin esto, v4 usaría prefers-color-scheme y el toggle manual no funcionaría.
+ *    @see src/modules/shared/theme/theme-preference.ts
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* 4. Clases aplicadas dinámicamente desde JS — el scanner estático no las detecta */
+@source inline("{animate-stepper-active-pulse,animate-stepper-ping,animate-stepper-ping-dark}");
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   5. Design tokens — única fuente de verdad para utilidades Tailwind.
+   v4 emite estas variables automáticamente en :root, por lo que
+   var(--color-primary-*) etc. siguen funcionando en cualquier CSS.
+   ───────────────────────────────────────────────────────────────────────────── */
+@theme {
+  /* ── Colors: Primary — escala monotónica claro→oscuro; brand = --color-primary (= 700) ── */
+  --color-primary: #1d4ed8;
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-200: #bfdbfe;
+  --color-primary-300: #93c5fd;
+  --color-primary-400: #60a5fa;
+  --color-primary-500: #3b82f6;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+  --color-primary-800: #1e40af;
+  --color-primary-900: #1e3a8a;
+  --color-primary-950: #0f1b3a;
+
+  /* ── Colors: Success (green) ── */
+  --color-success: #22c55e;
+  --color-success-50: #f0fdf4;
+  --color-success-100: #dcfce7;
+  --color-success-200: #bbf7d0;
+  --color-success-300: #86efac;
+  --color-success-400: #4ade80;
+  --color-success-500: #22c55e;
+  --color-success-600: #16a34a;
+  --color-success-700: #15803d;
+  --color-success-800: #166534;
+  --color-success-900: #14532d;
+  --color-success-950: #052e16;
+
+  /* ── Colors: Warning (amber) ── */
+  --color-warning: #f59e0b;
+  --color-warning-50: #fffbeb;
+  --color-warning-100: #fef3c7;
+  --color-warning-200: #fde68a;
+  --color-warning-300: #fcd34d;
+  --color-warning-400: #fbbf24;
+  --color-warning-500: #f59e0b;
+  --color-warning-600: #d97706;
+  --color-warning-700: #b45309;
+  --color-warning-800: #92400e;
+  --color-warning-900: #78350f;
+  --color-warning-950: #451a03;
+
+  /* ── Colors: Error (red) ── */
+  --color-error: #ef4444;
+  --color-error-50: #fef2f2;
+  --color-error-100: #fee2e2;
+  --color-error-200: #fecaca;
+  --color-error-300: #fca5a5;
+  --color-error-400: #f87171;
+  --color-error-500: #ef4444;
+  --color-error-600: #dc2626;
+  --color-error-700: #b91c1c;
+  --color-error-800: #991b1b;
+  --color-error-900: #7f1d1d;
+  --color-error-950: #450a0a;
+
+  /* ── Colors: Info — escala cyan (distinta de primary azul); --color-info = tono usable con texto blanco ── */
+  --color-info: #0891b2;
+  --color-info-50: #ecfeff;
+  --color-info-100: #cffafe;
+  --color-info-200: #a5f3fc;
+  --color-info-300: #67e8f9;
+  --color-info-400: #22d3ee;
+  --color-info-500: #06b6d4;
+  --color-info-600: #0891b2;
+  --color-info-700: #0e7490;
+  --color-info-800: #155e75;
+  --color-info-900: #164e63;
+  --color-info-950: #083344;
+
+  /* ── Colors: Gray ── */
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+  --color-gray-950: #030712;
+
+  /* ── Font families ── */
+  --font-hero: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-greeting: 'Instrument Serif', Georgia, ui-serif, serif;
+
+  /* ── Typography fluid (vars en tokens.css) → utilidades text-fluid-* ── */
+  --text-fluid-sm: var(--font-size-fluid-sm);
+  --text-fluid-base: var(--font-size-fluid-base);
+  --text-fluid-lg: var(--font-size-fluid-lg);
+  --text-fluid-xl: var(--font-size-fluid-xl);
+  --text-fluid-2xl: var(--font-size-fluid-2xl);
+  --text-fluid-hero-greeting: var(--font-size-fluid-hero-greeting);
+  --text-fluid-hero-display: var(--font-size-fluid-hero-display);
+
+  /* ── Sizing personalizado ── */
+  --min-width-toast: 17.5rem; /* → min-w-toast */
+  --max-width-toast-viewport: 90vw; /* → max-w-toast-viewport */
+
+  /* ── Animaciones ── */
+  --animate-theme-switch: theme-switch 0.3s ease-in-out;
+  --animate-stepper-ping: stepper-ping 2.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+  --animate-stepper-ping-dark: stepper-ping-dark 2.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+  --animate-stepper-active-pulse: stepper-active-pulse 1.5s ease-in-out infinite;
+}
+
+/* ─── View Transition — dark/light mode cross-fade ─── */
+
+/* Desactiva la animación por defecto del navegador para tener control total */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+/* El estado "saliente" se desvanece */
+::view-transition-old(root) {
+  animation: theme-fade-out 0.18s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+/* El estado "entrante" aparece encima */
+::view-transition-new(root) {
+  animation: theme-fade-in 0.22s cubic-bezier(0, 0, 0.2, 1) forwards;
+}
+
+/* ─── Keyframes (deben estar fuera de @theme) ─── */
+@keyframes theme-switch {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes stepper-ping {
+  0% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  75%,
+  100% {
+    opacity: 0;
+    transform: scale(1.85);
+  }
+}
+
+@keyframes stepper-ping-dark {
+  0% {
+    opacity: 0.25;
+    transform: scale(1);
+  }
+  75%,
+  100% {
+    opacity: 0;
+    transform: scale(1.85);
+  }
+}
+
+@keyframes stepper-active-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+}
+
+@keyframes theme-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes theme-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

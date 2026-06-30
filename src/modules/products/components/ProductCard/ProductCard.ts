@@ -1,5 +1,5 @@
-import { defineComponent, PropType } from "vue";
-  
+import { defineComponent, PropType } from 'vue';
+
 export interface Product {
   id: number;
   name: string;
@@ -11,13 +11,12 @@ export interface Product {
   description: string;
 }
 
-
-  export default defineComponent({
-    name: "ProductCard",
-    props: {
-      product: {
-        type: Object as PropType<Product>,
-        required: true,
-      },
+export default defineComponent({
+  name: 'ProductCard',
+  props: {
+    product: {
+      type: Object as PropType<Product>,
+      required: true,
     },
-  });
+  },
+});

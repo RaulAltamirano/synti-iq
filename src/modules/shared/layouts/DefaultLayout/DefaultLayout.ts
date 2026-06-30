@@ -1,51 +1,47 @@
 import { computed, defineComponent, onMounted, ref, watch } from 'vue';
-import { storeToRefs } from 'pinia';
-import { useThemeStore } from '../../store/ThemeStore';
 import AnimatedBackground from '../../components/Backgound/AnimatedBackground.vue';
 import { useScroll } from '@vueuse/core';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 import TitleCard from '../../components/TitleCard/TitleCard.vue';
 import { useMotion } from '@vueuse/motion';
 import Navbar from '../../components/Navbar/Navbar.vue';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
 export default defineComponent({
-  name: "DefaultLayout",
+  name: 'DefaultLayout',
   components: {
     TitleCard,
     AnimatedBackground,
-    Navbar
+    Navbar,
+    FontAwesomeIcon,
   },
   setup() {
-
-    const themeStore = useThemeStore()
-    const { isDark } = storeToRefs(themeStore)
     const navbar = ref(null);
     const animatedBackground = ref(null);
     const routerView = ref(null);
 
-    const route = useRoute()
+    const route = useRoute();
 
-    const scrollProgress = ref(0)
-    const showScrollTop = ref(false)
-    const { y } = useScroll(window, { throttle: 100 })
+    const scrollProgress = ref(0);
+    const showScrollTop = ref(false);
+    const { y } = useScroll(window, { throttle: 100 });
 
     const updateScroll = () => {
-      const winScroll = window.scrollY
-      const height = document.documentElement.scrollHeight - document.documentElement.clientHeight
-      scrollProgress.value = (winScroll / height) * 100
-      showScrollTop.value = winScroll > 300
-
-    }
+      const winScroll = window.scrollY;
+      const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      scrollProgress.value = (winScroll / height) * 100;
+      showScrollTop.value = winScroll > 300;
+    };
 
     const currentRouteName = computed(() => {
-      return route.meta.title || route.name || 'Dashboard'
-    })
+      return route.meta.title || route.name || 'Dashboard';
+    });
     const scrollToTop = () => {
       window.scrollTo({
         top: 0,
-        behavior: 'smooth'
-      })
-    }
+        behavior: 'smooth',
+      });
+    };
 
     useMotion(navbar, {
       initial: { y: -100, opacity: 0 },
@@ -84,15 +80,14 @@ export default defineComponent({
     });
 
     watch(y, () => {
-      updateScroll()
-    })
+      updateScroll();
+    });
 
     onMounted(() => {
-      updateScroll()
-    })
+      updateScroll();
+    });
 
     return {
-      isDark,
       navbar,
       animatedBackground,
       routerView,
@@ -101,6 +96,6 @@ export default defineComponent({
       scrollToTop,
       showScrollTop,
       scrollProgress,
-    }
+    };
   },
 });

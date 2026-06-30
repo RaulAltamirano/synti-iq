@@ -1,133 +1,162 @@
-import { computed, ref } from "vue";
-import { useTheme } from "../../composables/useTheme";
-import { useRouter } from "vue-router";
-import CashClosingModal from "@/modules/checkoutBox/components/CashClosingModal/CashClosingModal.vue";
+import { computed, ref } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useRoute, useRouter } from 'vue-router';
+
+import CashClosingModal from '@/modules/checkoutBox/components/CashClosingModal/CashClosingModal.vue';
+import { useAuthStore } from '@/modules/auth/stores/authStore';
+import Avatar from '@/modules/ui/components/Avatar/Avatar.vue';
+import { useTheme } from '../../composables/useTheme';
+import { ModalName, useModalStore } from '../../store/useModalStore';
+
+const ROLE_LABELS: Record<string, string> = {
+  admin: 'Administrador',
+  cashier: 'Cajero',
+  business_owner: 'Propietario',
+  manager: 'Gerente',
+};
+
+function formatRoleLabel(role?: string): string {
+  if (!role?.trim()) return 'Usuario';
+  return ROLE_LABELS[role] ?? role.replace(/_/g, ' ');
+}
+
+type FaIcon = ['fas', string];
+
+interface CheckoutNavItem {
+  id: string;
+  label: string;
+  icon: FaIcon;
+}
 
 export default {
-    name: 'NavbarCheckoutBox',
-    components: {
-        CashClosingModal
-    },
-    setup() {
-        const { isDark, themeStore } = useTheme()
-        const currentView = ref('cashier-sales')
-        const isModalOpen = ref(true);
+  name: 'NavbarCheckoutBox',
+  emits: ['request-close'],
+  components: {
+    Avatar,
+    CashClosingModal,
+  },
+  setup(_props, { emit }: { emit: (e: 'request-close') => void }) {
+    const { isDark, themeStore } = useTheme();
+    const modalStore = useModalStore();
+    const { currentUser: authUser } = storeToRefs(useAuthStore());
+    const route = useRoute();
+    const router = useRouter();
 
-        const isHovered = ref(false);
-        const isMenuOpen = ref(false);
-        const showNotifications = ref(false);
+    const isHovered = ref(false);
 
+    const menuItems: CheckoutNavItem[] = [
+      { id: 'cashier-dashboard', label: 'Inicio', icon: ['fas', 'house'] },
+      { id: 'cashier-sales', label: 'Ventas', icon: ['fas', 'cash-register'] },
+      { id: 'cashier-returns', label: 'Devoluciones', icon: ['fas', 'undo'] },
+      { id: 'cashier-register', label: 'Caja', icon: ['fas', 'money-bill'] },
+      { id: 'cashier-credits', label: 'Créditos', icon: ['fas', 'credit-card'] },
+      { id: 'cashier-history', label: 'Historial', icon: ['fas', 'history'] },
+      { id: 'cashier-inventory', label: 'Inventario', icon: ['fas', 'boxes'] },
+      { id: 'cashier-reports', label: 'Reportes', icon: ['fas', 'file'] },
+    ];
 
-        const router = useRouter()
-        const menuItems = [
-            { id: 'cashier-sales', label: 'Sales', icon: 'cash-register', notifications: 1 },
-            { id: 'cashier-returns', label: 'Returns', icon: 'undo' },
-            { id: 'cashier-register', label: 'Cash Register', icon: 'money-bill' },
-            { id: 'cashier-credits', label: 'Customer Credits', icon: 'credit-card' },
-            { id: 'cashier-history', label: 'Sales History', icon: 'history' },
-            { id: 'cashier-inventory', label: 'Inventory', icon: 'boxes' },
-            { id: 'cashier-reports', label: 'Reports', icon: 'file' },
+    const currentView = computed(() => {
+      const name = route.name;
+      return typeof name === 'string' ? name : 'cashier-dashboard';
+    });
 
-        ]
+    const displayName = computed(() => {
+      const u = authUser.value;
+      if (!u) return 'Usuario';
+      const parts = [u.firstName, u.lastName].filter(Boolean) as string[];
+      if (parts.length > 0) return parts.join(' ');
+      const local = u.email?.split('@')[0];
+      return local?.trim() || u.email || 'Usuario';
+    });
 
-        const goTo = (value: any) => {
-            currentView.value = value
-            router.push({ name: value })
-        }
-        // Notificaciones
-        const notifications = ref([
-            {
-                title: 'Nueva venta',
-                message: 'Se ha registrado una nueva venta de $1,500',
-                time: 'Hace 5 minutos',
-                read: false,
-                type: 'sale'
-            },
-            {
-                title: 'Stock bajo',
-                message: 'El producto "Termo XYZ" está por debajo del stock mínimo',
-                time: 'Hace 1 hora',
-                read: false,
-                type: 'inventory'
-            },
-            {
-                title: 'Actualización del sistema',
-                message: 'Se ha instalado la versión 2.1 correctamente',
-                time: 'Hace 2 horas',
-                read: true,
-                type: 'system'
-            },
-            {
-                title: 'Nuevo cliente',
-                message: 'Carlos Pérez se ha registrado en el sistema',
-                time: 'Ayer',
-                read: false,
-                type: 'customer'
-            }
-        ]);
-        const markAsRead = (index) => {
-            notifications.value[index].read = true;
-        };
+    const roleLabel = computed(() => formatRoleLabel(authUser.value?.role));
 
-        const markAllAsRead = () => {
-            notifications.value.forEach(notification => {
-                notification.read = true;
-            });
-        };
+    const avatarSeed = computed(() => authUser.value?.id ?? authUser.value?.email ?? '');
 
-        // Obtener clase de color según tipo de notificación
-        const getNotificationTypeClass = (type) => {
-            switch (type) {
-                case 'sale': return 'bg-green-500';
-                case 'inventory': return 'bg-orange-500';
-                case 'system': return 'bg-blue-500';
-                case 'customer': return 'bg-purple-500';
-                default: return 'bg-gray-500';
-            }
-        };
+    const goTo = (routeName: string) => {
+      emit('request-close');
+      router.push({ name: routeName }).catch(() => {
+        /* duplicate navigation */
+      });
+    };
 
-        // Obtener icono según tipo de notificación
-        const getNotificationIcon = (type) => {
-            switch (type) {
-                case 'sale': return ['fas', 'dollar-sign'];
-                case 'inventory': return ['fas', 'exclamation-triangle'];
-                case 'system': return ['fas', 'sync'];
-                case 'customer': return ['fas', 'user-plus'];
-                default: return ['fas', 'bell'];
-            }
-        };
+    const requestCloseNav = () => {
+      emit('request-close');
+    };
 
-        // Calcular total de notificaciones no leídas
-        const totalNotifications = computed(() => {
-            return notifications.value.filter(n => !n.read).length;
-        });
+    const closeCashDrawer = () => {
+      emit('request-close');
+      modalStore.open(ModalName.CLOSE_CASH_DRAWER);
+    };
 
-        const toggleNotifications = () => {
-            showNotifications.value = !showNotifications.value;
-            // Cerrar menú móvil si está abierto al abrir notificaciones
-            if (showNotifications.value && isMenuOpen.value) {
-              isMenuOpen.value = false;
-            }
-          };
-          
+    /** Turno: placeholder hasta que exista endpoint de caja; el modal sigue funcionando con este shape. */
+    const currentShift = ref({
+      id: 'SHIFT-001',
+      status: 'open',
+      openTime: new Date().toISOString(),
+      closeTime: null as string | null,
+      initialCash: 1000,
+      totalSales: 0,
+      cashAmount: 0,
+      cardAmount: 0,
+      transferAmount: 0,
+      creditAmount: 0,
+      cashTransactions: 0,
+      cardTransactions: 0,
+      transferTransactions: 0,
+      creditTransactions: 0,
+      transactions: [] as unknown[],
+      expenses: [] as { description: string; amount: number }[],
+      withdrawals: [] as { description: string; amount: number }[],
+    });
 
+    const cashClosingUser = computed(() => {
+      const u = authUser.value;
+      if (!u) {
         return {
-            menuItems,
-            currentView,
-            isDark,
-            isModalOpen,
-            goTo,
-            isHovered,
-            isMenuOpen,
-            notifications,
-            markAsRead,
-            markAllAsRead,
-            toggleNotifications,
-            getNotificationTypeClass,
-            getNotificationIcon,
-            totalNotifications,
-            showNotifications,
-            toggleTheme: themeStore.toggleTheme
+          id: '',
+          name: displayName.value,
+          role: 'cashier',
+          email: '',
         };
-    }
-}
+      }
+      return {
+        id: u.id,
+        name: displayName.value,
+        role: u.role ?? 'cashier',
+        email: u.email,
+      };
+    });
+
+    const sidebarMotion = {
+      initial: { opacity: 0, x: -12 },
+      enter: { opacity: 1, x: 0, transition: { duration: 280 } },
+    };
+
+    const logoMotion = {
+      initial: { opacity: 0, scale: 0.96 },
+      enter: { opacity: 1, scale: 1, transition: { duration: 280 } },
+    };
+
+    const navStaggerDelay = (index: number): number => index * 0.05;
+
+    return {
+      menuItems,
+      currentView,
+      closeCashDrawer,
+      requestCloseNav,
+      isDark,
+      goTo,
+      currentShift,
+      cashClosingUser,
+      isHovered,
+      displayName,
+      roleLabel,
+      avatarSeed,
+      sidebarMotion,
+      logoMotion,
+      navStaggerDelay,
+      toggleTheme: themeStore.toggleTheme,
+    };
+  },
+};

@@ -1,21 +1,13 @@
-import { storeToRefs } from "pinia";
-import { useThemeStore } from "../../store/ThemeStore";
-
+import { useTheme } from '../../composables/useTheme';
 
 export default {
   name: 'LoadingView',
-  components: {
-    
-  },
+  components: {},
   setup() {
-    const themeStore = useThemeStore()
-    const { isDark } = storeToRefs(themeStore)
-
+    const { isDark } = useTheme();
 
     return {
-        isDark
-    }
-  }
+      isDark,
+    };
+  },
 };
-
-

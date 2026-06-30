@@ -1,46 +1,45 @@
-import { ref, computed } from "vue";
+import { ref, computed } from 'vue';
 
-import { ModalName, useModalStore } from "@/modules/shared/store/useModalStore";
-import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
-import router from "@/router";
+import { ModalName, useModalStore } from '@/modules/shared/store/useModalStore';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import router from '@/router';
 
 export default {
   name: 'CashClosingModal',
   components: {
-    FontAwesomeIcon
+    FontAwesomeIcon,
   },
   props: {
     // Prop para recibir datos del turno actual
     shiftData: {
       type: Object,
-      required: true
+      required: true,
     },
     // Prop para recibir datos del usuario actual
     userData: {
       type: Object,
-      required: true
-    }
+      required: true,
+    },
   },
-  setup(props: { shiftData: any; userData: any; }, { emit }: any) {
+  setup(props: { shiftData: any; userData: any }, { emit }: any) {
     const isProcessing = ref(false);
     const closingNotes = ref('');
     const showExpenseForm = ref(false);
-    const modalStore = useModalStore()
+    const modalStore = useModalStore();
     const showWithdrawalForm = ref(false);
 
     const modalOpen = computed(() => modalStore.isOpen(ModalName.CLOSE_CASH_DRAWER));
 
-
     // Datos del nuevo gasto
     const newExpense = ref({
       description: '',
-      amount: 0
+      amount: 0,
     });
 
     // Datos del nuevo retiro
     const newWithdrawal = ref({
       description: '',
-      amount: 0
+      amount: 0,
     });
 
     // Denominaciones de efectivo
@@ -55,7 +54,7 @@ export default {
       { value: 5, count: 0 },
       { value: 2, count: 0 },
       { value: 1, count: 0 },
-      { value: 0.5, count: 0 }
+      { value: 0.5, count: 0 },
     ]);
 
     // Copia local de los datos del turno para modificaciones
@@ -64,45 +63,76 @@ export default {
 
     // Resumen de métodos de pago
     const paymentMethodsSummary = computed(() => [
-      { name: 'Efectivo', icon: ['fas', 'money-bill-wave'], amount: currentShift.value.cashAmount, transactions: currentShift.value.cashTransactions, color: 'text-green-500 dark:text-green-400' },
-      { name: 'Tarjeta', icon: ['far', 'credit-card'], amount: currentShift.value.cardAmount, transactions: currentShift.value.cardTransactions, color: 'text-blue-500 dark:text-blue-400' },
-      { name: 'Transferencia', icon: ['far', 'building-columns'], amount: currentShift.value.transferAmount, transactions: currentShift.value.transferTransactions, color: 'text-purple-500 dark:text-purple-400' },
-      { name: 'Crédito', icon: ['far', 'user'], amount: currentShift.value.creditAmount, transactions: currentShift.value.creditTransactions, color: 'text-orange-500 dark:text-orange-400' }
+      {
+        name: 'Efectivo',
+        icon: ['fas', 'money-bill-wave'],
+        amount: currentShift.value.cashAmount,
+        transactions: currentShift.value.cashTransactions,
+        color: 'text-green-500 dark:text-green-400',
+      },
+      {
+        name: 'Tarjeta',
+        icon: ['far', 'credit-card'],
+        amount: currentShift.value.cardAmount,
+        transactions: currentShift.value.cardTransactions,
+        color: 'text-blue-500 dark:text-blue-400',
+      },
+      {
+        name: 'Transferencia',
+        icon: ['far', 'building-columns'],
+        amount: currentShift.value.transferAmount,
+        transactions: currentShift.value.transferTransactions,
+        color: 'text-purple-500 dark:text-purple-400',
+      },
+      {
+        name: 'Crédito',
+        icon: ['far', 'user'],
+        amount: currentShift.value.creditAmount,
+        transactions: currentShift.value.creditTransactions,
+        color: 'text-orange-500 dark:text-orange-400',
+      },
     ]);
 
     // Totales calculados
     const totalExpenses = computed(() => {
-      return currentShift.value.expenses.reduce((sum: any, expense: { amount: any; }) => sum + expense.amount, 0);
+      return currentShift.value.expenses.reduce(
+        (sum: any, expense: { amount: any }) => sum + expense.amount,
+        0
+      );
     });
 
     const totalWithdrawals = computed(() => {
-      return currentShift.value.withdrawals.reduce((sum: any, withdrawal: { amount: any; }) => sum + withdrawal.amount, 0);
+      return currentShift.value.withdrawals.reduce(
+        (sum: any, withdrawal: { amount: any }) => sum + withdrawal.amount,
+        0
+      );
     });
 
     const totalCountedCash = computed(() => {
-      return cashDenominations.value.reduce((sum, denom) => sum + (denom.value * denom.count), 0);
+      return cashDenominations.value.reduce((sum, denom) => sum + denom.value * denom.count, 0);
     });
 
     const cashDifference = computed(() => {
-      return totalCountedCash.value - (currentShift.value.initialCash + currentShift.value.cashAmount);
+      return (
+        totalCountedCash.value - (currentShift.value.initialCash + currentShift.value.cashAmount)
+      );
     });
-
 
     const initializeCashCount = () => {
       // Esto es un ejemplo - en una aplicación real, podrías tener valores iniciales sugeridos
       // basados en el efectivo esperado o en conteos previos
-      cashDenominations.value.forEach(denom => {
+      cashDenominations.value.forEach((denom) => {
         denom.count = 0;
       });
     };
 
     const incrementDenomination = (value: number) => {
-      const denom = cashDenominations.value.find(d => d.value === value);
+      const denom = cashDenominations.value.find((d) => d.value === value);
       if (denom) denom.count++;
     };
 
     const decrementDenomination = (value: number) => {
-      const denom = cashDenominations.value.find(d => d.value === value);
+      const denom = cashDenominations.value.find((d) => d.value === value);
       if (denom && denom.count > 0) denom.count--;
     };
 
@@ -110,7 +140,7 @@ export default {
       if (newExpense.value.description && newExpense.value.amount > 0) {
         currentShift.value.expenses.push({
           description: newExpense.value.description,
-          amount: parseFloat(newExpense.value.amount)
+          amount: parseFloat(newExpense.value.amount),
         });
 
         // Reset form
@@ -127,7 +157,7 @@ export default {
       if (newWithdrawal.value.description && newWithdrawal.value.amount > 0) {
         currentShift.value.withdrawals.push({
           description: newWithdrawal.value.description,
-          amount: parseFloat(newWithdrawal.value.amount)
+          amount: parseFloat(newWithdrawal.value.amount),
         });
 
         // Reset form
@@ -153,14 +183,14 @@ export default {
           expenses: currentShift.value.expenses,
           withdrawals: currentShift.value.withdrawals,
           notes: closingNotes.value,
-          closedAt: new Date().toISOString()
+          closedAt: new Date().toISOString(),
         };
 
         // Emitir evento para que el componente padre maneje el cierre
         emit('confirm-closing', closingData);
 
         // Simular una llamada a la API (en una app real, sería una llamada real)
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise((resolve) => setTimeout(resolve, 1500));
 
         // Actualizar estado local
         currentShift.value.status = 'closed';
@@ -169,13 +199,11 @@ export default {
         // Cerrar el modal después de un breve retraso
         setTimeout(() => {
           // isOpen.value = false;
-          closeModal()
+          closeModal();
           isProcessing.value = false;
-
         }, 500);
-        router.push({ name: 'Home' })
-      } catch (error) {
-        console.error('Error al cerrar la caja:', error);
+        router.push({ name: 'Home' });
+      } catch {
         isProcessing.value = false;
       }
     };
@@ -195,7 +223,9 @@ export default {
       if (!currentShift.value.openTime) return 'N/A';
 
       const start = new Date(currentShift.value.openTime);
-      const end = currentShift.value.closeTime ? new Date(currentShift.value.closeTime) : new Date();
+      const end = currentShift.value.closeTime
+        ? new Date(currentShift.value.closeTime)
+        : new Date();
 
       const diff = end - start;
       const hours = Math.floor(diff / (1000 * 60 * 60));
@@ -210,8 +240,8 @@ export default {
     };
 
     const closeModal = () => {
-      modalStore.close(ModalName.CLOSE_CASH_DRAWER)
-    }
+      modalStore.close(ModalName.CLOSE_CASH_DRAWER);
+    };
 
     return {
       isProcessing,
@@ -240,7 +270,7 @@ export default {
       formatCurrency,
       formatDateTime,
       calculateShiftDuration,
-      calculatePercentage
+      calculatePercentage,
     };
-  }
+  },
 };
