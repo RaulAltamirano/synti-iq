@@ -14,7 +14,6 @@ import { PasswordService } from 'src/auth/services/password/password.service';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UserProfileService } from 'src/user-profile/user_profile.service';
 import { UserProfile } from 'src/user-profile/entities/user_profile.entity';
-import type { ProfileCreationContext } from 'src/user-profile/interfaces/profile-creation-context.interface';
 import { Role } from 'src/role/entities/role.entity';
 import { SystemRole } from 'src/shared/enums/roles.enum';
 
@@ -43,17 +42,19 @@ export class UserCreationService {
       const user = await this.createUserEntity(createUserDto, role.id, queryRunner);
       if (!user) throw new InternalServerErrorException('User creation failed');
 
-      const profileCreationContext: ProfileCreationContext | undefined =
+      const profilePayload =
         createUserDto.role === SystemRole.CASHIER && createUserDto.actingBusinessProfileId
-          ? { actingBusinessProfileId: createUserDto.actingBusinessProfileId }
-          : undefined;
+          ? {
+              ...(createUserDto.profileData ?? {}),
+              actingBusinessProfileId: createUserDto.actingBusinessProfileId,
+            }
+          : createUserDto.profileData;
 
       const userProfile = await this.userProfileService.createProfileForUser(
         user.id,
         createUserDto.role,
-        createUserDto.profileData,
+        profilePayload,
         queryRunner,
-        profileCreationContext,
       );
 
       await this.validateUserProfileAfterCreation(

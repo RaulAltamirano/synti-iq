@@ -70,10 +70,25 @@ export const AUTH_ANOMALY_SPAN_NAMES = {
   RECORD_USAGE: SPAN_AUTH_ANOMALY_RECORD_USAGE,
 } as const;
 
-/** Attribute keys for user sessions spans */
+/** Attribute keys for auth spans shared across sub-domains */
 export const ATTR_AUTH_CORE_USER_ID = 'auth.user_id' as const;
 
-/** Grouped attribute keys for auth core */
 export const AUTH_CORE_SPAN_ATTRIBUTES = {
   USER_ID: ATTR_AUTH_CORE_USER_ID,
+  SESSION_ID: 'auth.session_id' as const,
+} as const;
+
+/** Span names for account invitation flows */
+export const AUTH_INVITATION_SPAN_NAMES = {
+  CREATE: 'auth.invitation.create' as const,
+  CONSUME: 'auth.invitation.consume' as const,
+} as const;
+
+/** Attribute key for invitation spans */
+export const ATTR_AUTH_INVITATION_USER_ID = 'auth.invitation.user_id' as const;
+
+/** Span names for registration flows */
+export const AUTH_REGISTRATION_SPAN_NAMES = {
+  SIGNUP: 'auth.registration.signUp' as const,
+  REGISTER_BUSINESS: 'auth.registration.registerBusiness' as const,
 } as const;

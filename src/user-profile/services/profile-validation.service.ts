@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, QueryRunner } from 'typeorm';
+import { IsNull, QueryRunner, Repository } from 'typeorm';
 import { SystemRole, isSystemRole } from 'src/shared/enums/roles.enum';
 import { User } from 'src/user/entities/user.entity';
 import { UserProfile } from '../entities/user_profile.entity';
@@ -44,7 +44,7 @@ export class ProfileValidationService {
 
     try {
       const user = await manager.findOne(User, {
-        where: { id: userId, isDelete: false },
+        where: { id: userId, deletedAt: IsNull() },
         relations: ['role', 'profile'],
       });
 

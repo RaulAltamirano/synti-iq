@@ -41,12 +41,14 @@ describe('SubscriptionService', () => {
 
   it('should create subscription for customer with default trial', async () => {
     const customerId = 'customer-id';
+    const trialStart = new Date('2026-01-01T00:00:00.000Z');
+    const trialEnd = new Date('2026-01-08T00:00:00.000Z');
     const mockSubscription = {
       id: 'sub-id',
       customerId,
       status: SubscriptionStatus.TRIALING,
-      trialStart: expect.any(Date),
-      trialEnd: expect.any(Date),
+      trialStart,
+      trialEnd,
     } as Subscription;
 
     mockRepository.create.mockReturnValue(mockSubscription);

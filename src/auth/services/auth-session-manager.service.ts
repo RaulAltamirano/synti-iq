@@ -3,7 +3,6 @@ import {
   Logger,
   BadRequestException,
   InternalServerErrorException,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { TokenFactory } from 'src/auth/factory/token-factory';
 import { UserSessionService } from 'src/user-session/user-session.service';
@@ -118,10 +117,9 @@ export class AuthSessionManager {
       if (decoded.sub !== userId) {
         return null;
       }
-      return decoded.sid;
-    } catch (error) {
-      const unverified = this.tokenFactory.decodeToken(accessToken);
-      return unverified?.sub === userId ? unverified.sid : null;
+      return decoded.sid ?? null;
+    } catch {
+      return null;
     }
   }
 

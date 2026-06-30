@@ -5,6 +5,9 @@ import {
   AUTH_USER_SESSIONS_SPAN_NAMES,
   AUTH_CORE_SPAN_ATTRIBUTES,
 } from 'src/auth/constants/auth-span.constants';
+import { FilterUserSessionDto } from 'src/user-session/dto/filter-user-session.dto';
+import { PaginatedResponse } from 'src/pagination/interfaces/PaginatedResponse';
+import { UserSessionResponseDto } from 'src/user-session/dto/user-session-response.dto';
 
 /**
  * SessionService is a facade over UserSessionService that adds observability
@@ -73,13 +76,15 @@ export class SessionService {
     );
   }
 
-  async listActive(userId: string): Promise<Array<{ sessionId: string }>> {
+  async listActive(
+    userId: string,
+    filters: FilterUserSessionDto,
+  ): Promise<PaginatedResponse<UserSessionResponseDto>> {
     return this.observabilityService.withSpan(
       AUTH_USER_SESSIONS_SPAN_NAMES.LIST_ACTIVE,
       async span => {
         span.setAttribute(AUTH_CORE_SPAN_ATTRIBUTES.USER_ID, userId);
-        const sessions = await this.userSessionService.findActiveByUserId(userId);
-        return sessions.map(session => ({ sessionId: session.sessionId }));
+        return this.userSessionService.getActiveSessions(userId, filters);
       },
     );
   }

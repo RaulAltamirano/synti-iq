@@ -1,6 +1,8 @@
 /dist
 /node_modules
 /build
+/graphify-out
+/src/graphify-out
 .worktrees
 
 package-lock.json

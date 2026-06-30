@@ -304,6 +304,10 @@ export class UserSessionService {
       if (sessionData && sessionData.refreshTokenHash) {
         sessionData.lastUsed = new Date().toISOString();
         await this.setSessionInRedisUnified(userId, sessionId, sessionData);
+      } else {
+        this.logger.warn(
+          `Session ${sessionId} for user ${userId}: DB lastUsed updated but Redis cache missing or incomplete (no refreshTokenHash); skipping Redis sync`,
+        );
       }
     } catch (error) {
       throw this.handleError(error, 'updating session last used');

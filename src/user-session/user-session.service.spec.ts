@@ -342,4 +342,38 @@ describe('UserSessionService', () => {
       );
     });
   });
+
+  it('invalidateSession marks DB invalid before deleting Redis key', async () => {
+    const callOrder: string[] = [];
+    const mockRepository = {
+      findByUserAndSessionId: jest.fn(),
+      findById: jest.fn(),
+      save: jest.fn(),
+      delete: jest.fn(),
+      update: jest.fn(async () => {
+        callOrder.push('db-update');
+        return 1;
+      }),
+    };
+    const mockRedis = {
+      get: jest.fn(),
+      set: jest.fn(),
+      del: jest.fn(async () => {
+        callOrder.push('redis-del');
+      }),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        UserSessionService,
+        { provide: UserSessionRepository, useValue: mockRepository },
+        { provide: RedisService, useValue: mockRedis },
+      ],
+    }).compile();
+
+    const testService = module.get<UserSessionService>(UserSessionService);
+    await testService.invalidateSession('u1', 's1');
+
+    expect(callOrder).toEqual(['db-update', 'redis-del']);
+  });
 });

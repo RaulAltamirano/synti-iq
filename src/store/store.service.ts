@@ -71,6 +71,10 @@ export class StoreService {
     return this.storeCashierService.assignCashierToStore(storeId, cashierId, userId);
   }
 
+  async getCashiersFromStore(storeId: string, userId?: string): Promise<CashierProfile[]> {
+    return this.storeCashierService.getCashiersFromStore(storeId, userId);
+  }
+
   async removeCashiersFromStore(
     storeId: string,
     cashierIds: string[],

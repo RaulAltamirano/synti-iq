@@ -41,6 +41,56 @@ export const userEndpoints: Record<string, EndpointDocSpec> = {
       ...getStandardErrorResponses({ cookieAuth: true }),
     ],
   },
+  filterUsersByBusiness: {
+    summary: 'List users scoped to a business (BusinessProfile)',
+    description:
+      "Returns a paginated list of users for the caller's business scope. Business owners and cashiers are scoped automatically; admin and manager must pass `businessProfileId`.",
+    operationId: 'userFilterUsersByBusiness',
+    cookieAuth: true,
+    query: [
+      { name: 'page', description: 'Page number (default: 1)', type: 'number' },
+      { name: 'limit', description: 'Items per page (default: 10, max: 100)', type: 'number' },
+      {
+        name: 'businessProfileId',
+        description: 'Required for admin/manager; ignored for business_owner/cashier',
+        type: 'string',
+      },
+      { name: 'name', description: 'Filter by name', type: 'string' },
+      { name: 'email', description: 'Filter by email', type: 'string' },
+      { name: 'roles', description: 'Filter by roles (array)', type: 'array' },
+      {
+        name: 'sortBy',
+        description: 'Sort field (createdAt, email, firstName, lastName, lastLogin, updatedAt)',
+        type: 'string',
+      },
+      { name: 'sortOrder', description: 'ASC or DESC (default DESC)', type: 'string' },
+    ],
+    responses: [
+      {
+        status: 200,
+        description: 'Paginated users for the business',
+        schema: {
+          allOf: [
+            { $ref: '#/components/schemas/PaginatedResponseDto' },
+            {
+              properties: {
+                items: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/User' },
+                },
+              },
+            },
+          ],
+        },
+      },
+      {
+        status: 400,
+        description: 'businessProfileId required for admin or manager',
+        schema: apiErrorSchema,
+      },
+      ...getStandardErrorResponses({ cookieAuth: true }),
+    ],
+  },
   getMyProfile: {
     summary: 'Get current authenticated user profile',
     description:

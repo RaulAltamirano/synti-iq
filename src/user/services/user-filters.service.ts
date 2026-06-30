@@ -7,6 +7,7 @@ import { UserProfileService } from 'src/user-profile/user_profile.service';
 import { SystemRole } from 'src/shared/enums/roles.enum';
 import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.entity';
 import { FilterBusinessUsersDto } from '../dto/filter-business-users.dto';
+import { FilterUserDto } from 'src/auth/dto/filter-user.dto';
 import { PaginationCacheUtil } from 'src/pagination/utils/PaginationCacheUtil';
 import { RoleService } from 'src/role/role.service';
 import { ObservabilityService } from 'src/shared/observability/observability.service';
@@ -16,6 +17,15 @@ import {
 } from '../constants/user-filters-span.constants';
 
 const BUSINESS_USER_SORT_COLUMN_MAP: Record<string, string> = {
+  createdAt: 'createdAt',
+  email: 'email',
+  firstName: 'firstName',
+  lastName: 'lastName',
+  lastLogin: 'lastLogin',
+  updatedAt: 'updatedAt',
+};
+
+const ADMIN_USER_SORT_COLUMN_MAP: Record<string, string> = {
   createdAt: 'createdAt',
   email: 'email',
   firstName: 'firstName',
@@ -37,6 +47,43 @@ export class UserFiltersService {
     private readonly roleService: RoleService,
     private readonly observabilityService: ObservabilityService,
   ) {}
+
+  /**
+   * Paginated user listing for admin-style filters (name, email, role, activity flags).
+   */
+  async filterUsers(filters: FilterUserDto): Promise<PaginatedResponse<User>> {
+    return this.observabilityService.withSpan(USER_FILTERS_SPAN_NAMES.FILTER_USERS, async span => {
+      const query = this.userRepository
+        .createQueryBuilder('user')
+        .leftJoinAndSelect('user.role', 'role')
+        .where('user.deletedAt IS NULL');
+
+      this.applyFilterUserDtoClauses(query, filters);
+
+      const total = await query.clone().getCount();
+
+      PaginationCacheUtil.applyPagination(query, filters, {
+        aliasOverride: 'user',
+        columnMap: ADMIN_USER_SORT_COLUMN_MAP,
+      });
+
+      const items = await query.getMany();
+      const page = filters.page ?? 1;
+      const limit = filters.limit ?? 10;
+
+      const result = PaginationCacheUtil.createPaginatedResponse({
+        items,
+        total,
+        page,
+        limit,
+      });
+
+      span.setAttribute(USER_FILTERS_SPAN_ATTRIBUTES.PAGE, result.page);
+      span.setAttribute(USER_FILTERS_SPAN_ATTRIBUTES.TOTAL, result.total);
+
+      return result;
+    });
+  }
 
   /**
    * Lists users belonging to a business (owner profile or cashiers of stores under the business).
@@ -86,6 +133,48 @@ export class UserFiltersService {
 
   private escapeLikeString(value: string): string {
     return value.replaceAll(/[%_\\]/g, match => String.raw`\\` + match);
+  }
+
+  private applyFilterUserDtoClauses(query: SelectQueryBuilder<User>, filters: FilterUserDto): void {
+    if (filters.name) {
+      const namePattern = `%${this.escapeLikeString(filters.name)}%`;
+      query.andWhere(
+        '(LOWER(user.firstName) LIKE LOWER(:namePattern) OR LOWER(user.lastName) LIKE LOWER(:namePattern))',
+        { namePattern },
+      );
+    }
+
+    if (filters.email) {
+      query.andWhere('LOWER(user.email) LIKE LOWER(:email)', {
+        email: `%${this.escapeLikeString(filters.email)}%`,
+      });
+    }
+
+    if (filters.isActive !== undefined) {
+      query.andWhere('user.isActive = :isActive', { isActive: filters.isActive });
+    }
+
+    if (filters.roles?.length) {
+      query.andWhere('role.name IN (:...roleNames)', { roleNames: filters.roles });
+    }
+
+    if (filters.isOnline === true) {
+      const threshold = new Date(Date.now() - 15 * 60 * 1000);
+      query.andWhere('user.lastLogin IS NOT NULL AND user.lastLogin > :onlineSince', {
+        onlineSince: threshold,
+      });
+    }
+
+    if (filters.isPendingApproval === true) {
+      query.andWhere(
+        `EXISTS (
+            SELECT 1 FROM user_profiles up
+            INNER JOIN cashier_profiles cp ON cp.id = up.profile_id AND up.profile_type = :cashierRole
+            WHERE up.user_id = user.id AND up.deleted_at IS NULL AND cp.is_approved = false
+          )`,
+        { cashierRole: SystemRole.CASHIER },
+      );
+    }
   }
 
   private createBusinessUsersListQuery(businessProfileId: string): SelectQueryBuilder<User> {

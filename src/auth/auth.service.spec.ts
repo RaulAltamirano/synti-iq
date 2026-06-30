@@ -1,7 +1,7 @@
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common';
 import { authenticator } from 'otplib';
 import { AuthService } from './auth.service';
 import { UserService } from 'src/user/user.service';
@@ -17,7 +17,7 @@ import { TwoFactorService } from './services/two-factor.service';
 import { User } from 'src/user/entities/user.entity';
 import { Role } from 'src/role/entities/role.entity';
 import type { LoginUserDto } from './dto/login-user.dto';
-import { DataSource } from 'typeorm';
+import { DataSource, IsNull } from 'typeorm';
 
 const twoFactorSecret = 'JBSWY3DPEHPK3PXP';
 const mockUserWith2FA = {
@@ -25,7 +25,7 @@ const mockUserWith2FA = {
   email: 'user2fa@example.com',
   password: 'hashed',
   isActive: true,
-  isDelete: false,
+  deletedAt: null,
   twoFactorSecret,
 } as User;
 
@@ -34,7 +34,7 @@ const mockUserNo2FA = {
   email: 'user@example.com',
   password: 'hashed',
   isActive: true,
-  isDelete: false,
+  deletedAt: null,
   twoFactorSecret: null,
 } as User;
 
@@ -202,7 +202,7 @@ describe('AuthService', () => {
       await expect(service.setup2fa('non-existent-user')).rejects.toThrow(UnauthorizedException);
       expect(userEntityRepo.findOne).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ id: 'non-existent-user', isDelete: false }),
+          where: expect.objectContaining({ id: 'non-existent-user', deletedAt: IsNull() }),
         }),
       );
     });
@@ -236,6 +236,36 @@ describe('AuthService', () => {
         BadRequestException,
       );
       expect(twoFactorService.getStatus).toHaveBeenCalled();
+    });
+  });
+
+  describe('signUp / registerBusiness duplicate email', () => {
+    it('signUp throws ConflictException when email already exists', async () => {
+      userService.findByEmail.mockResolvedValueOnce({ id: 'existing' });
+
+      await expect(
+        service.signUp(
+          { email: 'a@b.com', password: 'SecurePass123', firstName: 'A', lastName: 'B' },
+          undefined,
+        ),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('registerBusiness throws ConflictException when email already exists', async () => {
+      userService.findByEmail.mockResolvedValueOnce({ id: 'existing' });
+
+      await expect(
+        service.registerBusiness(
+          {
+            email: 'a@b.com',
+            password: 'SecurePass123',
+            firstName: 'A',
+            lastName: 'B',
+            businessName: 'Biz',
+          },
+          undefined,
+        ),
+      ).rejects.toThrow(ConflictException);
     });
   });
 });

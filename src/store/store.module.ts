@@ -16,6 +16,7 @@ import { LocationModule } from 'src/location/location.module';
 import { UserProfileModule } from 'src/user-profile/user_profile.module';
 import { UserModule } from 'src/user/user.module';
 import { AuthModule } from 'src/auth/auth.module';
+import { AccountInvitationModule } from 'src/auth/account-invitation/account-invitation.module';
 
 @Module({
   controllers: [StoreController],
@@ -27,6 +28,7 @@ import { AuthModule } from 'src/auth/auth.module';
     UserProfileModule,
     UserModule,
     AuthModule,
+    AccountInvitationModule,
     TypeOrmModule.forFeature([Store, Location, CashierProfile, StoreSchedule, PaymentMethod]),
   ],
   exports: [StoreService, TypeOrmModule],

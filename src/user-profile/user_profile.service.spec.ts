@@ -8,6 +8,8 @@ import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.ent
 import { DeliveryProfile } from 'src/delivery-profiles/entities/delivery_profile.entity';
 import { ProviderProfile } from 'src/provider-profile/entities/provider_profile.entity';
 import { CustomerProfile } from 'src/customer-profile/entities/customer_profile.entity';
+import { User } from 'src/user/entities/user.entity';
+import { BusinessProfile } from 'src/business-profile/entities/business_profile.entity';
 import { ProfileFactoryService } from './services/profile-factory.service';
 import { ProfileValidationService } from './services/profile-validation.service';
 import { ProfileActivityService } from './services/profile-activity.service';
@@ -31,6 +33,20 @@ describe('UserProfileService', () => {
               save: jest.fn(),
               delete: jest.fn(),
             },
+          },
+        },
+        {
+          provide: getRepositoryToken(User),
+          useValue: {
+            findOne: jest.fn(),
+            save: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(BusinessProfile),
+          useValue: {
+            findOne: jest.fn(),
+            update: jest.fn(),
           },
         },
         {
