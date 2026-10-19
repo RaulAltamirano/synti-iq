@@ -62,14 +62,14 @@ jobs:
             node_modules
             api/node_modules
             web/node_modules
-          key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
+          key: ${{ runner.os }}-node22-yarn-${{ hashFiles('yarn.lock') }}
           restore-keys: |
-            ${{ runner.os }}-yarn-
+            ${{ runner.os }}-node22-yarn-
 
       - name: Setup Node
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
-          node-version: '20.19'
+          node-version: '22'
           cache: 'yarn'
 
       - name: Enable Yarn
@@ -109,14 +109,14 @@ jobs:
             node_modules
             api/node_modules
             web/node_modules
-          key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
+          key: ${{ runner.os }}-node22-yarn-${{ hashFiles('yarn.lock') }}
           restore-keys: |
-            ${{ runner.os }}-yarn-
+            ${{ runner.os }}-node22-yarn-
 
       - name: Setup Node
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
-          node-version: '20.19'
+          node-version: '22'
           cache: 'yarn'
 
       - name: Enable Yarn
@@ -156,9 +156,9 @@ jobs:
             node_modules
             api/node_modules
             web/node_modules
-          key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
+          key: ${{ runner.os }}-node22-yarn-${{ hashFiles('yarn.lock') }}
           restore-keys: |
-            ${{ runner.os }}-yarn-
+            ${{ runner.os }}-node22-yarn-
 
       - name: Cache Jest
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
@@ -171,7 +171,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
-          node-version: '20.19'
+          node-version: '22'
           cache: 'yarn'
 
       - name: Enable Yarn
@@ -311,14 +311,14 @@ jobs:
             node_modules
             api/node_modules
             web/node_modules
-          key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
+          key: ${{ runner.os }}-node22-yarn-${{ hashFiles('yarn.lock') }}
           restore-keys: |
-            ${{ runner.os }}-yarn-
+            ${{ runner.os }}-node22-yarn-
 
       - name: Setup Node
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
-          node-version: '20.19'
+          node-version: '22'
           cache: 'yarn'
 
       - name: Enable Yarn
