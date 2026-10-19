@@ -20,14 +20,7 @@
     "build-storybook": "storybook build",
     "type-check": "vue-tsc --noEmit",
     "quality": "yarn build && yarn lint && yarn type-check && yarn format:check && yarn test && yarn build-storybook",
-    "pre-pr": "yarn quality",
-    "prepare": "husky"
-  },
-  "lint-staged": {
-    "src/**/*.{ts,vue,js,mjs,cjs,json,css,md}": [
-      "prettier --write",
-      "eslint --fix"
-    ]
+    "pre-pr": "yarn quality"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.1.0",

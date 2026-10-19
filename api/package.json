@@ -27,8 +27,6 @@
     "test:cov": "jest --coverage && jest --config scripts/jest.config.js --coverage && node scripts/merge-coverage.js",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "pre-commit": "lint-staged",
-    "prepare": "husky",
     "seed:all": "ts-node -r tsconfig-paths/register src/database/scripts/seed-runner.ts all",
     "seed:permissions": "ts-node -r tsconfig-paths/register src/database/scripts/seed-runner.ts permissions",
     "seed:groups": "ts-node -r tsconfig-paths/register src/database/scripts/seed-runner.ts groups",
@@ -148,15 +146,6 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.9.3"
-  },
-  "lint-staged": {
-    "*.{ts,tsx,js}": [
-      "eslint --fix",
-      "prettier --write"
-    ],
-    "*.{json,md,yml,yaml}": [
-      "prettier --write"
-    ]
   },
   "jest": {
     "coverageProvider": "v8",
