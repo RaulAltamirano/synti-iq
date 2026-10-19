@@ -8,10 +8,10 @@ Strategy and lifecycle for branches, aligned with [GitHub Flow](https://docs.git
 
 ## Main Branches
 
-| Branch | Purpose                                                                     |
-| ------ | --------------------------------------------------------------------------- |
-| `main` | Production-ready code. Merges from `dev` or hotfix branches.                |
-| `dev`  | Integration branch. Feature branches target `dev` (or `main` for hotfixes). |
+| Branch   | Purpose                                                                  |
+| -------- | ------------------------------------------------------------------------ |
+| `master` | Production-ready / release branch. Merges from `dev` or hotfix branches. |
+| `dev`    | Integration branch for API and web. Feature branches target `dev`.       |
 
 ---
 
@@ -48,20 +48,20 @@ flowchart LR
 | Phase  | Action                                      | Lead Time Target (DORA) |
 | ------ | ------------------------------------------- | ----------------------- |
 | Issue  | Create requirement, acceptance criteria     | —                       |
-| Branch | Create from `dev` or `main`                 | —                       |
+| Branch | Create from `dev` or `master`               | —                       |
 | WIP    | Implement, commit with Conventional Commits | —                       |
 | PR     | Open PR, fill template, link `Closes #N`    | —                       |
 | Review | CI, SonarCloud, AI review, human approval   | &lt; 24h                |
 | Merge  | Squash/Rebase into target                   | —                       |
 | Delete | Remove feature branch after merge           | Immediately             |
 
-**Hotfix:** For urgent production fixes, branch from `main`, target `main`, then merge back to `dev`. Target Lead Time &lt; 1 day.
+**Hotfix:** For urgent production fixes, branch from `master`, target `master`, then merge back to `dev`. Target Lead Time &lt; 1 day.
 
 ---
 
 ## Branch Protection Rules
 
-Configure in **Settings → Branches → Branch protection rules** for `main` and `dev`:
+Configure in **Settings → Branches → Branch protection rules** for `master` and `dev`:
 
 | Setting                             | Recommendation                                    |
 | ----------------------------------- | ------------------------------------------------- |
@@ -80,8 +80,8 @@ Configure in **Settings → Branches → Branch protection rules** for `main` an
 
 ```mermaid
 flowchart TD
-    subgraph main [main]
-        M[main]
+    subgraph master [master]
+        M[master]
     end
 
     subgraph dev [dev]
