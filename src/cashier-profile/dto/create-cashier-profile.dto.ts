@@ -1,8 +1,9 @@
 import { IsString, IsUUID, IsOptional, IsDate } from 'class-validator';
 
 export class CreateCashierProfileDto {
+  @IsOptional()
   @IsUUID()
-  storeId: string;
+  storeId?: string;
 
   @IsString()
   branchOffice: string;

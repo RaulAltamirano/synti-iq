@@ -118,12 +118,19 @@ export class UserRoleMutationService {
     await this.deleteSpecificProfileIfNeeded(user, userId, queryRunner);
     user.roleId = roleId;
     await queryRunner.manager.save(user);
+    const mergedProfileData =
+      profileCreationContext?.actingBusinessProfileId !== undefined
+        ? {
+            ...(profileData ?? {}),
+            actingBusinessProfileId: profileCreationContext.actingBusinessProfileId,
+          }
+        : profileData;
+
     await this.userProfileService.createProfileForUser(
       userId,
       newRoleName,
-      profileData,
+      mergedProfileData,
       queryRunner,
-      profileCreationContext,
     );
   }
 

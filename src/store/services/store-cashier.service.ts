@@ -79,6 +79,14 @@ export class StoreCashierService {
     });
   }
 
+  async getCashiersFromStore(storeId: string, userId?: string): Promise<CashierProfile[]> {
+    await this.storeQueryService.findOne(storeId, userId);
+    return this.cashierRepo.find({
+      where: { storeId },
+      order: { cashierNumber: 'ASC' },
+    });
+  }
+
   async createCashierUserForStore(
     storeId: string,
     dto: CreateCashierAccountDto,
@@ -146,12 +154,20 @@ export class StoreCashierService {
   ): Promise<boolean> {
     const store = await this.storeQueryService.findOne(storeId, userId);
 
-    const cashier = await this.cashierRepo.findOne({ where: { id: cashierId } });
+    const cashier = await this.cashierRepo.findOne({
+      where: { id: cashierId },
+      relations: ['store'],
+    });
     if (!cashier) {
       throw new NotFoundException('Cashier not found');
     }
 
-    if (cashier.businessProfileId !== store.businessProfileId) {
+    const cashierBusinessProfileId = cashier.store?.businessProfileId;
+    if (
+      cashierBusinessProfileId !== undefined &&
+      cashierBusinessProfileId !== null &&
+      cashierBusinessProfileId !== store.businessProfileId
+    ) {
       throw new ForbiddenException('Cashier does not belong to this business');
     }
 

@@ -4,6 +4,7 @@ import {
   Logger,
   InternalServerErrorException,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -33,21 +34,40 @@ export class CashierProfileStrategy implements IProfileCreationStrategy {
   ) {}
 
   async create(data: unknown, queryRunner: QueryRunner): Promise<string> {
-    const cashierData = data as CreateCashierProfileDto;
+    const cashierData = data as CreateCashierProfileDto & { actingBusinessProfileId?: string };
+    const actingBusinessProfileId = cashierData.actingBusinessProfileId;
 
-    const store = await queryRunner.manager.findOne(Store, {
-      where: { id: cashierData.storeId },
-    });
-
-    if (!store) {
-      throw new NotFoundException(
-        `Failed to create cashier profile: Store with ID ${cashierData.storeId} not found`,
+    if (!actingBusinessProfileId) {
+      throw new ForbiddenException(
+        'actingBusinessProfileId is required to create a cashier profile',
       );
     }
 
+    const { actingBusinessProfileId: _omitActing, ...profileFields } = cashierData;
+
+    let store: Store | null = null;
+    if (profileFields.storeId) {
+      const foundStore = await queryRunner.manager.findOne(Store, {
+        where: { id: profileFields.storeId },
+      });
+
+      if (!foundStore) {
+        throw new NotFoundException(
+          `Failed to create cashier profile: Store with ID ${profileFields.storeId} not found`,
+        );
+      }
+
+      if (foundStore.businessProfileId !== actingBusinessProfileId) {
+        throw new ForbiddenException('Store does not belong to the acting business');
+      }
+
+      store = foundStore;
+    }
+
     const cashierProfile = this.cashierProfileRepository.create({
-      ...cashierData,
+      ...profileFields,
       store,
+      storeId: store?.id ?? null,
     });
 
     const savedCashier = await queryRunner.manager.save(cashierProfile);

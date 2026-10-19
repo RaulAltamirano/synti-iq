@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { RedisService } from 'src/shared/redis/redis.service';
 import { ObservabilityService } from 'src/shared/observability/observability.service';
+import { RedisService } from 'src/shared/redis/redis.service';
 import {
   SESSION_TTL_S,
   SESSION_MAX_REFRESH_COUNT,
@@ -84,9 +84,6 @@ export class AnomalyDetectionService {
   ): Promise<void> {
     return this.observabilityService.withSpan(AUTH_ANOMALY_SPAN_NAMES.RECORD_USAGE, async () => {
       const sessionKey = buildSessionKey(userId, sessionId);
-      // Note: updating deviceInfo in the session payload is a best-effort read-modify-write.
-      // Under concurrent refreshes, the last writer wins for deviceInfo/lastRefresh,
-      // which is acceptable — this data is used only for anomaly detection heuristics.
       const sessionData =
         (await this.redisService.get<AnomalySessionRedisPayload>(sessionKey)) ?? {};
 
@@ -103,13 +100,9 @@ export class AnomalyDetectionService {
         SESSION_TTL_S,
       );
 
-      // Atomic counter — avoids read-modify-write race condition
       const refreshCountKey = buildRefreshCountKey(userId, sessionId);
       const newCount = await this.redisService.incr(refreshCountKey);
       if (newCount === 1) {
-        // Set TTL on first creation. Note: a crash between incr and expire would leave
-        // a persistent key with no TTL. This is an accepted trade-off — session cleanup
-        // and the session key's own TTL bound the lifetime indirectly.
         await this.redisService.expire(refreshCountKey, SESSION_TTL_S);
       }
     });

@@ -1,6 +1,7 @@
 import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 import { JwtService } from 'src/shared/jwt-helper/jwt.service';
 import { RedisService } from 'src/shared/redis/redis.service';
+import { UserSessionService } from 'src/user-session/user-session.service';
 import { v4 as uuidv4 } from 'uuid';
 import { PasswordService } from '../services/password/password.service';
 import { TokensUserDto } from '../dto';
@@ -19,6 +20,7 @@ export class TokenFactory {
     private readonly jwtService: JwtService,
     private readonly redisService: RedisService,
     private readonly passwordService: PasswordService,
+    private readonly userSessionService: UserSessionService,
   ) {}
 
   generateId(): string {
@@ -162,8 +164,9 @@ export class TokenFactory {
 
   private async handleTokenReuse(userId: string, sessionId: string): Promise<void> {
     this.logger.warn(
-      `Security alert: Token reuse detected for user ${userId}, session ${sessionId}`,
+      `Security alert: Token reuse detected for user ${userId}, session ${sessionId} — invalidating session`,
     );
+    await this.userSessionService.invalidateSession(userId, sessionId);
   }
 
   async deleteRefreshToken(userId: string, sessionId: string): Promise<void> {

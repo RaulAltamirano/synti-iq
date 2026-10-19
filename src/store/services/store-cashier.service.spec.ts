@@ -106,7 +106,10 @@ describe('StoreCashierService', () => {
 
     it('throws ForbiddenException when cashier belongs to a different business', async () => {
       storeQueryService.findOne.mockResolvedValue({ id: 's-1', businessProfileId: 'bp-1' });
-      cashierRepo.findOne.mockResolvedValue({ id: 'c-1', businessProfileId: 'bp-other' });
+      cashierRepo.findOne.mockResolvedValue({
+        id: 'c-1',
+        store: { businessProfileId: 'bp-other' },
+      });
 
       await expect(service.assignCashierToStore('s-1', 'c-1')).rejects.toBeInstanceOf(
         ForbiddenException,
@@ -116,7 +119,10 @@ describe('StoreCashierService', () => {
     it('saves cashier with updated storeId on success', async () => {
       const store = { id: 's-1', businessProfileId: 'bp-1' };
       storeQueryService.findOne.mockResolvedValue(store);
-      cashierRepo.findOne.mockResolvedValue({ id: 'c-1', businessProfileId: 'bp-1' });
+      cashierRepo.findOne.mockResolvedValue({
+        id: 'c-1',
+        store: { businessProfileId: 'bp-1' },
+      });
 
       const result = await service.assignCashierToStore('s-1', 'c-1');
 

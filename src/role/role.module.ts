@@ -6,10 +6,12 @@ import { Role } from './entities/role.entity';
 import { PermissionGroup } from 'src/permission-group/entities/permission-group.entity';
 import { User } from 'src/user/entities/user.entity';
 import { GuardsModule } from 'src/auth/guards/guards.module';
+import { PermissionModule } from 'src/permission/permission.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Role, PermissionGroup, User]),
+    PermissionModule,
     forwardRef(() => GuardsModule),
   ],
   controllers: [RoleController],

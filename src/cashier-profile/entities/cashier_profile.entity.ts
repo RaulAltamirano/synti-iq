@@ -21,12 +21,13 @@ export class CashierProfile extends ProfileApprovalLifecycleColumns {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => Store, store => store.cashiers, { nullable: false })
+  /** Null until the cashier is assigned to a store (business-scoped onboarding). */
+  @ManyToOne(() => Store, store => store.cashiers, { nullable: true })
   @JoinColumn({ name: 'store_id' })
-  store: Store;
+  store: Store | null;
 
-  @Column({ name: 'store_id' })
-  storeId: string;
+  @Column({ name: 'store_id', nullable: true })
+  storeId: string | null;
 
   @Column('text', { name: 'branch_office' })
   branchOffice: string;

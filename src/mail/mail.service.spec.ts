@@ -1,5 +1,6 @@
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
+import * as fs from 'fs';
 import type { MailServiceOptions } from './mail.service';
 import { MailService, MAIL_OPTIONS } from './mail.service';
 
@@ -46,6 +47,8 @@ describe('MailService', () => {
 
   describe('when RESEND_API_KEY is configured', () => {
     beforeEach(async () => {
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(Buffer.from('logo-bytes'));
+
       const options: MailServiceOptions = {
         resend: mockResend as unknown as MailServiceOptions['resend'],
         from: 'onboarding@resend.dev',
@@ -56,6 +59,10 @@ describe('MailService', () => {
       }).compile();
 
       service = module.get<MailService>(MailService);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
     });
 
     it('calls resend.emails.send with correct params', async () => {

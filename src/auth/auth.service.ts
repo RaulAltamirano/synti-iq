@@ -5,6 +5,7 @@ import {
   Logger,
   ForbiddenException,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { PasswordService } from './services/password/password.service';
@@ -17,7 +18,7 @@ import { LoginUserDto, RefreshTokensResponseDto } from 'src/auth/dto';
 import { RefreshTokenDto } from 'src/auth/dto/refresh-token.dto';
 import { SystemRole } from 'src/shared/enums/roles.enum';
 import { UserProfileService } from 'src/user-profile/user_profile.service';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, IsNull, Repository } from 'typeorm';
 import { Subscription } from 'src/subscription/entities/subscription.entity';
 import { SubscriptionStatus } from 'src/subscription/enums/subscription-status.enum';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -57,7 +58,7 @@ export class AuthService {
 
     const existingUser = await this.userRepository.findByEmail(dto.email);
     if (existingUser) {
-      throw new UnauthorizedException('Email already in use');
+      throw new ConflictException('Email already in use');
     }
 
     const queryRunner = this.dataSource.createQueryRunner();
@@ -159,7 +160,7 @@ export class AuthService {
 
     const existingUser = await this.userRepository.findByEmail(dto.email);
     if (existingUser) {
-      throw new UnauthorizedException('Email already in use');
+      throw new ConflictException('Email already in use');
     }
 
     const queryRunner = this.dataSource.createQueryRunner();
@@ -431,7 +432,7 @@ export class AuthService {
 
   async setup2fa(userId: string): Promise<{ secret: string; qrCode: string }> {
     const user = await this.userEntityRepository.findOne({
-      where: { id: userId, isDelete: false },
+      where: { id: userId, deletedAt: IsNull() },
       select: ['id', 'email'],
     });
     if (!user) {
@@ -477,7 +478,7 @@ export class AuthService {
   }
 
   private validateUserStatus(user: User): void {
-    if (user.isDelete) {
+    if (user.deletedAt != null) {
       throw new UnauthorizedException('User account is no longer active');
     }
 

@@ -104,8 +104,8 @@ export class RolesPermissionsGuard implements CanActivate {
     return true;
   }
 
-  private validateUserStatus(user: any): void {
-    if (user.isDelete === true) {
+  private validateUserStatus(user: { deletedAt?: Date | null; isActive?: boolean }): void {
+    if (user.deletedAt != null) {
       throw new UnauthorizedException('Usuario eliminado');
     }
 
