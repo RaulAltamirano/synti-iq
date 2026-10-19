@@ -1,6 +1,6 @@
 {
   "name": "synti-iq-api",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "SyntiIQ - Enterprise application built with NestJS",
   "author": "",
   "private": true,
