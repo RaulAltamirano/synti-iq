@@ -23,7 +23,8 @@ jobs:
         id: release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          release-type: node
+          config-file: api/release-please-config.json
+          manifest-file: api/.release-please-manifest.json
 
       - name: Publish to GitHub Release
         if: ${{ steps.release.outputs.release_created }}

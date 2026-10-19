@@ -7,19 +7,21 @@ on:
   pull_request:
     branches: [main, master, dev]
     paths:
-      - 'src/**'
-      - 'package.json'
+      - 'api/src/**'
+      - 'api/package.json'
+      - 'api/Dockerfile'
+      - 'api/.dockerignore'
       - 'yarn.lock'
-      - 'Dockerfile'
-      - '.dockerignore'
+      - 'package.json'
   push:
     branches: [main, master, dev]
     paths:
-      - 'src/**'
-      - 'package.json'
+      - 'api/src/**'
+      - 'api/package.json'
+      - 'api/Dockerfile'
+      - 'api/.dockerignore'
       - 'yarn.lock'
-      - 'Dockerfile'
-      - '.dockerignore'
+      - 'package.json'
   workflow_dispatch:
 
 concurrency:
@@ -37,7 +39,7 @@ jobs:
 
       - name: Check for Dockerfile
         id: dockerfile
-        run: echo "exists=$([ -f Dockerfile ] && echo true || echo false)" >> $GITHUB_OUTPUT
+        run: echo "exists=$([ -f api/Dockerfile ] && echo true || echo false)" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         if: steps.dockerfile.outputs.exists == 'true'
@@ -47,7 +49,8 @@ jobs:
         if: steps.dockerfile.outputs.exists == 'true'
         uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf
         with:
-          context: .
+          context: api
+          file: api/Dockerfile
           push: false
           load: true
           tags: synti-iq-api:ci
@@ -56,4 +59,4 @@ jobs:
 
       - name: Skip (no Dockerfile)
         if: steps.dockerfile.outputs.exists != 'true'
-        run: echo "Dockerfile not found — skipping Docker build. Add Dockerfile to enable this check."
+        run: echo "Dockerfile not found — skipping Docker build. Add api/Dockerfile to enable this check."
