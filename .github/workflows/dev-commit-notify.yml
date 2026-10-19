@@ -61,4 +61,4 @@ jobs:
           COMMIT_AUTHOR: ${{ steps.commit.outputs.author }}
           COMMIT_URL: ${{ steps.commit.outputs.url }}
           COMMIT_FILES: ${{ steps.commit.outputs.files }}
-        run: node scripts/discord-notify-dev-commit.js
+        run: node api/scripts/discord-notify-dev-commit.js

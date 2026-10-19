@@ -21,7 +21,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  quality-fast:
+  changes:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      web: ${{ steps.filter.outputs.web }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'api/**'
+              - 'package.json'
+              - 'yarn.lock'
+              - '.github/workflows/**'
+            web:
+              - 'web/**'
+              - 'package.json'
+              - 'yarn.lock'
+              - '.github/workflows/**'
+
+  repo-guards:
     permissions:
       contents: read
     runs-on: ubuntu-24.04
@@ -33,8 +58,11 @@ jobs:
       - name: Cache node_modules
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
         with:
-          path: node_modules
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          path: |
+            node_modules
+            api/node_modules
+            web/node_modules
+          key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
           restore-keys: |
             ${{ runner.os }}-yarn-
 
@@ -65,19 +93,56 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: echo "$PR_TITLE" | npx commitlint
 
+  quality-fast:
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    permissions:
+      contents: read
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: Cache node_modules
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
+        with:
+          path: |
+            node_modules
+            api/node_modules
+            web/node_modules
+          key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Setup Node
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+        with:
+          node-version: '20.19'
+          cache: 'yarn'
+
+      - name: Enable Yarn
+        run: corepack enable
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile --ignore-scripts
+
       - name: Audit dependencies (high/critical gate)
+        working-directory: api
         run: yarn audit:high-gate
 
       - name: Lint
+        working-directory: api
         env:
           # 4GB — runners have ~7GB RAM; 8GB heap caused OOM
           NODE_OPTIONS: --max-old-space-size=4096
         run: yarn lint
 
       - name: Check formatting
+        working-directory: api
         run: yarn format:check
 
   quality-build:
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -87,18 +152,21 @@ jobs:
       - name: Cache node_modules
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
         with:
-          path: node_modules
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          path: |
+            node_modules
+            api/node_modules
+            web/node_modules
+          key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
           restore-keys: |
             ${{ runner.os }}-yarn-
 
       - name: Cache Jest
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
         with:
-          path: .jest-cache
-          key: ${{ runner.os }}-jest-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('src/**/*.ts') }}
+          path: api/src/.jest-cache
+          key: ${{ runner.os }}-jest-${{ hashFiles('yarn.lock') }}-${{ hashFiles('api/src/**/*.ts') }}
           restore-keys: |
-            ${{ runner.os }}-jest-${{ hashFiles('**/yarn.lock') }}-
+            ${{ runner.os }}-jest-${{ hashFiles('yarn.lock') }}-
 
       - name: Setup Node
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
@@ -113,16 +181,18 @@ jobs:
         run: yarn install --frozen-lockfile --ignore-scripts
 
       - name: Build
+        working-directory: api
         run: yarn build
 
       - name: Test with coverage
+        working-directory: api
         run: yarn test:cov
 
       - name: Upload coverage report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: coverage-report
-          path: coverage/
+          path: api/coverage/
           retention-days: 7
 
   # Fallback: post coverage PR comment when pr-review does not run (e.g. fork PRs)
@@ -140,14 +210,12 @@ jobs:
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           name: coverage-report
-
-      - name: Restore coverage for jest-coverage-report
-        run: mkdir -p coverage && cp -r coverage-report/. coverage/
+          path: api/coverage
 
       - name: Coverage PR comment
         uses: ArtiomTr/jest-coverage-report-action@7f750dd50f5585533321eb7ebc482b936b49a5d4
         with:
-          coverage-file: ./coverage/coverage-final.json
+          coverage-file: ./api/coverage/coverage-final.json
           skip-step: all
           package-manager: yarn
 
@@ -163,6 +231,7 @@ jobs:
 
       - name: Resolve Discord thread for PR
         id: thread
+        working-directory: api
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -189,6 +258,7 @@ jobs:
       - name: Notify Discord — CI passed
         if: needs.quality-fast.result == 'success' && needs.quality-build.result == 'success'
         continue-on-error: true
+        working-directory: api
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           DISCORD_THREAD_ID: ${{ steps.thread.outputs.id }}
@@ -208,6 +278,7 @@ jobs:
       - name: Notify Discord — CI failed
         if: needs.quality-fast.result != 'success' || needs.quality-build.result != 'success'
         continue-on-error: true
+        working-directory: api
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           DISCORD_THREAD_ID: ${{ steps.thread.outputs.id }}
@@ -223,3 +294,58 @@ jobs:
           COMMIT_SHA: ${{ github.sha }}
           COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: node scripts/discord-notify-ci-failed.js
+
+  web-quality:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: Cache node_modules
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
+        with:
+          path: |
+            node_modules
+            api/node_modules
+            web/node_modules
+          key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Setup Node
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+        with:
+          node-version: '20.19'
+          cache: 'yarn'
+
+      - name: Enable Yarn
+        run: corepack enable
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile --ignore-scripts
+
+      - name: Lint
+        working-directory: web
+        run: yarn lint
+
+      - name: Check formatting
+        working-directory: web
+        run: yarn format:check
+
+      - name: Type-check
+        working-directory: web
+        run: yarn type-check
+        continue-on-error: true
+
+      - name: Build
+        working-directory: web
+        run: yarn build
+        continue-on-error: true
+
+      - name: Test
+        working-directory: web
+        run: yarn test
+        continue-on-error: true

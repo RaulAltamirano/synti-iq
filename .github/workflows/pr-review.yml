@@ -16,10 +16,30 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'api/**'
+              - 'package.json'
+              - 'yarn.lock'
+              - '.github/workflows/**'
+
   quality-fast:
     permissions:
       contents: read
-    if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    needs: changes
+    if: needs.changes.outputs.api == 'true' && github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
@@ -29,8 +49,11 @@ jobs:
       - name: Cache node_modules
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
         with:
-          path: node_modules
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          path: |
+            node_modules
+            api/node_modules
+            web/node_modules
+          key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
           restore-keys: |
             ${{ runner.os }}-yarn-
 
@@ -47,21 +70,25 @@ jobs:
         run: yarn install --frozen-lockfile --ignore-scripts
 
       - name: Audit dependencies (high/critical gate)
+        working-directory: api
         run: yarn audit:high-gate
 
       - name: Lint
+        working-directory: api
         env:
           # 4GB — runners have ~7GB RAM; 8GB heap caused OOM
           NODE_OPTIONS: --max-old-space-size=4096
         run: yarn lint
 
       - name: Check formatting
+        working-directory: api
         run: yarn format:check
 
   quality-build:
     permissions:
       contents: read
-    if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    needs: changes
+    if: needs.changes.outputs.api == 'true' && github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
@@ -69,18 +96,21 @@ jobs:
       - name: Cache node_modules
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
         with:
-          path: node_modules
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          path: |
+            node_modules
+            api/node_modules
+            web/node_modules
+          key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
           restore-keys: |
             ${{ runner.os }}-yarn-
 
       - name: Cache Jest
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
         with:
-          path: .jest-cache
-          key: ${{ runner.os }}-jest-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('src/**/*.ts') }}
+          path: api/src/.jest-cache
+          key: ${{ runner.os }}-jest-${{ hashFiles('yarn.lock') }}-${{ hashFiles('api/src/**/*.ts') }}
           restore-keys: |
-            ${{ runner.os }}-jest-${{ hashFiles('**/yarn.lock') }}-
+            ${{ runner.os }}-jest-${{ hashFiles('yarn.lock') }}-
 
       - name: Setup Node
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
@@ -95,16 +125,18 @@ jobs:
         run: yarn install --frozen-lockfile --ignore-scripts
 
       - name: Build
+        working-directory: api
         run: yarn build
 
       - name: Test with coverage
+        working-directory: api
         run: yarn test:cov
 
       - name: Upload coverage report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: coverage-report
-          path: coverage/
+          path: api/coverage/
           retention-days: 7
 
   sonar:
@@ -123,19 +155,19 @@ jobs:
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           name: coverage-report
-
-      - name: Restore coverage for Sonar and jest-coverage-report
-        run: mkdir -p coverage && cp -r coverage-report/. coverage/
+          path: api/coverage
 
       - name: Coverage PR comment
         uses: ArtiomTr/jest-coverage-report-action@7f750dd50f5585533321eb7ebc482b936b49a5d4
         with:
-          coverage-file: ./coverage/coverage-final.json
+          coverage-file: ./api/coverage/coverage-final.json
           skip-step: all
           package-manager: yarn
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@299e4b793aaa83bf2aba7c9c14bedbb485688ec4
+        with:
+          projectBaseDir: api
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
@@ -152,6 +184,7 @@ jobs:
       - name: Resolve Discord thread for PR
         id: discord-thread
         if: steps.sonarqube-quality-gate-check.outcome == 'failure'
+        working-directory: api
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -160,6 +193,7 @@ jobs:
 
       - name: Post Sonar failure summary (PR + Discord)
         if: steps.sonarqube-quality-gate-check.outcome == 'failure'
+        working-directory: api
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -183,7 +217,8 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-    if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    needs: changes
+    if: needs.changes.outputs.api == 'true' && github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
@@ -191,8 +226,11 @@ jobs:
       - name: Cache node_modules
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
         with:
-          path: node_modules
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          path: |
+            node_modules
+            api/node_modules
+            web/node_modules
+          key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
           restore-keys: |
             ${{ runner.os }}-yarn-
 
@@ -209,6 +247,7 @@ jobs:
         run: yarn install --frozen-lockfile --ignore-scripts
 
       - name: Run AI Review
+        working-directory: api
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_EVENT_PATH: ${{ github.event_path }}
@@ -253,6 +292,7 @@ jobs:
           echo "url=${COMMIT_URL:-}" >> $GITHUB_OUTPUT
 
       - name: Notify Discord - New commit
+        working-directory: api
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -364,6 +404,7 @@ jobs:
 
       - name: Notify Discord - New PR (after AI + Sonar)
         if: github.event.pull_request != null
+        working-directory: api
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -392,7 +433,8 @@ jobs:
   discord-notify:
     permissions:
       contents: read
-    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    needs: changes
+    if: needs.changes.outputs.api == 'true' && github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     continue-on-error: true
     steps:
@@ -451,6 +493,7 @@ jobs:
 
       - name: Generate roast with burla (why closed/merged)
         id: genroast
+        working-directory: api
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -467,6 +510,7 @@ jobs:
           echo "ROAST_EOF" >> $GITHUB_OUTPUT
 
       - name: Notify Discord
+        working-directory: api
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
