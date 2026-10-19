@@ -9,50 +9,15 @@ export interface SubscriptionPlan {
   popular?: boolean;
 }
 
-export interface AddressData {
-  street: string;
-  number: string;
-  neighborhood: string;
-  city: string;
-  state: string;
-  postalCode: string;
-  country: string;
-}
+const MAX_STEP = 2;
 
 export function useSubscriptionWizard() {
   const currentStep = ref<number>(1);
   const selectedPlan = ref<SubscriptionPlan | null>(null);
-  const addressData = ref<AddressData>({
-    street: '',
-    number: '',
-    neighborhood: '',
-    city: '',
-    state: '',
-    postalCode: '',
-    country: 'México',
-  });
   const isModalOpen = ref<boolean>(false);
 
-  // Validaciones
   const isStep1Valid = computed(() => selectedPlan.value !== null);
-
-  const isStep2Valid = computed(() => {
-    return (
-      addressData.value.street.trim() !== '' &&
-      addressData.value.number.trim() !== '' &&
-      addressData.value.neighborhood.trim() !== '' &&
-      addressData.value.city.trim() !== '' &&
-      addressData.value.state.trim() !== '' &&
-      addressData.value.postalCode.trim() !== '' &&
-      /^\d{5}$/.test(addressData.value.postalCode) &&
-      addressData.value.country.trim() !== ''
-    );
-  });
-
-  const isStep3Valid = computed(() => {
-    // Por ahora siempre válido, la validación de Stripe se hará después
-    return true;
-  });
+  const isStep2Valid = computed(() => true);
 
   const canProceedToNextStep = computed(() => {
     switch (currentStep.value) {
@@ -60,16 +25,13 @@ export function useSubscriptionWizard() {
         return isStep1Valid.value;
       case 2:
         return isStep2Valid.value;
-      case 3:
-        return isStep3Valid.value;
       default:
         return false;
     }
   });
 
-  // Navegación
   const nextStep = () => {
-    if (canProceedToNextStep.value && currentStep.value < 3) {
+    if (canProceedToNextStep.value && currentStep.value < MAX_STEP) {
       currentStep.value++;
     }
   };
@@ -81,7 +43,7 @@ export function useSubscriptionWizard() {
   };
 
   const goToStep = (step: number) => {
-    if (step >= 1 && step <= 3) {
+    if (step >= 1 && step <= MAX_STEP) {
       currentStep.value = step;
     }
   };
@@ -89,15 +51,6 @@ export function useSubscriptionWizard() {
   const resetWizard = () => {
     currentStep.value = 1;
     selectedPlan.value = null;
-    addressData.value = {
-      street: '',
-      number: '',
-      neighborhood: '',
-      city: '',
-      state: '',
-      postalCode: '',
-      country: 'México',
-    };
   };
 
   const openModal = () => {
@@ -111,19 +64,12 @@ export function useSubscriptionWizard() {
   };
 
   return {
-    // State
     currentStep,
     selectedPlan,
-    addressData,
     isModalOpen,
-
-    // Computed
     isStep1Valid,
     isStep2Valid,
-    isStep3Valid,
     canProceedToNextStep,
-
-    // Methods
     nextStep,
     previousStep,
     goToStep,
