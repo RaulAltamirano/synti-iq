@@ -1,0 +1,41 @@
+.icon {
+  width: 20px;
+  height: 20px;
+  margin-right: 10px;
+}
+
+.social-auth {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.social-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
+  background-color: white;
+  color: #374151;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.dark .social-btn {
+  background-color: #374151;
+  border-color: #4b5563;
+  color: white;
+}
+
+.social-btn:hover {
+  background-color: #f9fafb;
+}
+
+.dark .social-btn:hover {
+  background-color: #4b5563;
+}

@@ -1,0 +1,29 @@
+---
+description: Vue 3 component and Storybook standards
+globs: "**/*.vue,**/*.stories.ts,**/composables/*.ts,**/stores/*.ts"
+alwaysApply: false
+---
+
+# Vue 3 + Storybook Standards
+
+Follow [AGENTS.md](AGENTS.md) and [docs/FRONTEND_CONVENTIONS.md](docs/FRONTEND_CONVENTIONS.md).
+
+## Components
+
+- Use `<script setup lang="ts">` always. No Options API or `defineComponent` for new components.
+- Type props: `defineProps<Props>()` with interface; `withDefaults()` for defaults.
+- Type emits: `defineEmits<{ eventName: [payload?: Type] }>()`.
+- Use design tokens only (no magic numbers): `text-sm`, `p-4`, `gap-2` — not `text-[13px]` or `px-7`.
+- Canonical reference: [src/modules/ui/components/InfoBanner/](src/modules/ui/components/InfoBanner/).
+
+## Storybook
+
+- Every UI component needs a `.stories.ts` file.
+- CSF3 format: `Meta<typeof Component>`, `StoryObj<typeof Component>`.
+- Include Default, Variants; States (Loading, Disabled, Error) only when component has those props. See [FRONTEND_CONVENTIONS](docs/FRONTEND_CONVENTIONS.md#storybook-standards).
+- Use `args.children` for default slot in story templates (Storybook-only).
+
+## Stores & Composables
+
+- Pinia for cross-route/global state; composables for page/component logic.
+- Use `storeToRefs` when destructuring store state in components.
