@@ -140,10 +140,7 @@ export const useSearchStore = defineStore('search', () => {
     }
   }
 
-  async function fetchProducts(
-    filters: ProductFilterDto,
-    signal?: AbortSignal
-  ): Promise<unknown | undefined> {
+  async function fetchProducts(filters: ProductFilterDto, signal?: AbortSignal): Promise<unknown> {
     try {
       const params = new URLSearchParams();
 

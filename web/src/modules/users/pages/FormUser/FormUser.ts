@@ -14,7 +14,7 @@ export default {
   setup() {
     const { isDark } = useTheme();
     const loading = ref(false);
-    const selectedProfile = ref<unknown | null>(null);
+    const selectedProfile = ref<unknown>(null);
     const showPreview = ref(false);
     const isEditing = ref(false);
 

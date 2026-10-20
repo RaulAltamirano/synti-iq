@@ -1,5 +1,6 @@
 <script>
-// Esta parte del script es necesaria solo para las animaciones principales
+import { styleConfettiElements } from '@/modules/shared/utils/styleConfetti';
+
 export default {
   data() {
     return {
@@ -91,33 +92,7 @@ export default {
     // Configuración de los confeti
     setupConfetti() {
       if (this.prefersReducedMotion) return;
-
-      const confettiElements = document.querySelectorAll('.confetti');
-      const colors = ['#10B981', '#34D399', '#6EE7B7', '#A7F3D0', '#D1FAE5'];
-
-      confettiElements.forEach((el) => {
-        const left = `${Math.random() * 100}%`;
-        const width = `${Math.random() * 8 + 5}px`;
-        const height = width;
-        const bgColor = colors[Math.floor(Math.random() * colors.length)];
-        const fallDuration = `${Math.random() * 3 + 2}s`;
-        const fallDelay = `${Math.random() * 1.5}s`;
-        const swayAmount = `${Math.random() * 50 - 25}px`;
-        const swayDuration = `${Math.random() * 2 + 2}s`;
-        const swayDelay = `${Math.random() * 1}s`;
-
-        el.style.width = width;
-        el.style.height = height;
-        el.style.left = left;
-        el.style.backgroundColor = bgColor;
-        el.style.opacity = '0';
-        el.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
-        el.style.setProperty('--fall-duration', fallDuration);
-        el.style.setProperty('--fall-delay', fallDelay);
-        el.style.setProperty('--sway-amount', swayAmount);
-        el.style.setProperty('--sway-duration', swayDuration);
-        el.style.setProperty('--sway-delay', swayDelay);
-      });
+      styleConfettiElements();
     },
 
     // Obtener hora actual
