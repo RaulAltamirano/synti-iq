@@ -28,6 +28,7 @@ import { LoggerModule } from 'src/shared/logger';
 import { ObservabilityModule } from 'src/shared/observability';
 import { MailModule } from 'src/mail/mail.module';
 import { Resend } from 'resend';
+import { StripeModule } from 'src/stripe/stripe.module';
 
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { Resend } from 'resend';
     LocationModule,
     ProductCategorieModule,
     ResponseModule,
+    StripeModule,
     MailModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
