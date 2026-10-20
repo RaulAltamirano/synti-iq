@@ -172,6 +172,7 @@ jobs:
           projectBaseDir: api
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_SCANNER_SKIP_JRE_PROVISIONING: true
 
       - name: SonarCloud Quality Gate check
         id: sonarqube-quality-gate-check
