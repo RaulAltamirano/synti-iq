@@ -34,13 +34,9 @@
 
       <!-- Form -->
       <form class="space-y-4" @submit.prevent="handleSignup">
-        <Field
-          v-slot="{ componentField, errorMessage }"
-          name="firstName"
-          :validate-on-blur="true"
-        >
+        <Field v-slot="{ componentField, errorMessage }" name="firstName" :validate-on-blur="true">
           <div class="space-y-1">
-            <Input
+            <AppInput
               v-bind="componentField"
               type="text"
               name="firstName"
@@ -54,13 +50,9 @@
           </div>
         </Field>
 
-        <Field
-          v-slot="{ componentField, errorMessage }"
-          name="lastName"
-          :validate-on-blur="true"
-        >
+        <Field v-slot="{ componentField, errorMessage }" name="lastName" :validate-on-blur="true">
           <div class="space-y-1">
-            <Input
+            <AppInput
               v-bind="componentField"
               type="text"
               name="lastName"
@@ -76,7 +68,7 @@
 
         <Field v-slot="{ componentField, errorMessage }" name="email" :validate-on-blur="true">
           <div class="space-y-1">
-            <Input
+            <AppInput
               v-bind="componentField"
               type="email"
               name="email"
@@ -110,7 +102,7 @@
         </Field>
 
         <!-- Submit Button -->
-        <Button
+        <AppButton
           type="submit"
           variant="primary"
           size="md"
@@ -119,7 +111,7 @@
           full-width
         >
           Sign up
-        </Button>
+        </AppButton>
       </form>
 
       <!-- Footer Links -->

@@ -1,3 +1,74 @@
+<script setup lang="ts">
+import { ref, computed, watch, onUnmounted } from 'vue';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import { Button } from '@/modules/ui/components';
+import TotpInput from '@/modules/auth/components/TotpInput/TotpInput.vue';
+import { useTheme } from '@/modules/shared/composables/useTheme';
+
+const props = withDefaults(defineProps<Props>(), {
+  showSuccess: false,
+});
+const emit = defineEmits<{
+  close: [];
+  confirm: [code: string];
+}>();
+const TOTP_REGEX = /^\d{6}$/;
+const BACKUP_CODE_REGEX = /^[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}$/;
+
+interface Props {
+  isOpen: boolean;
+  isVerifying: boolean;
+  error: string | null;
+  showSuccess?: boolean;
+}
+
+const { isDark } = useTheme();
+
+const disableCode = ref('');
+
+const isDisableCodeValid = computed(() => {
+  const code = disableCode.value.trim();
+  return TOTP_REGEX.test(code) || BACKUP_CODE_REGEX.test(code);
+});
+
+const handleClose = () => {
+  emit('close');
+};
+
+const handleEscape = (e: KeyboardEvent) => {
+  if (e.key === 'Escape') handleClose();
+};
+
+watch(
+  () => props.isOpen,
+  (open) => {
+    if (!open) {
+      disableCode.value = '';
+    }
+    if (open) {
+      globalThis.addEventListener('keydown', handleEscape);
+    } else {
+      globalThis.removeEventListener('keydown', handleEscape);
+    }
+  },
+  { immediate: true }
+);
+
+onUnmounted(() => {
+  globalThis.removeEventListener('keydown', handleEscape);
+});
+
+const handleConfirm = () => {
+  emit('confirm', disableCode.value.trim());
+};
+
+const handleComplete = () => {
+  if (isDisableCodeValid.value) {
+    handleConfirm();
+  }
+};
+</script>
+
 <template>
   <Teleport to="body">
     <div v-if="isOpen" class="fixed inset-0 z-[100] overflow-y-auto">
@@ -54,9 +125,7 @@
               type="button"
               class="p-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
               :class="
-                isDark
-                  ? 'text-gray-400 hover:text-gray-200'
-                  : 'text-gray-500 hover:text-gray-700'
+                isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'
               "
               aria-label="Close dialog"
               @click="handleClose"
@@ -112,30 +181,26 @@
             <template v-else>
               <div
                 class="p-4 rounded-lg border"
-                :class="
-                  isDark ? 'bg-red-900/20 border-red-800/50' : 'bg-red-50 border-red-200'
-                "
+                :class="isDark ? 'bg-red-900/20 border-red-800/50' : 'bg-red-50 border-red-200'"
               >
                 <p class="text-sm" :class="isDark ? 'text-red-300' : 'text-red-700'">
-                  To disable two-factor authentication, enter the 6-digit code from your authenticator
-                  app or a backup code (XXXX-XXXX-XXXX):
+                  To disable two-factor authentication, enter the 6-digit code from your
+                  authenticator app or a backup code (XXXX-XXXX-XXXX):
                 </p>
               </div>
 
               <TotpInput
-              v-model="disableCode"
-              placeholder="000000 o XXXX-XXXX-XXXX"
-              :disabled="isVerifying"
-              :error="error"
-              :accept-backup-code="true"
-              :auto-submit-lengths="[6, 14]"
-              @complete="handleComplete"
-            />
+                v-model="disableCode"
+                placeholder="000000 o XXXX-XXXX-XXXX"
+                :disabled="isVerifying"
+                :error="error"
+                :accept-backup-code="true"
+                :auto-submit-lengths="[6, 14]"
+                @complete="handleComplete"
+              />
 
               <div class="flex gap-3">
-                <Button variant="ghost" class="flex-1" @click="handleClose">
-                  Cancel
-                </Button>
+                <Button variant="ghost" class="flex-1" @click="handleClose"> Cancel </Button>
                 <Button
                   variant="danger"
                   class="flex-1"
@@ -153,76 +218,3 @@
     </div>
   </Teleport>
 </template>
-
-<script setup lang="ts">
-import { ref, computed, watch, onUnmounted } from 'vue';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { Button } from '@/modules/ui/components';
-import TotpInput from '@/modules/auth/components/TotpInput/TotpInput.vue';
-import { useTheme } from '@/modules/shared/composables/useTheme';
-
-const TOTP_REGEX = /^\d{6}$/;
-const BACKUP_CODE_REGEX = /^[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}$/;
-
-interface Props {
-  isOpen: boolean;
-  isVerifying: boolean;
-  error: string | null;
-  showSuccess?: boolean;
-}
-
-const props = withDefaults(defineProps<Props>(), {
-  showSuccess: false,
-});
-
-const emit = defineEmits<{
-  close: [];
-  confirm: [code: string];
-}>();
-
-const { isDark } = useTheme();
-
-const disableCode = ref('');
-
-const isDisableCodeValid = computed(() => {
-  const code = disableCode.value.trim();
-  return TOTP_REGEX.test(code) || BACKUP_CODE_REGEX.test(code);
-});
-
-const handleClose = () => {
-  emit('close');
-};
-
-const handleEscape = (e: KeyboardEvent) => {
-  if (e.key === 'Escape') handleClose();
-};
-
-watch(
-  () => props.isOpen,
-  (open) => {
-    if (!open) {
-      disableCode.value = '';
-    }
-    if (open) {
-      globalThis.addEventListener('keydown', handleEscape);
-    } else {
-      globalThis.removeEventListener('keydown', handleEscape);
-    }
-  },
-  { immediate: true }
-);
-
-onUnmounted(() => {
-  globalThis.removeEventListener('keydown', handleEscape);
-});
-
-const handleConfirm = () => {
-  emit('confirm', disableCode.value.trim());
-};
-
-const handleComplete = () => {
-  if (isDisableCodeValid.value) {
-    handleConfirm();
-  }
-};
-</script>

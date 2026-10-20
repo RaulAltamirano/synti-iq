@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import type { NotificationSetting } from '../interfaces/notification.types';
 import { DEFAULT_NOTIFICATION_SETTINGS } from '../interfaces/notification.types';
 
@@ -48,6 +48,7 @@ export function useNotificationPreferences() {
         saveSuccess.value = false;
       }, 2000);
     } catch {
+      /* localStorage unavailable */
     } finally {
       isSaving.value = false;
     }

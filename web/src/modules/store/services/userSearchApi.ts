@@ -36,9 +36,7 @@ function getAxiosMessage(err: unknown): string {
  * Busca usuarios con rol cajero por nombre (subcadena).
  * Usa el `profileId` del perfil tipo cajero como ID de `cashier_profiles` para asignar a tienda.
  */
-export async function searchCashiersByName(
-  query: string
-): Promise<AutocompleteOption<string>[]> {
+export async function searchCashiersByName(query: string): Promise<AutocompleteOption<string>[]> {
   const q = query.trim();
   if (q.length < 2) return [];
 

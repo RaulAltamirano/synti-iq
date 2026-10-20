@@ -50,8 +50,7 @@ export const useThemeStore = defineStore('themePreference', {
       this.isDark = isDark;
     },
     toggleTheme(): void {
-      const systemIsDark =
-        this.preference === 'system' ? prefersColorSchemeDark() : false;
+      const systemIsDark = this.preference === 'system' ? prefersColorSchemeDark() : false;
       this.preference = togglePreference(this.preference, systemIsDark);
       this.syncFromPreference();
     },

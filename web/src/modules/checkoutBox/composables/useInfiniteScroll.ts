@@ -1,9 +1,9 @@
 import { nextTick } from 'vue';
 
 export const useInfiniteScroll = (options: {
-  containerRef: any;
-  triggerRef: any;
-  onIntersect: any;
+  containerRef: unknown;
+  triggerRef: unknown;
+  onIntersect: unknown;
   threshold?: 0.1 | undefined;
   rootMargin?: '0px 0px 100px 0px' | undefined;
   enabled?: true | undefined;

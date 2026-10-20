@@ -41,7 +41,7 @@ export default {
     // Observadores
     watch(
       carts,
-      (newCarts) => {
+      (_newCarts) => {
         // Persistir carritos en el store
         // cartStore.updateCarts(newCarts)
       },

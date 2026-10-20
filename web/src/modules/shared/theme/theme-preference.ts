@@ -34,8 +34,9 @@ function applyDomTheme(root: HTMLElement, isDark: boolean): void {
   };
 
   if ('startViewTransition' in document) {
-    (document as Document & { startViewTransition: (cb: () => void) => void })
-      .startViewTransition(commit);
+    (document as Document & { startViewTransition: (cb: () => void) => void }).startViewTransition(
+      commit
+    );
   } else {
     commit();
   }
@@ -54,7 +55,7 @@ export interface ApplyThemeOptions {
  */
 export function applyThemePreference(
   preference: ThemePreference,
-  options?: ApplyThemeOptions,
+  options?: ApplyThemeOptions
 ): { isDark: boolean } {
   const persist = options?.persist !== false;
   const storage = options?.storage ?? globalThis.localStorage;
@@ -77,7 +78,7 @@ export function applyThemePreference(
  */
 export function togglePreference(
   preference: ThemePreference,
-  systemIsDark: boolean,
+  systemIsDark: boolean
 ): ThemePreference {
   if (preference === 'system') {
     return systemIsDark ? 'light' : 'dark';

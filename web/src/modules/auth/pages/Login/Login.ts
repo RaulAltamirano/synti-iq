@@ -13,7 +13,15 @@ const loginSchema = toTypedSchema(loginCredentialsSchema);
 
 export default defineComponent({
   name: 'Login',
-  components: { SocialAuth, PasswordInput, TotpInput, Button, Input, Card, Field },
+  components: {
+    SocialAuth,
+    PasswordInput,
+    TotpInput,
+    AppButton: Button,
+    AppInput: Input,
+    Card,
+    Field,
+  },
   setup() {
     const { login, isLoading } = useAuth();
     const totpCode = ref('');

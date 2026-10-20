@@ -1,3 +1,58 @@
+<script setup lang="ts">
+import { watch, onUnmounted } from 'vue';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import { Button } from '@/modules/ui/components';
+import { useTheme } from '@/modules/shared/composables/useTheme';
+
+interface Props {
+  isOpen: boolean;
+  backupCodes: string[];
+}
+
+const props = defineProps<Props>();
+
+const emit = defineEmits<{
+  close: [];
+  copy: [];
+  dismiss: [];
+}>();
+
+const { isDark } = useTheme();
+
+const handleClose = () => {
+  emit('close');
+};
+
+const handleEscape = (e: KeyboardEvent) => {
+  if (e.key === 'Escape') handleClose();
+};
+
+watch(
+  () => props.isOpen,
+  (open) => {
+    if (open) {
+      globalThis.addEventListener('keydown', handleEscape);
+    } else {
+      globalThis.removeEventListener('keydown', handleEscape);
+    }
+  },
+  { immediate: true }
+);
+
+onUnmounted(() => {
+  globalThis.removeEventListener('keydown', handleEscape);
+});
+
+const handleCopy = () => {
+  emit('copy');
+};
+
+const handleDismiss = () => {
+  emit('dismiss');
+  emit('close');
+};
+</script>
+
 <template>
   <Teleport to="body">
     <div v-if="isOpen" class="fixed inset-0 z-[100] overflow-y-auto">
@@ -54,9 +109,7 @@
               type="button"
               class="p-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-yellow-500"
               :class="
-                isDark
-                  ? 'text-gray-400 hover:text-gray-200'
-                  : 'text-gray-500 hover:text-gray-700'
+                isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'
               "
               aria-label="Close dialog"
               @click="handleClose"
@@ -69,9 +122,7 @@
             <div
               class="p-4 rounded-lg border"
               :class="
-                isDark
-                  ? 'bg-yellow-900/20 border-yellow-700/50'
-                  : 'bg-yellow-50 border-yellow-200'
+                isDark ? 'bg-yellow-900/20 border-yellow-700/50' : 'bg-yellow-50 border-yellow-200'
               "
             >
               <div class="flex items-start gap-3">
@@ -87,7 +138,10 @@
                   >
                     Save these backup codes
                   </p>
-                  <p class="text-xs mt-1" :class="isDark ? 'text-yellow-400/80' : 'text-yellow-700'">
+                  <p
+                    class="text-xs mt-1"
+                    :class="isDark ? 'text-yellow-400/80' : 'text-yellow-700'"
+                  >
                     Use them if you lose access to your authenticator. Each code works only once.
                   </p>
                 </div>
@@ -112,9 +166,7 @@
               <Button variant="outline" :icon="['fas', 'copy']" class="flex-1" @click="handleCopy">
                 Copy codes
               </Button>
-              <Button variant="primary" class="flex-1" @click="handleDismiss">
-                Done
-              </Button>
+              <Button variant="primary" class="flex-1" @click="handleDismiss"> Done </Button>
             </div>
           </div>
         </div>
@@ -122,58 +174,3 @@
     </div>
   </Teleport>
 </template>
-
-<script setup lang="ts">
-import { watch, onUnmounted } from 'vue';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { Button } from '@/modules/ui/components';
-import { useTheme } from '@/modules/shared/composables/useTheme';
-
-interface Props {
-  isOpen: boolean;
-  backupCodes: string[];
-}
-
-const props = defineProps<Props>();
-
-const emit = defineEmits<{
-  close: [];
-  copy: [];
-  dismiss: [];
-}>();
-
-const { isDark } = useTheme();
-
-const handleClose = () => {
-  emit('close');
-};
-
-const handleEscape = (e: KeyboardEvent) => {
-  if (e.key === 'Escape') handleClose();
-};
-
-watch(
-  () => props.isOpen,
-  (open) => {
-    if (open) {
-      globalThis.addEventListener('keydown', handleEscape);
-    } else {
-      globalThis.removeEventListener('keydown', handleEscape);
-    }
-  },
-  { immediate: true }
-);
-
-onUnmounted(() => {
-  globalThis.removeEventListener('keydown', handleEscape);
-});
-
-const handleCopy = () => {
-  emit('copy');
-};
-
-const handleDismiss = () => {
-  emit('dismiss');
-  emit('close');
-};
-</script>

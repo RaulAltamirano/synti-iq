@@ -121,10 +121,7 @@ export const MOCK_CASHIER_AUTOCOMPLETE_OPTIONS: AutocompleteOption<string>[] = [
   },
 ];
 
-function matchesQuery(
-  option: AutocompleteOption<string>,
-  normalizedQuery: string
-): boolean {
+function matchesQuery(option: AutocompleteOption<string>, normalizedQuery: string): boolean {
   const label = option.label.toLowerCase();
   const desc = (option.description ?? '').toLowerCase();
   return label.includes(normalizedQuery) || desc.includes(normalizedQuery);
@@ -133,9 +130,7 @@ function matchesQuery(
 /**
  * Filtra la lista mock por nombre o correo (subcadena, sin API).
  */
-export function filterMockCashierOptions(
-  query: string
-): AutocompleteOption<string>[] {
+export function filterMockCashierOptions(query: string): AutocompleteOption<string>[] {
   const q = query.trim().toLowerCase();
   if (q.length < 2) return [];
   return MOCK_CASHIER_AUTOCOMPLETE_OPTIONS.filter((o) => matchesQuery(o, q));

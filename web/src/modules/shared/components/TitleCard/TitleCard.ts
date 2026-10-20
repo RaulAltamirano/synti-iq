@@ -14,7 +14,7 @@ export default defineComponent({
   name: 'TitleCard',
   components: {
     FontAwesomeIcon,
-    Button,
+    AppButton: Button,
   },
   props: {
     title: { type: String, required: true },

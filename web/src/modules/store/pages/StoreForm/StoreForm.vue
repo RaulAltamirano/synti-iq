@@ -62,7 +62,11 @@ const {
 
       <Stepper v-model="currentStep" :steps="wizardSteps" :animated="true" />
 
-      <form class="flex flex-col pb-6" aria-label="Create store form" @submit.prevent="handleFormSubmit">
+      <form
+        class="flex flex-col pb-6"
+        aria-label="Create store form"
+        @submit.prevent="handleFormSubmit"
+      >
         <div v-show="currentStep === STORE_FORM_WIZARD_STEP.BASIC" class="flex flex-col gap-4">
           <StoreFormCard>
             <StoreFormStepBasic

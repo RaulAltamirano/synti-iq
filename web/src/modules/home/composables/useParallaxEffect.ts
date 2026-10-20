@@ -1,4 +1,4 @@
-import { ref, Ref, onMounted, onUnmounted } from 'vue';
+import { ref, type Ref } from 'vue';
 import { useAnimationFrame } from './useAnimationFrame';
 
 interface ParallaxOptions {
@@ -50,7 +50,6 @@ export function useParallaxEffect(
   // Variables para la simulación física
   let velocityX = 0;
   let velocityY = 0;
-  let isAtRest = true;
 
   // Crear instancia de animationFrame controller
   const { startAnimation, stopAnimation, isAnimating } = useAnimationFrame(animate);
@@ -109,7 +108,6 @@ export function useParallaxEffect(
     }
 
     isHovering.value = true;
-    isAtRest = false;
 
     // Asegurar que la animación esté corriendo
     if (!isAnimating()) {
@@ -177,7 +175,6 @@ export function useParallaxEffect(
       parallaxY.value = 0;
       velocityX = 0;
       velocityY = 0;
-      isAtRest = true;
       stopAnimation();
     }
   }

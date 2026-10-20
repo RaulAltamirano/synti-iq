@@ -1,12 +1,12 @@
 import { computed, defineComponent, PropType, ref } from 'vue';
 
 export interface Product {
-  images: any;
-  isNew: any;
-  discount: any;
-  reviews: any;
-  oldPrice: any;
-  features: any;
+  images: unknown;
+  isNew: unknown;
+  discount: unknown;
+  reviews: unknown;
+  oldPrice: unknown;
+  features: unknown;
   id: number;
   name: string;
   price: number;

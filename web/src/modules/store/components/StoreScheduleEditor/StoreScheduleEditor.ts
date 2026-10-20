@@ -72,9 +72,7 @@ export default {
       field: 'openTimeHHMM' | 'closeTimeHHMM',
       value: string
     ): void {
-      commitScheduleRows(
-        setScheduleTime(props.modelValue.scheduleRows, dayOfWeek, field, value)
-      );
+      commitScheduleRows(setScheduleTime(props.modelValue.scheduleRows, dayOfWeek, field, value));
     }
 
     const showQuickApply = ref(false);

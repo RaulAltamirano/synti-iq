@@ -7,10 +7,7 @@ export interface GeolocationCoords {
 }
 
 export type GeolocationErrorCode =
-  | 'PERMISSION_DENIED'
-  | 'POSITION_UNAVAILABLE'
-  | 'TIMEOUT'
-  | 'NOT_SUPPORTED';
+  'PERMISSION_DENIED' | 'POSITION_UNAVAILABLE' | 'TIMEOUT' | 'NOT_SUPPORTED';
 
 export class GeolocationError extends Error {
   constructor(

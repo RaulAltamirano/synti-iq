@@ -12,8 +12,6 @@ export const useTokenService = () => {
       isLoading.value = true;
       const response = await apiService.api.get<ApiResponse<User>>('/user/me');
       return response.data.data;
-    } catch (error) {
-      throw error;
     } finally {
       isLoading.value = false;
     }

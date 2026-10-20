@@ -1,3 +1,134 @@
+<script>
+// Esta parte del script es necesaria solo para las animaciones principales
+export default {
+  data() {
+    return {
+      showAnimation: true,
+      showSuccessPulse: true,
+      showConfetti: true,
+      status: 'error', // 'success', 'error', 'warning', 'info'
+      prefersReducedMotion: true,
+    };
+  },
+
+  mounted() {
+    // Detectar preferencias de reducción de movimiento
+    this.prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Ejemplo de uso:
+    // Para mostrar el modal: this.showModal('success')
+    // Opciones disponibles: 'success', 'error', 'warning', 'info'
+  },
+
+  methods: {
+    // Método para mostrar el modal con el estado específico
+    showModal(status = 'success') {
+      this.status = status;
+      this.showAnimation = true;
+
+      // Solo mostrar confeti para éxito
+      if (status === 'success' && !this.prefersReducedMotion) {
+        setTimeout(() => {
+          this.showSuccessPulse = true;
+          this.showConfetti = true;
+          this.setupConfetti();
+        }, 300);
+      }
+    },
+
+    // Cerrar el modal
+    closeAnimation() {
+      this.showAnimation = false;
+      this.showSuccessPulse = false;
+      this.showConfetti = false;
+    },
+
+    // Animaciones de transición
+    onBeforeEnter(el) {
+      el.style.opacity = '0';
+      if (el.querySelector('[ref="modalContent"]')) {
+        el.querySelector('[ref="modalContent"]').style.transform = 'scale(0.95)';
+      }
+    },
+
+    onEnter(el, done) {
+      const duration = this.prefersReducedMotion ? 0.15 : 0.35;
+
+      // Animación del backdrop
+      setTimeout(() => {
+        el.style.opacity = '1';
+        el.style.transition = `opacity ${duration}s ease-out`;
+
+        // Animación del contenido
+        if (el.querySelector('[ref="modalContent"]')) {
+          setTimeout(() => {
+            el.querySelector('[ref="modalContent"]').style.transform = 'scale(1)';
+            el.querySelector('[ref="modalContent"]').style.transition =
+              `transform ${duration}s cubic-bezier(0.175, 0.885, 0.32, 1.275)`;
+            setTimeout(done, duration * 1000);
+          }, 100);
+        } else {
+          setTimeout(done, duration * 1000);
+        }
+      }, 50);
+    },
+
+    onLeave(el, done) {
+      const duration = this.prefersReducedMotion ? 0.15 : 0.25;
+
+      el.style.opacity = '0';
+      el.style.transition = `opacity ${duration}s ease-in`;
+
+      if (el.querySelector('[ref="modalContent"]')) {
+        el.querySelector('[ref="modalContent"]').style.transform = 'scale(0.95)';
+        el.querySelector('[ref="modalContent"]').style.transition =
+          `transform ${duration}s ease-in`;
+      }
+
+      setTimeout(done, duration * 1000);
+    },
+
+    // Configuración de los confeti
+    setupConfetti() {
+      if (this.prefersReducedMotion) return;
+
+      const confettiElements = document.querySelectorAll('.confetti');
+      const colors = ['#10B981', '#34D399', '#6EE7B7', '#A7F3D0', '#D1FAE5'];
+
+      confettiElements.forEach((el) => {
+        const left = `${Math.random() * 100}%`;
+        const width = `${Math.random() * 8 + 5}px`;
+        const height = width;
+        const bgColor = colors[Math.floor(Math.random() * colors.length)];
+        const fallDuration = `${Math.random() * 3 + 2}s`;
+        const fallDelay = `${Math.random() * 1.5}s`;
+        const swayAmount = `${Math.random() * 50 - 25}px`;
+        const swayDuration = `${Math.random() * 2 + 2}s`;
+        const swayDelay = `${Math.random() * 1}s`;
+
+        el.style.width = width;
+        el.style.height = height;
+        el.style.left = left;
+        el.style.backgroundColor = bgColor;
+        el.style.opacity = '0';
+        el.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+        el.style.setProperty('--fall-duration', fallDuration);
+        el.style.setProperty('--fall-delay', fallDelay);
+        el.style.setProperty('--sway-amount', swayAmount);
+        el.style.setProperty('--sway-duration', swayDuration);
+        el.style.setProperty('--sway-delay', swayDelay);
+      });
+    },
+
+    // Obtener hora actual
+    getCurrentTime() {
+      const now = new Date();
+      return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    },
+  },
+};
+</script>
+
 <template>
   <Transition :css="false" @before-enter="onBeforeEnter" @enter="onEnter" @leave="onLeave">
     <div
@@ -221,137 +352,6 @@
     </div>
   </Transition>
 </template>
-
-<script>
-// Esta parte del script es necesaria solo para las animaciones principales
-export default {
-  data() {
-    return {
-      showAnimation: true,
-      showSuccessPulse: true,
-      showConfetti: true,
-      status: 'error', // 'success', 'error', 'warning', 'info'
-      prefersReducedMotion: true,
-    };
-  },
-
-  mounted() {
-    // Detectar preferencias de reducción de movimiento
-    this.prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    // Ejemplo de uso:
-    // Para mostrar el modal: this.showModal('success')
-    // Opciones disponibles: 'success', 'error', 'warning', 'info'
-  },
-
-  methods: {
-    // Método para mostrar el modal con el estado específico
-    showModal(status = 'success') {
-      this.status = status;
-      this.showAnimation = true;
-
-      // Solo mostrar confeti para éxito
-      if (status === 'success' && !this.prefersReducedMotion) {
-        setTimeout(() => {
-          this.showSuccessPulse = true;
-          this.showConfetti = true;
-          this.setupConfetti();
-        }, 300);
-      }
-    },
-
-    // Cerrar el modal
-    closeAnimation() {
-      this.showAnimation = false;
-      this.showSuccessPulse = false;
-      this.showConfetti = false;
-    },
-
-    // Animaciones de transición
-    onBeforeEnter(el) {
-      el.style.opacity = '0';
-      if (el.querySelector('[ref="modalContent"]')) {
-        el.querySelector('[ref="modalContent"]').style.transform = 'scale(0.95)';
-      }
-    },
-
-    onEnter(el, done) {
-      const duration = this.prefersReducedMotion ? 0.15 : 0.35;
-
-      // Animación del backdrop
-      setTimeout(() => {
-        el.style.opacity = '1';
-        el.style.transition = `opacity ${duration}s ease-out`;
-
-        // Animación del contenido
-        if (el.querySelector('[ref="modalContent"]')) {
-          setTimeout(() => {
-            el.querySelector('[ref="modalContent"]').style.transform = 'scale(1)';
-            el.querySelector('[ref="modalContent"]').style.transition =
-              `transform ${duration}s cubic-bezier(0.175, 0.885, 0.32, 1.275)`;
-            setTimeout(done, duration * 1000);
-          }, 100);
-        } else {
-          setTimeout(done, duration * 1000);
-        }
-      }, 50);
-    },
-
-    onLeave(el, done) {
-      const duration = this.prefersReducedMotion ? 0.15 : 0.25;
-
-      el.style.opacity = '0';
-      el.style.transition = `opacity ${duration}s ease-in`;
-
-      if (el.querySelector('[ref="modalContent"]')) {
-        el.querySelector('[ref="modalContent"]').style.transform = 'scale(0.95)';
-        el.querySelector('[ref="modalContent"]').style.transition =
-          `transform ${duration}s ease-in`;
-      }
-
-      setTimeout(done, duration * 1000);
-    },
-
-    // Configuración de los confeti
-    setupConfetti() {
-      if (this.prefersReducedMotion) return;
-
-      const confettiElements = document.querySelectorAll('.confetti');
-      const colors = ['#10B981', '#34D399', '#6EE7B7', '#A7F3D0', '#D1FAE5'];
-
-      confettiElements.forEach((el, index) => {
-        const left = `${Math.random() * 100}%`;
-        const width = `${Math.random() * 8 + 5}px`;
-        const height = width;
-        const bgColor = colors[Math.floor(Math.random() * colors.length)];
-        const fallDuration = `${Math.random() * 3 + 2}s`;
-        const fallDelay = `${Math.random() * 1.5}s`;
-        const swayAmount = `${Math.random() * 50 - 25}px`;
-        const swayDuration = `${Math.random() * 2 + 2}s`;
-        const swayDelay = `${Math.random() * 1}s`;
-
-        el.style.width = width;
-        el.style.height = height;
-        el.style.left = left;
-        el.style.backgroundColor = bgColor;
-        el.style.opacity = '0';
-        el.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
-        el.style.setProperty('--fall-duration', fallDuration);
-        el.style.setProperty('--fall-delay', fallDelay);
-        el.style.setProperty('--sway-amount', swayAmount);
-        el.style.setProperty('--sway-duration', swayDuration);
-        el.style.setProperty('--sway-delay', swayDelay);
-      });
-    },
-
-    // Obtener hora actual
-    getCurrentTime() {
-      const now = new Date();
-      return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    },
-  },
-};
-</script>
 
 <style scoped>
 /* Estilos de base */

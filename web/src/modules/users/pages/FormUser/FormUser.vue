@@ -201,7 +201,11 @@ const handleFormSubmit = async () => {
 
       <Stepper v-model="currentStep" :steps="wizardSteps" :animated="true" />
 
-      <form class="flex flex-col pb-6" aria-label="Create user form" @submit.prevent="handleFormSubmit">
+      <form
+        class="flex flex-col pb-6"
+        aria-label="Create user form"
+        @submit.prevent="handleFormSubmit"
+      >
         <div v-if="currentStep === USER_FORM_WIZARD_STEP.ROLE" class="flex flex-col gap-4">
           <Card variant="default" padding="lg">
             <div :class="SECTION_DIVIDER_CLASSES">
@@ -336,7 +340,9 @@ const handleFormSubmit = async () => {
                       type="button"
                       size="sm"
                       :variant="
-                        formData.delivery.preferredZones.includes(zone.value) ? 'primary' : 'secondary'
+                        formData.delivery.preferredZones.includes(zone.value)
+                          ? 'primary'
+                          : 'secondary'
                       "
                       @click="togglePreferredZone(zone.value)"
                     >
@@ -348,10 +354,15 @@ const handleFormSubmit = async () => {
                 <div class="space-y-3">
                   <div class="flex items-center justify-between">
                     <h3 class="font-medium">Delivery locations</h3>
-                    <Button type="button" size="sm" icon="plus" @click="addLocation"> Add location </Button>
+                    <Button type="button" size="sm" icon="plus" @click="addLocation">
+                      Add location
+                    </Button>
                   </div>
 
-                  <div v-if="formData.locations.length === 0" class="rounded-lg border border-dashed p-4 text-sm">
+                  <div
+                    v-if="formData.locations.length === 0"
+                    class="rounded-lg border border-dashed p-4 text-sm"
+                  >
                     No locations added yet.
                   </div>
 

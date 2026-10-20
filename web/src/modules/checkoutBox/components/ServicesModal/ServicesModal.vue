@@ -1,3 +1,279 @@
+<script setup>
+import { ref, computed } from 'vue';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+
+// Estados del modal
+const isOpen = ref(false);
+const isVerifying = ref(false);
+const isProcessing = ref(false);
+
+// Referencias a los datos seleccionados
+const selectedProvider = ref(null);
+const selectedServiceCategory = ref(null);
+const accountNumber = ref('');
+const accountDetails = ref(null);
+const selectedBill = ref(null);
+const selectedPaymentMethod = ref(null);
+
+// Datos de ejemplo (en una aplicación real, estos vendrían de una API)
+const serviceProviders = [
+  { id: 'cfe', name: 'CFE', logo: '/assets/logos/cfe.png' },
+  { id: 'telmex', name: 'Telmex', logo: '/assets/logos/telmex.png' },
+  { id: 'sky', name: 'Sky', logo: '/assets/logos/sky.png' },
+  { id: 'izzi', name: 'Izzi', logo: '/assets/logos/izzi.png' },
+  { id: 'totalplay', name: 'Totalplay', logo: '/assets/logos/totalplay.png' },
+  { id: 'dish', name: 'Dish', logo: '/assets/logos/dish.png' },
+  { id: 'gas', name: 'Gas Natural', logo: '/assets/logos/gas.png' },
+  { id: 'agua', name: 'Agua', logo: '/assets/logos/agua.png' },
+];
+
+// Función para obtener categorías de servicio según el proveedor seleccionado
+const serviceCategories = computed(() => {
+  if (!selectedProvider.value) return [];
+
+  const categories = {
+    cfe: [
+      { id: 'hogar', name: 'Hogar', icon: ['fas', 'home'] },
+      { id: 'negocio', name: 'Negocio', icon: ['fas', 'store'] },
+    ],
+    telmex: [
+      { id: 'telefonia', name: 'Telefonía', icon: ['fas', 'phone'] },
+      { id: 'internet', name: 'Internet', icon: ['fas', 'wifi'] },
+      { id: 'combo', name: 'Combo', icon: ['fas', 'box'] },
+    ],
+    sky: [
+      { id: 'tv', name: 'Televisión', icon: ['fas', 'tv'] },
+      { id: 'internet', name: 'Internet', icon: ['fas', 'wifi'] },
+      { id: 'combo', name: 'Combo', icon: ['fas', 'box'] },
+    ],
+    izzi: [
+      { id: 'tv', name: 'Televisión', icon: ['fas', 'tv'] },
+      { id: 'internet', name: 'Internet', icon: ['fas', 'wifi'] },
+      { id: 'telefonia', name: 'Telefonía', icon: ['fas', 'phone'] },
+      { id: 'combo', name: 'Combo', icon: ['fas', 'box'] },
+    ],
+    totalplay: [
+      { id: 'tv', name: 'Televisión', icon: ['fas', 'tv'] },
+      { id: 'internet', name: 'Internet', icon: ['fas', 'wifi'] },
+      { id: 'telefonia', name: 'Telefonía', icon: ['fas', 'phone'] },
+      { id: 'combo', name: 'Combo', icon: ['fas', 'box'] },
+    ],
+    dish: [
+      { id: 'tv', name: 'Televisión', icon: ['fas', 'tv'] },
+      { id: 'combo', name: 'Combo', icon: ['fas', 'box'] },
+    ],
+    gas: [
+      { id: 'residencial', name: 'Residencial', icon: ['fas', 'home'] },
+      { id: 'comercial', name: 'Comercial', icon: ['fas', 'store'] },
+    ],
+    agua: [
+      { id: 'residencial', name: 'Residencial', icon: ['fas', 'home'] },
+      { id: 'comercial', name: 'Comercial', icon: ['fas', 'store'] },
+    ],
+  };
+
+  return categories[selectedProvider.value.id] || [];
+});
+
+// Cuentas recientes (simuladas)
+const recentAccounts = ref([
+  { number: '123456789012', provider: 'cfe', category: 'hogar' },
+  { number: '987654321098', provider: 'telmex', category: 'internet' },
+  { number: '456789123456', provider: 'sky', category: 'tv' },
+]);
+
+// Métodos de pago disponibles
+const paymentMethods = [
+  { id: 'balance', name: 'Saldo', icon: ['fas', 'wallet'] },
+  { id: 'card', name: 'Tarjeta', icon: ['fas', 'credit-card'] },
+  { id: 'transfer', name: 'Transferencia', icon: ['fas', 'money-bill-transfer'] },
+];
+
+// Calcular comisión de servicio (simulado)
+const serviceFee = computed(() => {
+  if (!selectedBill.value || !selectedProvider.value) return 0;
+
+  // Simular diferentes comisiones según el proveedor
+  const feeRates = {
+    cfe: 12.5,
+    telmex: 10,
+    sky: 15,
+    izzi: 14,
+    totalplay: 13,
+    dish: 15,
+    gas: 10,
+    agua: 8,
+  };
+
+  return feeRates[selectedProvider.value.id] || 10;
+});
+
+// Calculamos el total a pagar
+const totalAmount = computed(() => {
+  if (!selectedBill.value) return 0;
+  return selectedBill.value.amount + serviceFee.value;
+});
+
+// Determinar si se puede agregar al carrito
+const canAddToCart = computed(() => {
+  return (
+    selectedProvider.value &&
+    selectedServiceCategory.value &&
+    accountNumber.value.length > 0 &&
+    accountDetails.value &&
+    selectedBill.value &&
+    selectedPaymentMethod.value
+  );
+});
+
+// Etiqueta para el número de cuenta según el proveedor
+const accountNumberLabel = computed(() => {
+  if (!selectedProvider.value) return 'Número de Cuenta';
+
+  const labels = {
+    cfe: 'Número de Servicio',
+    telmex: 'Número de Teléfono',
+    sky: 'Número de Cuenta',
+    izzi: 'Número de Cliente',
+    totalplay: 'Número de Cliente',
+    dish: 'Número de Cuenta',
+    gas: 'Número de Servicio',
+    agua: 'Número de Cuenta',
+  };
+
+  return labels[selectedProvider.value.id] || 'Número de Cuenta';
+});
+
+// Placeholder para el campo de entrada según el proveedor
+const accountNumberPlaceholder = computed(() => {
+  if (!selectedProvider.value) return 'Ingrese su número de cuenta';
+
+  const placeholders = {
+    cfe: 'Ej. 123456789012',
+    telmex: 'Ej. 5512345678',
+    sky: 'Ej. SKY123456',
+    izzi: 'Ej. IZZI987654',
+    totalplay: 'Ej. TP123456789',
+    dish: 'Ej. DISH654321',
+    gas: 'Ej. GN12345678',
+    agua: 'Ej. AG98765432',
+  };
+
+  return placeholders[selectedProvider.value.id] || 'Ingrese su número de cuenta';
+});
+
+// Función para seleccionar proveedor de servicio
+function selectProvider(provider) {
+  selectedProvider.value = provider;
+  selectedServiceCategory.value = null;
+  accountNumber.value = '';
+  accountDetails.value = null;
+  selectedBill.value = null;
+}
+
+// Función para seleccionar categoría de servicio
+function selectServiceCategory(category) {
+  selectedServiceCategory.value = category;
+  accountDetails.value = null;
+  selectedBill.value = null;
+}
+
+// Función para seleccionar cuenta reciente
+function selectRecentAccount(account) {
+  // Buscar y seleccionar el proveedor correspondiente
+  const provider = serviceProviders.find((p) => p.id === account.provider);
+  if (provider) {
+    selectedProvider.value = provider;
+
+    // Buscar y seleccionar la categoría correspondiente
+    const category = serviceCategories.value.find((c) => c.id === account.category);
+    if (category) {
+      selectedServiceCategory.value = category;
+    }
+
+    // Establecer el número de cuenta
+    accountNumber.value = account.number;
+
+    // Verificar la cuenta automáticamente
+    verifyAccount();
+  }
+}
+
+// Simular verificación de cuenta
+function verifyAccount() {
+  if (
+    !selectedProvider.value ||
+    !selectedServiceCategory.value ||
+    accountNumber.value.length === 0
+  ) {
+    return;
+  }
+
+  isVerifying.value = true;
+
+  // Simulamos la llamada a la API con un retardo
+  setTimeout(() => {
+    // Simulamos datos de respuesta
+    accountDetails.value = {
+      name: 'Juan Pérez Rodríguez',
+      address: 'Calle Principal 123, Col. Centro, Ciudad de México',
+      bills: [
+        {
+          id: 'bill1',
+          description: 'Factura Marzo 2025',
+          amount: 568.75,
+          dueDate: '30/04/2025',
+        },
+        {
+          id: 'bill2',
+          description: 'Factura Febrero 2025',
+          amount: 493.2,
+          dueDate: '15/03/2025',
+          status: 'vencido',
+        },
+      ],
+    };
+
+    isVerifying.value = false;
+  }, 1500);
+}
+
+// Seleccionar una factura
+function selectBill(bill) {
+  selectedBill.value = bill;
+}
+
+// Seleccionar un método de pago
+function selectPaymentMethod(method) {
+  selectedPaymentMethod.value = method;
+}
+
+// Función para agregar al carrito
+function addToCart() {
+  if (!canAddToCart.value) return;
+
+  isProcessing.value = true;
+
+  // Simulamos el proceso de agregar al carrito
+  setTimeout(() => {
+    // Reiniciar el formulario o cerrar el modal
+    isProcessing.value = false;
+    isOpen.value = false;
+
+    // Opcionalmente: mostrar notificación de éxito
+    // showNotification('Servicio agregado al carrito correctamente');
+  }, 1200);
+}
+
+// Proporcionar valores para la plantilla
+defineExpose({
+  isOpen,
+  openModal: () => {
+    isOpen.value = true;
+  },
+});
+</script>
+
 <template>
   <div>
     <!-- Trigger Button -->
@@ -428,295 +704,3 @@
     </div>
   </div>
 </template>
-
-<script setup>
-import { ref, computed, watch } from 'vue';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-
-// Estados del modal
-const isOpen = ref(false);
-const isVerifying = ref(false);
-const isProcessing = ref(false);
-
-// Referencias a los datos seleccionados
-const selectedProvider = ref(null);
-const selectedServiceCategory = ref(null);
-const accountNumber = ref('');
-const accountDetails = ref(null);
-const selectedBill = ref(null);
-const selectedPaymentMethod = ref(null);
-
-// Datos de ejemplo (en una aplicación real, estos vendrían de una API)
-const serviceProviders = [
-  { id: 'cfe', name: 'CFE', logo: '/assets/logos/cfe.png' },
-  { id: 'telmex', name: 'Telmex', logo: '/assets/logos/telmex.png' },
-  { id: 'sky', name: 'Sky', logo: '/assets/logos/sky.png' },
-  { id: 'izzi', name: 'Izzi', logo: '/assets/logos/izzi.png' },
-  { id: 'totalplay', name: 'Totalplay', logo: '/assets/logos/totalplay.png' },
-  { id: 'dish', name: 'Dish', logo: '/assets/logos/dish.png' },
-  { id: 'gas', name: 'Gas Natural', logo: '/assets/logos/gas.png' },
-  { id: 'agua', name: 'Agua', logo: '/assets/logos/agua.png' },
-];
-
-// Función para obtener categorías de servicio según el proveedor seleccionado
-const serviceCategories = computed(() => {
-  if (!selectedProvider.value) return [];
-
-  const categories = {
-    cfe: [
-      { id: 'hogar', name: 'Hogar', icon: ['fas', 'home'] },
-      { id: 'negocio', name: 'Negocio', icon: ['fas', 'store'] },
-    ],
-    telmex: [
-      { id: 'telefonia', name: 'Telefonía', icon: ['fas', 'phone'] },
-      { id: 'internet', name: 'Internet', icon: ['fas', 'wifi'] },
-      { id: 'combo', name: 'Combo', icon: ['fas', 'box'] },
-    ],
-    sky: [
-      { id: 'tv', name: 'Televisión', icon: ['fas', 'tv'] },
-      { id: 'internet', name: 'Internet', icon: ['fas', 'wifi'] },
-      { id: 'combo', name: 'Combo', icon: ['fas', 'box'] },
-    ],
-    izzi: [
-      { id: 'tv', name: 'Televisión', icon: ['fas', 'tv'] },
-      { id: 'internet', name: 'Internet', icon: ['fas', 'wifi'] },
-      { id: 'telefonia', name: 'Telefonía', icon: ['fas', 'phone'] },
-      { id: 'combo', name: 'Combo', icon: ['fas', 'box'] },
-    ],
-    totalplay: [
-      { id: 'tv', name: 'Televisión', icon: ['fas', 'tv'] },
-      { id: 'internet', name: 'Internet', icon: ['fas', 'wifi'] },
-      { id: 'telefonia', name: 'Telefonía', icon: ['fas', 'phone'] },
-      { id: 'combo', name: 'Combo', icon: ['fas', 'box'] },
-    ],
-    dish: [
-      { id: 'tv', name: 'Televisión', icon: ['fas', 'tv'] },
-      { id: 'combo', name: 'Combo', icon: ['fas', 'box'] },
-    ],
-    gas: [
-      { id: 'residencial', name: 'Residencial', icon: ['fas', 'home'] },
-      { id: 'comercial', name: 'Comercial', icon: ['fas', 'store'] },
-    ],
-    agua: [
-      { id: 'residencial', name: 'Residencial', icon: ['fas', 'home'] },
-      { id: 'comercial', name: 'Comercial', icon: ['fas', 'store'] },
-    ],
-  };
-
-  return categories[selectedProvider.value.id] || [];
-});
-
-// Cuentas recientes (simuladas)
-const recentAccounts = ref([
-  { number: '123456789012', provider: 'cfe', category: 'hogar' },
-  { number: '987654321098', provider: 'telmex', category: 'internet' },
-  { number: '456789123456', provider: 'sky', category: 'tv' },
-]);
-
-// Métodos de pago disponibles
-const paymentMethods = [
-  { id: 'balance', name: 'Saldo', icon: ['fas', 'wallet'] },
-  { id: 'card', name: 'Tarjeta', icon: ['fas', 'credit-card'] },
-  { id: 'transfer', name: 'Transferencia', icon: ['fas', 'money-bill-transfer'] },
-];
-
-// Calcular comisión de servicio (simulado)
-const serviceFee = computed(() => {
-  if (!selectedBill.value || !selectedProvider.value) return 0;
-
-  // Simular diferentes comisiones según el proveedor
-  const feeRates = {
-    cfe: 12.5,
-    telmex: 10,
-    sky: 15,
-    izzi: 14,
-    totalplay: 13,
-    dish: 15,
-    gas: 10,
-    agua: 8,
-  };
-
-  return feeRates[selectedProvider.value.id] || 10;
-});
-
-// Calculamos el total a pagar
-const totalAmount = computed(() => {
-  if (!selectedBill.value) return 0;
-  return selectedBill.value.amount + serviceFee.value;
-});
-
-// Determinar si se puede agregar al carrito
-const canAddToCart = computed(() => {
-  return (
-    selectedProvider.value &&
-    selectedServiceCategory.value &&
-    accountNumber.value.length > 0 &&
-    accountDetails.value &&
-    selectedBill.value &&
-    selectedPaymentMethod.value
-  );
-});
-
-// Etiqueta para el número de cuenta según el proveedor
-const accountNumberLabel = computed(() => {
-  if (!selectedProvider.value) return 'Número de Cuenta';
-
-  const labels = {
-    cfe: 'Número de Servicio',
-    telmex: 'Número de Teléfono',
-    sky: 'Número de Cuenta',
-    izzi: 'Número de Cliente',
-    totalplay: 'Número de Cliente',
-    dish: 'Número de Cuenta',
-    gas: 'Número de Servicio',
-    agua: 'Número de Cuenta',
-  };
-
-  return labels[selectedProvider.value.id] || 'Número de Cuenta';
-});
-
-// Placeholder para el campo de entrada según el proveedor
-const accountNumberPlaceholder = computed(() => {
-  if (!selectedProvider.value) return 'Ingrese su número de cuenta';
-
-  const placeholders = {
-    cfe: 'Ej. 123456789012',
-    telmex: 'Ej. 5512345678',
-    sky: 'Ej. SKY123456',
-    izzi: 'Ej. IZZI987654',
-    totalplay: 'Ej. TP123456789',
-    dish: 'Ej. DISH654321',
-    gas: 'Ej. GN12345678',
-    agua: 'Ej. AG98765432',
-  };
-
-  return placeholders[selectedProvider.value.id] || 'Ingrese su número de cuenta';
-});
-
-// Función para seleccionar proveedor de servicio
-function selectProvider(provider) {
-  selectedProvider.value = provider;
-  selectedServiceCategory.value = null;
-  accountNumber.value = '';
-  accountDetails.value = null;
-  selectedBill.value = null;
-}
-
-// Función para seleccionar categoría de servicio
-function selectServiceCategory(category) {
-  selectedServiceCategory.value = category;
-  accountDetails.value = null;
-  selectedBill.value = null;
-}
-
-// Función para seleccionar cuenta reciente
-function selectRecentAccount(account) {
-  // Buscar y seleccionar el proveedor correspondiente
-  const provider = serviceProviders.find((p) => p.id === account.provider);
-  if (provider) {
-    selectedProvider.value = provider;
-
-    // Buscar y seleccionar la categoría correspondiente
-    const category = serviceCategories.value.find((c) => c.id === account.category);
-    if (category) {
-      selectedServiceCategory.value = category;
-    }
-
-    // Establecer el número de cuenta
-    accountNumber.value = account.number;
-
-    // Verificar la cuenta automáticamente
-    verifyAccount();
-  }
-}
-
-// Simular verificación de cuenta
-function verifyAccount() {
-  if (
-    !selectedProvider.value ||
-    !selectedServiceCategory.value ||
-    accountNumber.value.length === 0
-  ) {
-    return;
-  }
-
-  isVerifying.value = true;
-
-  // Simulamos la llamada a la API con un retardo
-  setTimeout(() => {
-    // Simulamos datos de respuesta
-    accountDetails.value = {
-      name: 'Juan Pérez Rodríguez',
-      address: 'Calle Principal 123, Col. Centro, Ciudad de México',
-      bills: [
-        {
-          id: 'bill1',
-          description: 'Factura Marzo 2025',
-          amount: 568.75,
-          dueDate: '30/04/2025',
-        },
-        {
-          id: 'bill2',
-          description: 'Factura Febrero 2025',
-          amount: 493.2,
-          dueDate: '15/03/2025',
-          status: 'vencido',
-        },
-      ],
-    };
-
-    isVerifying.value = false;
-  }, 1500);
-}
-
-// Seleccionar una factura
-function selectBill(bill) {
-  selectedBill.value = bill;
-}
-
-// Seleccionar un método de pago
-function selectPaymentMethod(method) {
-  selectedPaymentMethod.value = method;
-}
-
-// Función para agregar al carrito
-function addToCart() {
-  if (!canAddToCart.value) return;
-
-  isProcessing.value = true;
-
-  // Simulamos el proceso de agregar al carrito
-  setTimeout(() => {
-    // Objeto que representa el servicio a agregar al carrito
-    const cartItem = {
-      type: 'service_payment',
-      providerId: selectedProvider.value.id,
-      providerName: selectedProvider.value.name,
-      serviceType: selectedServiceCategory.value.id,
-      accountNumber: accountNumber.value,
-      customerName: accountDetails.value.name,
-      billId: selectedBill.value.id,
-      description: selectedBill.value.description,
-      amount: selectedBill.value.amount,
-      serviceFee: serviceFee.value,
-      total: totalAmount.value,
-      paymentMethod: selectedPaymentMethod.value.id,
-    };
-
-    // Reiniciar el formulario o cerrar el modal
-    isProcessing.value = false;
-    isOpen.value = false;
-
-    // Opcionalmente: mostrar notificación de éxito
-    // showNotification('Servicio agregado al carrito correctamente');
-  }, 1200);
-}
-
-// Proporcionar valores para la plantilla
-defineExpose({
-  isOpen,
-  openModal: () => {
-    isOpen.value = true;
-  },
-});
-</script>

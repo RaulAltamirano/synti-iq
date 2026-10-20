@@ -42,28 +42,28 @@ export function useProfile() {
   const userFullName = computed(() => {
     const user = currentUser.value;
     if (!user) return null;
-    const userData = (user as any)?.user || user;
+    const userData = (user as unknown)?.user || user;
     return userData?.fullName || null;
   });
 
   const userEmail = computed(() => {
     const user = currentUser.value;
     if (!user) return null;
-    const userData = (user as any)?.user || user;
+    const userData = (user as unknown)?.user || user;
     return userData?.email || null;
   });
 
   const userId = computed(() => {
     const user = currentUser.value;
     if (!user) return null;
-    const userData = (user as any)?.user || user;
+    const userData = (user as unknown)?.user || user;
     return userData?.id || userData?.userId || null;
   });
 
   const userRole = computed(() => {
     const user = currentUser.value;
     if (!user) return null;
-    const userData = (user as any)?.user || user;
+    const userData = (user as unknown)?.user || user;
     return userData?.role || userData?.roleName || null;
   });
 

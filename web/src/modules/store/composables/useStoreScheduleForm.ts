@@ -32,9 +32,7 @@ export function setScheduleTime(
   field: 'openTimeHHMM' | 'closeTimeHHMM',
   value: string
 ): StoreScheduleFormRow[] {
-  return rows.map((row) =>
-    row.dayOfWeek === dayOfWeek ? { ...row, [field]: value } : { ...row }
-  );
+  return rows.map((row) => (row.dayOfWeek === dayOfWeek ? { ...row, [field]: value } : { ...row }));
 }
 
 export function applyScheduleToDays(
@@ -45,9 +43,7 @@ export function applyScheduleToDays(
 ): StoreScheduleFormRow[] {
   const targets = new Set(dayOfWeeks);
   return rows.map((row) =>
-    targets.has(row.dayOfWeek)
-      ? { ...row, enabled: true, openTimeHHMM, closeTimeHHMM }
-      : { ...row }
+    targets.has(row.dayOfWeek) ? { ...row, enabled: true, openTimeHHMM, closeTimeHHMM } : { ...row }
   );
 }
 

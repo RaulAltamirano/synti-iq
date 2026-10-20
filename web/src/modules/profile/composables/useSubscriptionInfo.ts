@@ -1,9 +1,5 @@
 import { ref, computed } from 'vue';
-import type {
-  SubscriptionInfo,
-  SubscriptionStatus,
-  SubscriptionStatusConfig,
-} from '../interfaces/subscription.types';
+import type { SubscriptionInfo, SubscriptionStatusConfig } from '../interfaces/subscription.types';
 import { SUBSCRIPTION_STATUS_CONFIG } from '../interfaces/subscription.types';
 
 const MOCK_SUBSCRIPTION: SubscriptionInfo = {

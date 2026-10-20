@@ -30,8 +30,6 @@ export default defineComponent({
     const selectedProduct = ref<Product | null>(null);
     const isQuickViewOpen = ref(false);
     const hideFilterBar = ref(false);
-    const lastScrollPosition = ref(0);
-
     // Filtros y Ordenamiento
     const filteredProducts = computed(() => {
       let results = productsData.filter((product) =>

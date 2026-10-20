@@ -10,7 +10,7 @@ export default defineComponent({
   },
   props: {
     cart: {
-      type: Object as () => any,
+      type: Object as () => unknown,
       required: true,
     },
     index: {
@@ -98,15 +98,12 @@ export default defineComponent({
     };
 
     const finishEditing = (index: number): void => {
-      if (props.cart.name.trim() === '') {
-        props.cart.name = originalName.value;
-      }
-      cartStore.finishEditing(index);
+      const trimmed = props.cart.name.trim();
+      cartStore.finishEditing(index, trimmed === '' ? originalName.value : trimmed);
     };
 
     const cancelEditing = (index: number): void => {
-      props.cart.name = originalName.value;
-      cartStore.finishEditing(index);
+      cartStore.finishEditing(index, originalName.value);
     };
 
     // Event handlers

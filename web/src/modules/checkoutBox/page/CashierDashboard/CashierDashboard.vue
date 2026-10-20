@@ -163,8 +163,8 @@ onUnmounted(() => {
             Hola, {{ displayName }}
           </h1>
           <p class="mt-2 max-w-2xl text-sm text-[var(--color-text-secondary)]">
-            Elige una tarea para empezar. Aquí tienes accesos rápidos y recordatorios útiles durante el
-            turno.
+            Elige una tarea para empezar. Aquí tienes accesos rápidos y recordatorios útiles durante
+            el turno.
           </p>
         </div>
         <div
@@ -180,7 +180,9 @@ onUnmounted(() => {
               <FontAwesomeIcon :icon="['fas', 'calendar-day']" class="h-5 w-5" />
             </span>
             <div class="min-w-0 text-left">
-              <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">
+              <p
+                class="text-xs font-medium uppercase tracking-wide text-[var(--color-text-secondary)]"
+              >
                 Fecha
               </p>
               <p class="mt-1 text-sm font-medium leading-snug text-[var(--color-text-primary)]">
@@ -196,9 +198,14 @@ onUnmounted(() => {
               <FontAwesomeIcon :icon="['fas', 'clock']" class="h-5 w-5" />
             </span>
             <div class="min-w-0 flex-1 text-left">
-              <p class="text-xs font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">
+              <p
+                class="text-xs font-medium uppercase tracking-wide text-[var(--color-text-secondary)]"
+              >
                 Hora local
-                <span v-if="timeZoneShort" class="font-normal normal-case text-[var(--color-text-disabled)]">
+                <span
+                  v-if="timeZoneShort"
+                  class="font-normal normal-case text-[var(--color-text-disabled)]"
+                >
                   · {{ timeZoneShort }}
                 </span>
               </p>
@@ -209,10 +216,7 @@ onUnmounted(() => {
               >
                 {{ timeLine }}
               </time>
-              <p
-                v-if="!showClockSeconds"
-                class="mt-1 text-xs text-[var(--color-text-secondary)]"
-              >
+              <p v-if="!showClockSeconds" class="mt-1 text-xs text-[var(--color-text-secondary)]">
                 Actualización cada minuto (menos movimiento en pantalla)
               </p>
             </div>
@@ -261,7 +265,10 @@ onUnmounted(() => {
               class="h-5 w-5 shrink-0 text-success"
               aria-hidden="true"
             />
-            <h2 id="reminders-heading" class="text-base font-semibold text-[var(--color-text-primary)]">
+            <h2
+              id="reminders-heading"
+              class="text-base font-semibold text-[var(--color-text-primary)]"
+            >
               Recordatorios
             </h2>
           </div>

@@ -14,7 +14,7 @@ export default {
   setup() {
     const { isDark } = useTheme();
     const loading = ref(false);
-    const selectedProfile = ref<any | null>(null);
+    const selectedProfile = ref<unknown | null>(null);
     const showPreview = ref(false);
     const isEditing = ref(false);
 
@@ -108,7 +108,7 @@ export default {
       }
     };
 
-    const selectProfile = (profile: any) => {
+    const selectProfile = (profile: unknown) => {
       selectedProfile.value = profile;
       user.value.role = profile.id;
     };
