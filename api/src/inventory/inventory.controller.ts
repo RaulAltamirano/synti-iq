@@ -9,17 +9,20 @@ import {
   Query,
   HttpStatus,
   HttpException,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { InventoryService } from './inventory.service';
 import { CreateInventoryDto } from './dto/create-inventory.dto';
 import { UpdateInventoryDto } from './dto/update-inventory.dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
+import { Auth, GetUser } from 'src/auth/decorator';
 
 @ApiTags('Inventory')
 @Controller('inventory')
 export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}
 
+  @Auth('', [])
   @Post('movements')
   @ApiOperation({ summary: 'Create a new inventory movement' })
   @ApiResponse({
@@ -34,9 +37,12 @@ export class InventoryController {
     status: 500,
     description: 'Internal server error.',
   })
-  async createMovement(@Body() createInventoryDto: CreateInventoryDto) {
+  async createMovement(
+    @Body() createInventoryDto: CreateInventoryDto,
+    @GetUser('sub') userId: string,
+  ) {
     try {
-      return await this.inventoryService.createMovement(createInventoryDto);
+      return await this.inventoryService.createMovement(createInventoryDto, userId);
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -48,6 +54,7 @@ export class InventoryController {
     }
   }
 
+  @Auth('', [])
   @Get('products/:id/stock')
   @ApiOperation({ summary: 'Get current stock for a specific product' })
   @ApiParam({
@@ -67,9 +74,13 @@ export class InventoryController {
     status: 500,
     description: 'Internal server error.',
   })
-  async getProductStock(@Param('id') id: string) {
+  async getProductStock(
+    @Param('id') id: string,
+    @Query('storeId', new ParseUUIDPipe()) storeId: string,
+    @GetUser('sub') userId: string,
+  ) {
     try {
-      const stock = await this.inventoryService.getProductStock(id);
+      const stock = await this.inventoryService.getProductStock(id, storeId, userId);
       return { stock };
     } catch (error) {
       if (error instanceof HttpException) {
@@ -79,6 +90,7 @@ export class InventoryController {
     }
   }
 
+  @Auth('', [])
   @Get('products/:id/movements')
   @ApiOperation({ summary: 'Get movement history for a specific product' })
   @ApiParam({
@@ -112,11 +124,13 @@ export class InventoryController {
   })
   async getProductMovements(
     @Param('id') id: string,
+    @Query('storeId', new ParseUUIDPipe()) storeId: string,
+    @GetUser('sub') userId: string,
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
   ) {
     try {
-      return await this.inventoryService.getProductMovements(id, page, limit);
+      return await this.inventoryService.getProductMovements(id, storeId, userId, page, limit);
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -128,6 +142,7 @@ export class InventoryController {
     }
   }
 
+  @Auth('', [])
   @Get('products/low-stock')
   @ApiOperation({ summary: 'Get products with stock below threshold' })
   @ApiQuery({
@@ -144,9 +159,12 @@ export class InventoryController {
     status: 500,
     description: 'Internal server error.',
   })
-  async getLowStockProducts(@Query('threshold') threshold: number = 0) {
+  async getLowStockProducts(
+    @Query('threshold') threshold: number = 0,
+    @GetUser('sub') userId: string,
+  ) {
     try {
-      return await this.inventoryService.getLowStockProducts(threshold);
+      return await this.inventoryService.getLowStockProducts(userId, threshold);
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;

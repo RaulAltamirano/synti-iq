@@ -10,13 +10,15 @@ import { Inventory } from './entities/inventory.entity';
 import { CacheService } from '../cache/cache.service';
 import { APP_FILTER } from '@nestjs/core';
 import { InventoryExceptionFilter } from './filters/inventory-exception.filter';
+import { StoreModule } from 'src/store/store.module';
 
 @Module({
   imports: [
+    StoreModule,
     TypeOrmModule.forFeature([Product, InventoryMovement, Inventory]),
     ThrottlerModule.forRoot([
       {
-        ttl: 60,
+        ttl: 60000,
         limit: 10,
       },
     ]),

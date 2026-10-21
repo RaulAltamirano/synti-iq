@@ -1,7 +1,16 @@
+jest.mock('src/shared/redis/redis.service', () => ({
+  RedisService: class RedisService {},
+}));
+
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { authenticator } from 'otplib';
 import { AuthService } from './auth.service';
 import { UserService } from 'src/user/user.service';
@@ -199,7 +208,9 @@ describe('AuthService', () => {
     it('setup2fa throws UnauthorizedException when user not found', async () => {
       userEntityRepo.findOne.mockResolvedValue(null);
 
-      await expect(service.setup2fa('non-existent-user')).rejects.toThrow(UnauthorizedException);
+      await expect(service.setup2fa('non-existent-user', 'password')).rejects.toThrow(
+        UnauthorizedException,
+      );
       expect(userEntityRepo.findOne).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({ id: 'non-existent-user', deletedAt: IsNull() }),
@@ -207,10 +218,33 @@ describe('AuthService', () => {
       );
     });
 
+    it('setup2fa rejects a wrong password', async () => {
+      userEntityRepo.findOne.mockResolvedValue({
+        id: 'user-no2fa',
+        email: 'user@example.com',
+        password: 'hashed',
+        twoFactorSecret: null,
+      });
+      passwordService.verify.mockResolvedValueOnce(false);
+
+      await expect(service.setup2fa('user-no2fa', 'wrong')).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('setup2fa rejects when 2FA is already enabled', async () => {
+      userEntityRepo.findOne.mockResolvedValue({
+        id: 'user-2fa',
+        email: 'user2fa@example.com',
+        password: 'hashed',
+        twoFactorSecret: 'SECRET',
+      });
+
+      await expect(service.setup2fa('user-2fa', 'password')).rejects.toThrow(ForbiddenException);
+    });
+
     it('verify2fa throws UnauthorizedException when user not found', async () => {
       userEntityRepo.findOne.mockResolvedValue(null);
 
-      await expect(service.verify2fa('non-existent-user', '123456')).rejects.toThrow(
+      await expect(service.verify2fa('non-existent-user', '123456', 'password')).rejects.toThrow(
         UnauthorizedException,
       );
     });
@@ -225,6 +259,12 @@ describe('AuthService', () => {
     });
 
     it('regenerateBackupCodes throws BadRequestException when 2FA is not enabled', async () => {
+      userEntityRepo.findOne.mockResolvedValue({
+        id: 'user-no2fa',
+        email: 'user@example.com',
+        password: 'hashed',
+        twoFactorSecret: null,
+      });
       userService.findById.mockResolvedValue(mockUserNo2FA);
       twoFactorService.getStatus.mockResolvedValue({
         enabled: false,
@@ -232,7 +272,7 @@ describe('AuthService', () => {
         backupCodesRemaining: 0,
       });
 
-      await expect(service.regenerateBackupCodes('user-no2fa')).rejects.toThrow(
+      await expect(service.regenerateBackupCodes('user-no2fa', 'password')).rejects.toThrow(
         BadRequestException,
       );
       expect(twoFactorService.getStatus).toHaveBeenCalled();

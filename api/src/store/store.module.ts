@@ -31,6 +31,6 @@ import { AccountInvitationModule } from 'src/auth/account-invitation/account-inv
     AccountInvitationModule,
     TypeOrmModule.forFeature([Store, Location, CashierProfile, StoreSchedule, PaymentMethod]),
   ],
-  exports: [StoreService, TypeOrmModule],
+  exports: [StoreService, StoreQueryService, TypeOrmModule],
 })
 export class StoreModule {}

@@ -1,8 +1,13 @@
+jest.mock('src/shared/redis/redis.service', () => ({
+  RedisService: class RedisService {},
+}));
+
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { StoreScheduleService } from './store-schedule.service';
 import { StoreScheduleRepository } from './repositories/store-schedule.repository';
+import { StoreQueryService } from 'src/store/services/store-query.service';
 
 describe('StoreScheduleService', () => {
   let service: StoreScheduleService;
@@ -21,6 +26,7 @@ describe('StoreScheduleService', () => {
           },
         },
         { provide: CACHE_MANAGER, useValue: { get: jest.fn(), set: jest.fn(), del: jest.fn() } },
+        { provide: StoreQueryService, useValue: { findOne: jest.fn() } },
       ],
     }).compile();
 

@@ -14,8 +14,8 @@ export class AuthMetadataService {
     }
 
     const userAgent = request.headers['user-agent'];
-    const forwardedFor = request.headers['x-forwarded-for']?.toString();
-    const ipAddress = forwardedFor ? forwardedFor.split(',')[0].trim() : null;
+    const peer = request.ip || request.socket?.remoteAddress || null;
+    const ipAddress = typeof peer === 'string' ? peer : null;
 
     const uaParser = new UAParser(userAgent);
     const deviceInfo = {

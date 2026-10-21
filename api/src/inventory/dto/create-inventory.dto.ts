@@ -6,6 +6,9 @@ export class CreateInventoryDto {
   @IsUUID()
   productId: string;
 
+  @IsUUID()
+  storeId: string;
+
   @IsNumber()
   @Min(0)
   @Max(1000000)

@@ -4,6 +4,7 @@ import { defineStore } from 'pinia';
 import { reactive, computed, readonly } from 'vue';
 import type { User, ApiResponse } from '../interfaces/auth.types';
 import { securityLogger } from '../services/securityLogger';
+import { useCartCashierStore } from '@/modules/checkoutBox/stores/useCartStoreCashier';
 
 const apiService = ApiService.getInstance();
 
@@ -206,6 +207,7 @@ export const useAuthStore = defineStore('auth', () => {
     state.user = null;
     state.sessionId = null;
     clearSessionIdFromStorage();
+    useCartCashierStore().clearPersistedDraft();
     state.error = null;
   };
 

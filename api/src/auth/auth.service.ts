@@ -430,25 +430,20 @@ export class AuthService {
     }
   }
 
-  async setup2fa(userId: string): Promise<{ secret: string; qrCode: string }> {
-    const user = await this.userEntityRepository.findOne({
-      where: { id: userId, deletedAt: IsNull() },
-      select: ['id', 'email'],
-    });
-    if (!user) {
-      throw new UnauthorizedException('User not found');
+  async setup2fa(userId: string, password: string): Promise<{ secret: string; qrCode: string }> {
+    const user = await this.requirePassword(userId, password);
+    if (user.twoFactorSecret) {
+      throw new ForbiddenException('2FA is already enabled');
     }
     return this.twoFactorService.generateSecret(user);
   }
 
-  async verify2fa(userId: string, code: string): Promise<{ backupCodes: string[] }> {
-    const user = await this.userEntityRepository.findOne({
-      where: { id: userId },
-      select: ['id', 'email'],
-    });
-    if (!user) {
-      throw new UnauthorizedException('User not found');
-    }
+  async verify2fa(
+    userId: string,
+    code: string,
+    password: string,
+  ): Promise<{ backupCodes: string[] }> {
+    const user = await this.requirePassword(userId, password);
     const result = await this.twoFactorService.verifyAndActivate(user, code);
     return { backupCodes: result.backupCodes };
   }
@@ -469,12 +464,28 @@ export class AuthService {
     return this.twoFactorService.getStatus(user);
   }
 
-  async regenerateBackupCodes(userId: string): Promise<string[]> {
+  async regenerateBackupCodes(userId: string, password: string): Promise<string[]> {
+    await this.requirePassword(userId, password);
     const status = await this.get2faStatus(userId);
     if (!status.enabled) {
       throw new BadRequestException('2FA is not enabled');
     }
     return this.twoFactorService.regenerateBackupCodes(userId);
+  }
+
+  private async requirePassword(userId: string, password: string): Promise<User> {
+    const user = await this.userEntityRepository.findOne({
+      where: { id: userId, deletedAt: IsNull() },
+      select: ['id', 'email', 'password', 'twoFactorSecret'],
+    });
+    if (!user?.password || !user.email) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+    const matches = await this.passwordService.verify(password, user.password, user.email);
+    if (!matches) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+    return user;
   }
 
   private validateUserStatus(user: User): void {

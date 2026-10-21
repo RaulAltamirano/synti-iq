@@ -9,6 +9,7 @@ import { ProductCategorie } from 'src/product-category/entities/product-categori
 import { ProductCategorieModule } from 'src/product-category/product-categorie.module';
 import { InventoryModule } from 'src/inventory/inventory.module';
 import { CacheService } from 'src/cache/cache.service';
+import { StoreModule } from 'src/store/store.module';
 
 @Module({
   controllers: [ProductController],
@@ -16,6 +17,7 @@ import { CacheService } from 'src/cache/cache.service';
   imports: [
     ProductCategorieModule,
     InventoryModule,
+    StoreModule,
     TypeOrmModule.forFeature([Inventory, Product, ProductCategorie]),
     CacheModule.register(),
   ],

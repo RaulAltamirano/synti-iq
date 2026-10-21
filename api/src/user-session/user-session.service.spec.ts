@@ -1,3 +1,7 @@
+jest.mock('src/shared/redis/redis.service', () => ({
+  RedisService: class RedisService {},
+}));
+
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
@@ -275,6 +279,16 @@ describe('UserSessionService', () => {
         expect.objectContaining({ refreshTokenHash: 'hash', isValid: true }),
         expect.any(Number),
       );
+      expect(repo.findByUserAndSessionId).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not cache a revoked session', async () => {
+      redis.get.mockResolvedValue(null);
+      repo.findByUserAndSessionId.mockResolvedValue(makeSession({ isValid: false }));
+
+      await expect(service.validateSessionOwnership('user-1', 'session-1')).resolves.toBe(false);
+      expect(redis.set).not.toHaveBeenCalled();
+      expect(repo.findByUserAndSessionId).toHaveBeenCalledTimes(1);
     });
 
     it('returns false when Redis misses and DB finds no valid session', async () => {
@@ -299,31 +313,39 @@ describe('UserSessionService', () => {
       const session = makeSession();
       repo.create.mockResolvedValue(session);
 
-      const result = await service.createSession({
-        userId: 'user-1',
-        sessionId: 'session-1',
-        refreshToken: 'hash',
-        deviceInfo: null,
-        userAgent: 'Mozilla/5.0',
-        ipAddress: TEST_SESSION_IP,
-        lastUsed: FIXTURE_INSTANT,
-      });
+      const result = await service.createSession(
+        {
+          userId: 'someone-else',
+          sessionId: 'session-1',
+          refreshToken: 'hash',
+          deviceInfo: null,
+          userAgent: 'Mozilla/5.0',
+          ipAddress: TEST_SESSION_IP,
+          lastUsed: FIXTURE_INSTANT,
+        },
+        'user-1',
+      );
 
-      expect(repo.create).toHaveBeenCalled();
+      expect(repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: 'user-1', sessionId: 'session-1' }),
+      );
       expect(result.sessionId).toBe('session-1');
     });
 
     it('throws BadRequestException when userId is missing', async () => {
       await expect(
-        service.createSession({
-          userId: '',
-          sessionId: 'session-1',
-          refreshToken: 'hash',
-          deviceInfo: null,
-          userAgent: null,
-          ipAddress: null,
-          lastUsed: FIXTURE_INSTANT,
-        }),
+        service.createSession(
+          {
+            userId: 'body-user',
+            sessionId: 'session-1',
+            refreshToken: 'hash',
+            deviceInfo: null,
+            userAgent: null,
+            ipAddress: null,
+            lastUsed: FIXTURE_INSTANT,
+          },
+          '',
+        ),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
   });

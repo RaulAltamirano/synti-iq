@@ -32,14 +32,15 @@ export class UserSessionController {
   @Post()
   async createSession(
     @Body() createSessionDto: CreateUserSessionDto,
+    @GetUser('sub') userId: string,
   ): Promise<UserSessionResponseDto> {
-    return this.userSessionService.createSession(createSessionDto);
+    return this.userSessionService.createSession(createSessionDto, userId);
   }
 
   @ApiDoc(userSessionEndpoints, 'getActiveSessions')
   @Get()
   async getActiveSessions(
-    @GetUser('id') userId: string,
+    @GetUser('sub') userId: string,
     @Query() filters: FilterUserSessionDto,
   ): Promise<PaginatedResponse<UserSessionResponseDto>> {
     return this.userSessionService.getActiveSessions(userId, filters);
@@ -47,7 +48,7 @@ export class UserSessionController {
 
   @ApiDoc(userSessionEndpoints, 'getActiveDevices')
   @Get('devices')
-  async getActiveDevices(@GetUser('id') userId: string) {
+  async getActiveDevices(@GetUser('sub') userId: string) {
     return this.userSessionService.getActiveDevices(userId);
   }
 
@@ -55,7 +56,7 @@ export class UserSessionController {
   @Delete(':sessionId')
   @HttpCode(HttpStatus.NO_CONTENT)
   async invalidateSession(
-    @GetUser('id') userId: string,
+    @GetUser('sub') userId: string,
     @Param('sessionId') sessionId: string,
   ): Promise<void> {
     await this.userSessionService.invalidateSession(userId, sessionId);
@@ -65,7 +66,7 @@ export class UserSessionController {
   @Delete('devices/:deviceType')
   @HttpCode(HttpStatus.NO_CONTENT)
   async invalidateDeviceSessions(
-    @GetUser('id') userId: string,
+    @GetUser('sub') userId: string,
     @Param('deviceType') deviceType: string,
   ): Promise<void> {
     await this.userSessionService.invalidateDeviceSessions(userId, deviceType);
@@ -75,7 +76,7 @@ export class UserSessionController {
   @Delete('current/:sessionId/others')
   @HttpCode(HttpStatus.NO_CONTENT)
   async invalidateOtherSessions(
-    @GetUser('id') userId: string,
+    @GetUser('sub') userId: string,
     @Param('sessionId') sessionId: string,
   ): Promise<void> {
     await this.userSessionService.invalidateOtherSessions(userId, sessionId);
@@ -84,14 +85,14 @@ export class UserSessionController {
   @ApiDoc(userSessionEndpoints, 'invalidateAllSessions')
   @Delete('all')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async invalidateAllSessions(@GetUser('id') userId: string): Promise<void> {
+  async invalidateAllSessions(@GetUser('sub') userId: string): Promise<void> {
     await this.userSessionService.invalidateAllSessions(userId);
   }
 
   @ApiDoc(userSessionEndpoints, 'validateSession')
   @Post(':sessionId/validate')
   async validateSession(
-    @GetUser('id') userId: string,
+    @GetUser('sub') userId: string,
     @Param('sessionId') sessionId: string,
   ): Promise<boolean> {
     return this.userSessionService.validateSessionOwnership(userId, sessionId);
@@ -101,7 +102,7 @@ export class UserSessionController {
   @Post(':sessionId/last-used')
   @HttpCode(HttpStatus.NO_CONTENT)
   async updateSessionLastUsed(
-    @GetUser('id') userId: string,
+    @GetUser('sub') userId: string,
     @Param('sessionId') sessionId: string,
   ): Promise<void> {
     return this.userSessionService.updateSessionLastUsed(userId, sessionId);

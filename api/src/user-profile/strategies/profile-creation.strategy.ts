@@ -68,6 +68,7 @@ export class CashierProfileStrategy implements IProfileCreationStrategy {
       ...profileFields,
       store,
       storeId: store?.id ?? null,
+      businessProfileId: actingBusinessProfileId,
     });
 
     const savedCashier = await queryRunner.manager.save(cashierProfile);

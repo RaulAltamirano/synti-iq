@@ -52,7 +52,7 @@ export class AuthSessionManager {
         lastUsed,
       };
 
-      await this.sessionService.createSession(createSessionDto);
+      await this.sessionService.createSession(createSessionDto, userId);
 
       await this.sessionService.setSessionInRedisUnified(userId, sessionId, {
         refreshTokenHash,
@@ -172,7 +172,7 @@ export class AuthSessionManager {
 
       await this.sessionService.setSessionInRedisUnified(userId, sessionId, {
         refreshTokenHash,
-        isValid: dbSession?.isValid ?? true,
+        isValid: dbSession?.isValid === true,
         lastUsed: new Date().toISOString(),
         deviceInfo: dbSession?.deviceInfo ?? null,
       });

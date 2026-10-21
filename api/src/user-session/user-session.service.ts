@@ -45,17 +45,17 @@ export class UserSessionService {
         sessionId,
       });
 
-      if (dbSession && dbSession.isValid) {
-        await this.setSessionInRedisUnified(userId, sessionId, {
-          refreshTokenHash: dbSession.refreshToken,
-          isValid: dbSession.isValid,
-          lastUsed: dbSession.lastUsed.toISOString(),
-          deviceInfo: dbSession.deviceInfo,
-        });
-        return true;
+      if (!dbSession?.isValid) {
+        return false;
       }
 
-      return false;
+      await this.setSessionInRedisUnified(userId, sessionId, {
+        refreshTokenHash: dbSession.refreshToken,
+        isValid: true,
+        lastUsed: dbSession.lastUsed.toISOString(),
+        deviceInfo: dbSession.deviceInfo,
+      });
+      return true;
     } catch (error) {
       this.logger.error(`Error validating session ownership: ${error.message}`, error.stack);
       throw this.handleError(error, 'validating session ownership');
@@ -77,12 +77,16 @@ export class UserSessionService {
     }
   }
 
-  async createSession(dto: CreateUserSessionDto): Promise<UserSessionResponseDto> {
-    this.ensureUserId(dto.userId);
+  async createSession(
+    dto: CreateUserSessionDto,
+    actorUserId: string,
+  ): Promise<UserSessionResponseDto> {
+    this.ensureUserId(actorUserId);
 
     try {
       const saved = await this.userSessionRepository.create({
         ...dto,
+        userId: actorUserId,
         lastUsed: dto.lastUsed || new Date(),
       });
 

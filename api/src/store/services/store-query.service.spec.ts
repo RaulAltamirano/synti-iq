@@ -1,3 +1,7 @@
+jest.mock('src/shared/redis/redis.service', () => ({
+  RedisService: class RedisService {},
+}));
+
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -101,11 +105,51 @@ describe('StoreQueryService', () => {
         if (key === 'store:_version') return Promise.resolve(1);
         return Promise.resolve(cached);
       });
+      userService.getUserRole.mockResolvedValue(SystemRole.BUSINESS_OWNER);
+      userProfileService.getUserProfile.mockResolvedValue({
+        profileId: 'bp-123',
+        profileType: SystemRole.BUSINESS_OWNER,
+      });
 
-      const result = await service.findAll({} as never);
+      const result = await service.findAll({} as never, 'user-1');
 
       expect(storeRepo.createQueryBuilder).not.toHaveBeenCalled();
       expect(result).toBe(cached);
+    });
+
+    it('rejects a list without a user', async () => {
+      await expect(service.findAll({} as never)).rejects.toBeInstanceOf(ForbiddenException);
+      expect(storeRepo.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
+    it('rejects roles that findOne already denies', async () => {
+      userService.getUserRole.mockResolvedValue(SystemRole.CUSTOMER);
+
+      await expect(service.findAll({} as never, 'user-1')).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+    });
+
+    it('replaces a client businessProfileId with the owner profile', async () => {
+      userService.getUserRole.mockResolvedValue(SystemRole.BUSINESS_OWNER);
+      userProfileService.getUserProfile.mockResolvedValue({
+        profileId: 'bp-own',
+        profileType: SystemRole.BUSINESS_OWNER,
+      });
+
+      const filters = { businessProfileId: 'bp-other' } as { businessProfileId?: string };
+      await service.findAll(filters as never, 'user-1');
+
+      expect(filters.businessProfileId).toBe('bp-own');
+    });
+
+    it('rejects a business owner without a matching profile', async () => {
+      userService.getUserRole.mockResolvedValue(SystemRole.BUSINESS_OWNER);
+      userProfileService.getUserProfile.mockResolvedValue(null);
+
+      await expect(service.findAll({} as never, 'user-1')).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
     });
   });
 
@@ -113,23 +157,14 @@ describe('StoreQueryService', () => {
     it('throws NotFoundException when store does not exist', async () => {
       storeRepo.findOne.mockResolvedValue(null);
 
-      await expect(service.findOne('missing-id')).rejects.toBeInstanceOf(NotFoundException);
+      await expect(service.findOne('missing-id', 'user-1')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
     });
 
-    it('returns store when no userId provided (no auth check)', async () => {
-      const store = {
-        id: 'store-1',
-        businessProfileId: 'bp-1',
-        schedules: [],
-        cashiers: [],
-        paymentMethods: [],
-      };
-      storeRepo.findOne.mockResolvedValue(store);
-
-      const result = await service.findOne('store-1');
-
-      expect(result).toBe(store);
-      expect(userService.getUserRole).not.toHaveBeenCalled();
+    it('rejects a lookup without a user', async () => {
+      await expect(service.findOne('store-1')).rejects.toBeInstanceOf(ForbiddenException);
+      expect(storeRepo.findOne).not.toHaveBeenCalled();
     });
 
     it('throws ForbiddenException for role that is neither BUSINESS_OWNER nor CASHIER', async () => {
@@ -143,6 +178,15 @@ describe('StoreQueryService', () => {
       userService.getUserRole.mockResolvedValue(SystemRole.CUSTOMER);
 
       await expect(service.findOne('store-1', 'user-1')).rejects.toBeInstanceOf(ForbiddenException);
+    });
+  });
+
+  describe('listInventoryStoreIds', () => {
+    it('returns no store ids for a role outside the business', async () => {
+      userService.getUserRole.mockResolvedValue(SystemRole.CUSTOMER);
+
+      await expect(service.listInventoryStoreIds('user-1')).resolves.toEqual([]);
+      expect(storeRepo.createQueryBuilder).not.toHaveBeenCalled();
     });
   });
 

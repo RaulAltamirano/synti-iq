@@ -5,7 +5,6 @@ import { FindOneOptions, IsNull, Repository } from 'typeorm';
 
 import { User } from './entities/user.entity';
 import { RedisService } from 'src/shared/redis/redis.service';
-import { FilterUserDto } from 'src/auth/dto/filter-user.dto';
 import { PaginatedResponse } from 'src/pagination/interfaces/PaginatedResponse';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UserProfileService } from 'src/user-profile/user_profile.service';
@@ -29,10 +28,6 @@ export class UserService {
     private readonly userCreationService: UserCreationService,
     private readonly userRoleMutationService: UserRoleMutationService,
   ) {}
-
-  async filterUsers(filters: FilterUserDto): Promise<PaginatedResponse<User>> {
-    return this.userFiltersService.filterUsers(filters);
-  }
 
   async filterUsersByBusiness(
     filters: FilterBusinessUsersDto,

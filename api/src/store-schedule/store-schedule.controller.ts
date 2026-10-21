@@ -13,12 +13,14 @@ import { StoreScheduleService } from './store-schedule.service';
 import { UpdateStoreScheduleDto } from './dto/update-store-schedule.dto';
 import { StoreSchedule } from './entities/store-schedule.entity';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
+import { Auth, GetUser } from 'src/auth/decorator';
 
 @ApiTags('store-schedule')
 @Controller('store-schedule')
 export class StoreScheduleController {
   constructor(private readonly storeScheduleService: StoreScheduleService) {}
 
+  @Auth('', [])
   @Get(':id')
   @ApiOperation({ summary: 'Get a store schedule by ID' })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
@@ -35,10 +37,14 @@ export class StoreScheduleController {
     status: HttpStatus.BAD_REQUEST,
     description: 'Invalid UUID format.',
   })
-  async findOne(@Param('id', ParseUUIDPipe) id: string): Promise<StoreSchedule> {
-    return this.storeScheduleService.findOne(id);
+  async findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @GetUser('sub') userId: string,
+  ): Promise<StoreSchedule> {
+    return this.storeScheduleService.findOne(id, userId);
   }
 
+  @Auth('', [])
   @Patch(':id')
   @ApiOperation({ summary: 'Update a store schedule' })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
@@ -58,10 +64,12 @@ export class StoreScheduleController {
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateStoreScheduleInput: UpdateStoreScheduleDto,
+    @GetUser('sub') userId: string,
   ): Promise<StoreSchedule> {
-    return this.storeScheduleService.update(id, updateStoreScheduleInput);
+    return this.storeScheduleService.update(id, updateStoreScheduleInput, userId);
   }
 
+  @Auth('', [])
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
@@ -76,10 +84,14 @@ export class StoreScheduleController {
     status: HttpStatus.NOT_FOUND,
     description: 'Store schedule not found.',
   })
-  async remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
-    await this.storeScheduleService.remove(id);
+  async remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @GetUser('sub') userId: string,
+  ): Promise<void> {
+    await this.storeScheduleService.remove(id, userId);
   }
 
+  @Auth('', [])
   @Patch(':id/toggle-active')
   @ApiOperation({ summary: 'Toggle store schedule active status' })
   @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
@@ -92,7 +104,10 @@ export class StoreScheduleController {
     status: HttpStatus.NOT_FOUND,
     description: 'Store schedule not found.',
   })
-  async toggleActive(@Param('id', ParseUUIDPipe) id: string): Promise<StoreSchedule> {
-    return this.storeScheduleService.toggleActive(id);
+  async toggleActive(
+    @Param('id', ParseUUIDPipe) id: string,
+    @GetUser('sub') userId: string,
+  ): Promise<StoreSchedule> {
+    return this.storeScheduleService.toggleActive(id, userId);
   }
 }

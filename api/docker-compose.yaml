@@ -5,12 +5,12 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${DB_USERNAME:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME:-syntiiq}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - '${DB_PORT:-5434}:5432'
+      - '127.0.0.1:${DB_PORT:-5434}:5432'
     healthcheck:
       test: ['CMD', 'pg_isready', '-U', '${DB_USERNAME:-postgres}']
       interval: 10s
@@ -25,12 +25,14 @@ services:
     container_name: synti-iq-redis
     restart: unless-stopped
     ports:
-      - '${REDIS_PORT:-6379}:6379'
+      - '127.0.0.1:${REDIS_PORT:-6379}:6379'
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
     volumes:
       - redis_data:/data
-    command: redis-server --save 60 1 --loglevel warning
+    command: redis-server --save 60 1 --loglevel warning --requirepass ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
     healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
+      test: ['CMD-SHELL', 'redis-cli -a "$$REDIS_PASSWORD" ping | grep -q PONG']
       interval: 10s
       timeout: 5s
       retries: 5

@@ -44,6 +44,7 @@ watch(
 );
 
 const showSetupModal = ref(false);
+const currentPassword = ref('');
 const showDisableModal = ref(false);
 const disableSuccess = ref(false);
 const isOpeningSetup = ref(false);
@@ -51,14 +52,21 @@ const cardError = ref<string | null>(null);
 
 const showBackupCodesModal = computed(() => showBackupCodes.value && !showSetupModal.value);
 
+const requirePassword = (): boolean => {
+  if (currentPassword.value.trim()) return true;
+  cardError.value = 'Enter your current password';
+  return false;
+};
+
 const handleActivate = async () => {
-  showSetupModal.value = true;
   clearError();
   cardError.value = null;
+  if (!requirePassword()) return;
+  showSetupModal.value = true;
   isOpeningSetup.value = true;
 
   try {
-    await startSetup();
+    await startSetup(currentPassword.value);
   } finally {
     isOpeningSetup.value = false;
   }
@@ -66,7 +74,8 @@ const handleActivate = async () => {
 
 const handleRetrySetup = async () => {
   clearError();
-  await startSetup();
+  if (!requirePassword()) return;
+  await startSetup(currentPassword.value);
 };
 
 const handleDisable = () => {
@@ -77,15 +86,18 @@ const handleDisable = () => {
 const handleSetupClose = () => {
   showSetupModal.value = false;
   clearError();
+  currentPassword.value = '';
 };
 
 const handleSetupVerify = async (code: string) => {
-  await verifyAndEnable(code);
+  const enabled = await verifyAndEnable(code, currentPassword.value);
+  if (enabled) currentPassword.value = '';
 };
 
 const handleSetupDismiss = () => {
   dismissBackupCodes();
   showSetupModal.value = false;
+  currentPassword.value = '';
   toast.success('Two-factor authentication enabled');
 };
 
@@ -126,7 +138,9 @@ const handleBackupCodesDismiss = () => {
 
 const handleRegenerateBackupCodes = async () => {
   cardError.value = null;
-  const codes = await regenerateBackupCodes();
+  if (!requirePassword()) return;
+  const codes = await regenerateBackupCodes(currentPassword.value);
+  if (codes.length > 0) currentPassword.value = '';
   if (codes.length === 0 && error.value) {
     cardError.value = error.value;
   }
@@ -214,6 +228,21 @@ const handleRegenerateBackupCodes = async () => {
           :message="cardError"
           @retry="handleRegenerateBackupCodes"
         />
+
+        <label class="block space-y-1 text-sm" :class="isDark ? 'text-gray-300' : 'text-gray-700'">
+          Current password
+          <input
+            v-model="currentPassword"
+            type="password"
+            autocomplete="current-password"
+            class="w-full rounded-lg border px-3 py-2"
+            :class="
+              isDark
+                ? 'border-gray-600 bg-gray-900 text-gray-100'
+                : 'border-gray-300 bg-white text-gray-900'
+            "
+          />
+        </label>
 
         <div class="flex flex-col sm:flex-row gap-3 pt-1">
           <Button

@@ -48,9 +48,10 @@ export class StoreQueryService {
 
   async findAll(filters: StoreFilterDto, userId?: string): Promise<PaginatedResponse<Store>> {
     return this.observabilityService.withSpan(STORE_SPAN_NAMES.FIND_ALL, async span => {
-      if (userId) {
-        await this.applyStoreScopeForUser(userId, filters);
+      if (!userId) {
+        throw new ForbiddenException('You are not allowed to access this store');
       }
+      await this.applyStoreScopeForUser(userId, filters);
 
       const version = (await this.cacheManager.get<number>(STORE_CACHE_VERSION_KEY)) ?? 0;
       const hashPart = PaginationCacheUtil.buildCacheKey(STORE_CACHE_PREFIX, filters).split(':')[1];
@@ -88,6 +89,10 @@ export class StoreQueryService {
     return this.observabilityService.withSpan(STORE_SPAN_NAMES.FIND_ONE, async span => {
       span.setAttribute(STORE_SPAN_ATTRIBUTES.STORE_ID, id);
 
+      if (!userId) {
+        throw new ForbiddenException('You are not allowed to access this store');
+      }
+
       const store = await this.storeRepo.findOne({
         where: { id },
         relations: ['schedules', 'cashiers', 'paymentMethods'],
@@ -115,18 +120,47 @@ export class StoreQueryService {
     await this.cacheManager.set(STORE_CACHE_VERSION_KEY, Date.now(), STORE_VERSION_CACHE_TTL_MS);
   }
 
+  async listAccessibleStoreIds(userId: string): Promise<string[]> {
+    const businessProfileId = await this.businessProfileIdForUser(userId);
+    const stores = await this.storeRepo.find({
+      where: { businessProfileId },
+      select: ['id'],
+    });
+    return stores.map(store => store.id);
+  }
+
+  async listInventoryStoreIds(userId: string): Promise<string[]> {
+    const role = await this.userService.getUserRole(userId);
+    if (role !== SystemRole.BUSINESS_OWNER && role !== SystemRole.CASHIER) {
+      return [];
+    }
+    return this.listAccessibleStoreIds(userId);
+  }
+
+  private async businessProfileIdForUser(userId: string): Promise<string> {
+    const scope = {} as StoreFilterDto;
+    await this.applyStoreScopeForUser(userId, scope);
+    if (!scope.businessProfileId) {
+      throw new ForbiddenException('You are not allowed to access this store');
+    }
+    return scope.businessProfileId;
+  }
+
   private async applyStoreScopeForUser(userId: string, filters: StoreFilterDto): Promise<void> {
     const role = await this.userService.getUserRole(userId);
     if (role === SystemRole.BUSINESS_OWNER) {
       const profile = await this.userProfileService.getUserProfile(userId);
-      if (profile?.profileId && profile.profileType === SystemRole.BUSINESS_OWNER) {
-        filters.businessProfileId = profile.profileId;
+      if (!profile?.profileId || profile.profileType !== SystemRole.BUSINESS_OWNER) {
+        throw new ForbiddenException('You are not allowed to access this store');
       }
+      filters.businessProfileId = profile.profileId;
       return;
     }
     if (role === SystemRole.CASHIER) {
       filters.businessProfileId = await this.resolveCashierBusinessProfileId(userId);
+      return;
     }
+    throw new ForbiddenException('You are not allowed to access this store');
   }
 
   private async resolveCashierBusinessProfileId(userId: string): Promise<string> {

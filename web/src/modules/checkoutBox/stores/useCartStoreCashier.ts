@@ -109,6 +109,19 @@ export const useCartCashierStore = defineStore('cart-cashier', {
       }
     },
 
+    clearPersistedDraft() {
+      this.carts = [];
+      this.currentCartIndex = 0;
+      this.selectedProduct = null;
+      this.initializeCarts();
+      try {
+        localStorage.removeItem('userCarts');
+        localStorage.removeItem('currentCartIndex');
+      } catch (error) {
+        this.lastError = error instanceof Error ? error : new Error('Error desconocido al guardar');
+      }
+    },
+
     /**
      * Carga los carritos desde localStorage con manejo de errores
      */
