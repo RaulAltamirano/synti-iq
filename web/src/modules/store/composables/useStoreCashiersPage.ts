@@ -42,7 +42,8 @@ async function fetchAllCashiersRaw(storeId: string): Promise<CashierProfileApi[]
   const all: CashierProfileApi[] = [];
   let page = 1;
   const limit = 100;
-  while (true) {
+  let hasMore = true;
+  while (hasMore) {
     const res = await getStoreCashiersPaginated(storeId, {
       page,
       limit,
@@ -50,7 +51,7 @@ async function fetchAllCashiersRaw(storeId: string): Promise<CashierProfileApi[]
       sortOrder: 'ASC',
     });
     all.push(...res.items);
-    if (page >= res.totalPages || res.items.length === 0) break;
+    hasMore = page < res.totalPages && res.items.length > 0;
     page += 1;
   }
   return all;

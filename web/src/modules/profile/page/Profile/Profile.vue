@@ -1,3 +1,81 @@
+<script lang="ts">
+import { defineComponent } from 'vue';
+import { useRouter } from 'vue-router';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import TitleCard from '../../../shared/components/TitleCard/TitleCard.vue';
+import ReferralSection from '../../components/ReferralSection/ReferralSection.vue';
+import ProfileSection from '../../components/ProfileSection/ProfileSection.vue';
+import SubscriptionSection from '../../components/SubscriptionSection/SubscriptionSection.vue';
+import NotificationPreferences from '../../components/NotificationPreferences/NotificationPreferences.vue';
+import SecuritySection from '../../components/SecuritySection/SecuritySection.vue';
+import ProfileHeroCard from '../../components/ProfileHeroCard/ProfileHeroCard.vue';
+import { Button, RoleIcon, InfoBanner, useToast } from '../../../ui/components';
+import { useProfile } from './Profile';
+
+export default defineComponent({
+  name: 'UserProfile',
+  components: {
+    TitleCard,
+    FontAwesomeIcon,
+    ReferralSection,
+    ProfileSection,
+    SubscriptionSection,
+    NotificationPreferences,
+    SecuritySection,
+    ProfileHeroCard,
+    AppButton: Button,
+    RoleIcon,
+    InfoBanner,
+  },
+  setup() {
+    const router = useRouter();
+    const toast = useToast();
+    const {
+      daysUntilExpiration,
+      shouldShowBanner,
+      hasActiveSubscription,
+      logOut,
+      userFullName,
+      userEmail,
+      userId,
+      userRole,
+    } = useProfile();
+
+    const navigateToRenewal = () => {
+      router.push({ name: 'SubscriptionRenewal' });
+    };
+
+    const navigateToNewSubscription = () => {
+      router.push({ name: 'SubscriptionNew' });
+    };
+
+    const copyUserId = async () => {
+      if (!userId.value) return;
+      try {
+        await navigator.clipboard.writeText(userId.value);
+        toast.success('User ID copied to clipboard');
+      } catch {
+        toast.error('Failed to copy ID');
+      }
+    };
+
+    return {
+      daysUntilExpiration,
+      shouldShowBanner,
+      hasActiveSubscription,
+      navigateToRenewal,
+      navigateToNewSubscription,
+      logOut,
+      userFullName,
+      userEmail,
+      userId,
+      userRole,
+      copyUserId,
+    };
+  },
+});
+</script>
+
 <template>
   <div
     class="min-h-screen transition-colors duration-300 py-8 px-4 text-gray-800 dark:text-gray-100"
@@ -44,11 +122,7 @@
         }"
         class="py-2"
       >
-        <ProfileHeroCard
-          :user-full-name="userFullName"
-          :user-email="userEmail"
-          :user-id="userId"
-        />
+        <ProfileHeroCard :user-full-name="userFullName" :user-email="userEmail" :user-id="userId" />
       </div>
 
       <div
@@ -161,91 +235,13 @@
         }"
         class="flex justify-end"
       >
-        <Button variant="secondary" size="md" :icon="['fas', 'sign-out-alt']" @click="logOut">
+        <AppButton variant="secondary" size="md" :icon="['fas', 'sign-out-alt']" @click="logOut">
           Log Out
-        </Button>
+        </AppButton>
       </div>
     </div>
   </div>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import { useRouter } from 'vue-router';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import TitleCard from '../../../shared/components/TitleCard/TitleCard.vue';
-import ReferralSection from '../../components/ReferralSection/ReferralSection.vue';
-import ProfileSection from '../../components/ProfileSection/ProfileSection.vue';
-import SubscriptionSection from '../../components/SubscriptionSection/SubscriptionSection.vue';
-import NotificationPreferences from '../../components/NotificationPreferences/NotificationPreferences.vue';
-import SecuritySection from '../../components/SecuritySection/SecuritySection.vue';
-import ProfileHeroCard from '../../components/ProfileHeroCard/ProfileHeroCard.vue';
-import { Button, RoleIcon, InfoBanner, useToast } from '../../../ui/components';
-import { useProfile } from './Profile';
-
-export default defineComponent({
-  name: 'UserProfile',
-  components: {
-    TitleCard,
-    FontAwesomeIcon,
-    ReferralSection,
-    ProfileSection,
-    SubscriptionSection,
-    NotificationPreferences,
-    SecuritySection,
-    ProfileHeroCard,
-    Button,
-    RoleIcon,
-    InfoBanner,
-  },
-  setup() {
-    const router = useRouter();
-    const toast = useToast();
-    const {
-      daysUntilExpiration,
-      shouldShowBanner,
-      hasActiveSubscription,
-      logOut,
-      userFullName,
-      userEmail,
-      userId,
-      userRole,
-    } = useProfile();
-
-    const navigateToRenewal = () => {
-      router.push({ name: 'SubscriptionRenewal' });
-    };
-
-    const navigateToNewSubscription = () => {
-      router.push({ name: 'SubscriptionNew' });
-    };
-
-    const copyUserId = async () => {
-      if (!userId.value) return;
-      try {
-        await navigator.clipboard.writeText(userId.value);
-        toast.success('User ID copied to clipboard');
-      } catch {
-        toast.error('Failed to copy ID');
-      }
-    };
-
-    return {
-      daysUntilExpiration,
-      shouldShowBanner,
-      hasActiveSubscription,
-      navigateToRenewal,
-      navigateToNewSubscription,
-      logOut,
-      userFullName,
-      userEmail,
-      userId,
-      userRole,
-      copyUserId,
-    };
-  },
-});
-</script>
 
 <style scoped>
 .scrollbar-thin {

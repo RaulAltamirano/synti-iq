@@ -29,13 +29,9 @@
       <form class="space-y-4" @submit.prevent="handleSubmit">
         <!-- Email + Password (when not in TOTP step) -->
         <template v-if="!showTotpInput">
-          <Field
-            v-slot="{ componentField, errorMessage }"
-            name="email"
-            :validate-on-blur="true"
-          >
+          <Field v-slot="{ componentField, errorMessage }" name="email" :validate-on-blur="true">
             <div class="space-y-1">
-              <Input
+              <AppInput
                 v-bind="componentField"
                 type="email"
                 name="email"
@@ -78,7 +74,7 @@
           </div>
 
           <!-- Submit Button -->
-          <Button
+          <AppButton
             type="submit"
             variant="primary"
             size="md"
@@ -87,7 +83,7 @@
             full-width
           >
             Sign in
-          </Button>
+          </AppButton>
         </template>
 
         <!-- TOTP Step (when 2FA required) -->
@@ -101,10 +97,10 @@
             :accept-backup-code="true"
           />
           <div class="flex gap-3">
-            <Button variant="ghost" type="button" class="flex-1" @click="handleBackFromTotp">
+            <AppButton variant="ghost" type="button" class="flex-1" @click="handleBackFromTotp">
               Back
-            </Button>
-            <Button
+            </AppButton>
+            <AppButton
               type="submit"
               variant="primary"
               size="md"
@@ -113,7 +109,7 @@
               :disabled="!isTotpCodeValid || isLoading"
             >
               Verify
-            </Button>
+            </AppButton>
           </div>
         </template>
       </form>

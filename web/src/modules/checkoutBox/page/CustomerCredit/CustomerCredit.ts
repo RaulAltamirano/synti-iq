@@ -83,19 +83,19 @@ export default {
       }
     };
 
-    const viewDetails = (id) => {
+    const viewDetails = (_id: unknown) => {
       // Lógica para ver detalles del crédito
     };
 
-    const sendReminder = (id) => {
+    const sendReminder = (_id: unknown) => {
       // Lógica para enviar recordatorio
     };
 
-    const markAsPaid = (id) => {
+    const markAsPaid = (_id: unknown) => {
       // Lógica para marcar como pagado
     };
 
-    const extendDueDate = (id) => {
+    const extendDueDate = (_id: unknown) => {
       // Lógica para extender la fecha de vencimiento
     };
 

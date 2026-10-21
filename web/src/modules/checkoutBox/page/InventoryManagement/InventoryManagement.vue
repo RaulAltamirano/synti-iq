@@ -135,7 +135,7 @@
             ]"
           >
             <option value="all">Todos los productos</option>
-            <option value="critical">Stock crítico (<5)</option>
+            <option value="critical">Stock crítico (&lt;5)</option>
             <option value="low">Stock bajo (5-10)</option>
             <option value="normal">Stock normal (>10)</option>
           </select>
@@ -490,7 +490,7 @@
                 <!-- Aquí iría un gráfico, simulado con div -->
                 <div class="h-full w-full flex items-end justify-between">
                   <div
-                    v-for="(month, index) in ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun']"
+                    v-for="month in ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun']"
                     :key="month"
                     class="w-1/6 mx-1 flex flex-col items-center"
                   >

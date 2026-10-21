@@ -121,27 +121,6 @@ export default defineComponent({
     const addProductByBarcode = () => {};
     const openScanner = () => {};
 
-    const toggleDarkMode = () => {
-      themeStore.toggleTheme();
-    };
-
-    const togglePriceChecker = () => {
-      showPriceChecker.value = !showPriceChecker.value;
-    };
-
-    const showProductPrice = (product) => {
-      selectedProduct.value = product;
-    };
-
-    const addNewCart = () => {
-      carts.value.push({ items: [], discount: 0 });
-      currentCartIndex.value = carts.value.length - 1;
-    };
-
-    const switchCart = (index) => {
-      currentCartIndex.value = index;
-    };
-
     const handleProductSelected = (product) => {
       const existingItem = currentCart.value.items.find((item) => item.id === product.id);
       if (existingItem) {
@@ -173,7 +152,7 @@ export default defineComponent({
       }
     };
 
-    const applyDiscount = (item) => {
+    const applyDiscount = (_item: unknown) => {
       // Implementar lógica de descuento
     };
 

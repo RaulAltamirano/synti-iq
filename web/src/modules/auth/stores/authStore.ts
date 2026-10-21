@@ -2,7 +2,7 @@ import { ApiService } from '@/modules/services/api-service';
 import { AUTH_CONSTANTS } from '@/modules/services/constants/constants-api';
 import { defineStore } from 'pinia';
 import { reactive, computed, readonly } from 'vue';
-import type { User, ApiResponse, AuthData } from '../interfaces/auth.types';
+import type { User, ApiResponse } from '../interfaces/auth.types';
 import { securityLogger } from '../services/securityLogger';
 
 const apiService = ApiService.getInstance();
@@ -23,13 +23,17 @@ export const useAuthStore = defineStore('auth', () => {
   const saveSessionIdToStorage = (sessionId: string): void => {
     try {
       sessionStorage.setItem(SESSION_ID_STORAGE_KEY, sessionId);
-    } catch {}
+    } catch {
+      /* sessionStorage unavailable */
+    }
   };
 
   const clearSessionIdFromStorage = (): void => {
     try {
       sessionStorage.removeItem(SESSION_ID_STORAGE_KEY);
-    } catch {}
+    } catch {
+      /* sessionStorage unavailable */
+    }
   };
 
   const state = reactive<{
@@ -177,9 +181,12 @@ export const useAuthStore = defineStore('auth', () => {
       if (state.user) {
         try {
           await apiService.api.post('/auth/logout');
-        } catch {}
+        } catch {
+          /* logout request failed; local session is still cleared */
+        }
       }
     } catch {
+      /* logout request failed; local session is still cleared */
     } finally {
       clearSession();
       state.loading = false;

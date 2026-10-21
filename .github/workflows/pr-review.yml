@@ -53,14 +53,14 @@ jobs:
             node_modules
             api/node_modules
             web/node_modules
-          key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
+          key: ${{ runner.os }}-node22-yarn-${{ hashFiles('yarn.lock') }}
           restore-keys: |
-            ${{ runner.os }}-yarn-
+            ${{ runner.os }}-node22-yarn-
 
       - name: Setup Node
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
-          node-version: '20.19'
+          node-version: '22'
           cache: 'yarn'
 
       - name: Enable Yarn
@@ -100,9 +100,9 @@ jobs:
             node_modules
             api/node_modules
             web/node_modules
-          key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
+          key: ${{ runner.os }}-node22-yarn-${{ hashFiles('yarn.lock') }}
           restore-keys: |
-            ${{ runner.os }}-yarn-
+            ${{ runner.os }}-node22-yarn-
 
       - name: Cache Jest
         uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
@@ -115,7 +115,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
-          node-version: '20.19'
+          node-version: '22'
           cache: 'yarn'
 
       - name: Enable Yarn
@@ -158,6 +158,8 @@ jobs:
           path: api/coverage
 
       - name: Coverage PR comment
+        # Base checkout runs Jest through Babel, which cannot parse the API specs, then the action throws on empty coverage and skips the scan.
+        continue-on-error: true
         uses: ArtiomTr/jest-coverage-report-action@7f750dd50f5585533321eb7ebc482b936b49a5d4
         with:
           coverage-file: ./api/coverage/coverage-final.json
@@ -170,6 +172,7 @@ jobs:
           projectBaseDir: api
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_SCANNER_SKIP_JRE_PROVISIONING: true
 
       - name: SonarCloud Quality Gate check
         id: sonarqube-quality-gate-check
@@ -230,14 +233,14 @@ jobs:
             node_modules
             api/node_modules
             web/node_modules
-          key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
+          key: ${{ runner.os }}-node22-yarn-${{ hashFiles('yarn.lock') }}
           restore-keys: |
-            ${{ runner.os }}-yarn-
+            ${{ runner.os }}-node22-yarn-
 
       - name: Setup Node
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
-          node-version: '20.19'
+          node-version: '22'
           cache: 'yarn'
 
       - name: Enable Yarn
@@ -322,7 +325,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
-          node-version: '20.19'
+          node-version: '22'
 
       - name: Get SonarCloud metrics
         id: sonar
@@ -443,7 +446,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
         with:
-          node-version: '20.19'
+          node-version: '22'
 
       - name: Get SonarCloud metrics
         id: sonar

@@ -1,3 +1,73 @@
+<script setup lang="ts">
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import type { SubscriptionPlan } from '../../composables/useSubscriptionWizard';
+
+interface Props {
+  selectedPlan: SubscriptionPlan | null;
+}
+
+interface Emits {
+  (e: 'update:selectedPlan', value: SubscriptionPlan | null): void;
+}
+
+defineProps<Props>();
+const emit = defineEmits<Emits>();
+
+// Mock data para los planes
+const plans: SubscriptionPlan[] = [
+  {
+    id: 'basic',
+    name: 'Básico',
+    price: 29.99,
+    period: 'monthly',
+    features: [
+      'Hasta 100 productos',
+      '1 tienda',
+      'Soporte por email',
+      'Reportes básicos',
+      'Actualizaciones mensuales',
+    ],
+  },
+  {
+    id: 'pro',
+    name: 'Pro',
+    price: 79.99,
+    period: 'monthly',
+    popular: true,
+    features: [
+      'Productos ilimitados',
+      'Hasta 5 tiendas',
+      'Soporte prioritario',
+      'Reportes avanzados',
+      'Actualizaciones semanales',
+      'API access',
+      'Integraciones premium',
+    ],
+  },
+  {
+    id: 'enterprise',
+    name: 'Enterprise',
+    price: 199.99,
+    period: 'monthly',
+    features: [
+      'Productos ilimitados',
+      'Tiendas ilimitadas',
+      'Soporte 24/7',
+      'Reportes personalizados',
+      'Actualizaciones diarias',
+      'API access completo',
+      'Todas las integraciones',
+      'Cuenta manager dedicado',
+      'Onboarding personalizado',
+    ],
+  },
+];
+
+const selectPlan = (plan: SubscriptionPlan) => {
+  emit('update:selectedPlan', plan);
+};
+</script>
+
 <template>
   <div
     v-motion="{
@@ -188,74 +258,3 @@
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-import { ref } from 'vue';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import type { SubscriptionPlan } from '../../composables/useSubscriptionWizard';
-
-interface Props {
-  selectedPlan: SubscriptionPlan | null;
-}
-
-interface Emits {
-  (e: 'update:selectedPlan', value: SubscriptionPlan | null): void;
-}
-
-const props = defineProps<Props>();
-const emit = defineEmits<Emits>();
-
-// Mock data para los planes
-const plans: SubscriptionPlan[] = [
-  {
-    id: 'basic',
-    name: 'Básico',
-    price: 29.99,
-    period: 'monthly',
-    features: [
-      'Hasta 100 productos',
-      '1 tienda',
-      'Soporte por email',
-      'Reportes básicos',
-      'Actualizaciones mensuales',
-    ],
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    price: 79.99,
-    period: 'monthly',
-    popular: true,
-    features: [
-      'Productos ilimitados',
-      'Hasta 5 tiendas',
-      'Soporte prioritario',
-      'Reportes avanzados',
-      'Actualizaciones semanales',
-      'API access',
-      'Integraciones premium',
-    ],
-  },
-  {
-    id: 'enterprise',
-    name: 'Enterprise',
-    price: 199.99,
-    period: 'monthly',
-    features: [
-      'Productos ilimitados',
-      'Tiendas ilimitadas',
-      'Soporte 24/7',
-      'Reportes personalizados',
-      'Actualizaciones diarias',
-      'API access completo',
-      'Todas las integraciones',
-      'Cuenta manager dedicado',
-      'Onboarding personalizado',
-    ],
-  },
-];
-
-const selectPlan = (plan: SubscriptionPlan) => {
-  emit('update:selectedPlan', plan);
-};
-</script>

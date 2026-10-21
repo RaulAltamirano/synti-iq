@@ -7,7 +7,7 @@ const apiService = ApiService.getInstance();
 // Definición de tipos
 interface SearchState {
   query: string;
-  results: any[];
+  results: unknown[];
   page: number;
   totalPages: number;
   loading: boolean;
@@ -70,7 +70,7 @@ export const useSearchStore = defineStore('search', () => {
       state.value.results = response.products;
       state.value.totalPages = response.totalPages;
       state.value.hasMore = state.value.page < response.totalPages;
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error.name !== 'AbortError') {
         state.value.error = error;
       }
@@ -122,7 +122,7 @@ export const useSearchStore = defineStore('search', () => {
       if (!response) throw new Error('Error de respuesta');
 
       const uniqueProducts = response.products.filter(
-        (product: any) => !state.value.results.some((p: any) => p.id === product.id)
+        (product: unknown) => !state.value.results.some((p: unknown) => p.id === product.id)
       );
 
       state.value.results.push(...uniqueProducts);
@@ -130,7 +130,7 @@ export const useSearchStore = defineStore('search', () => {
       state.value.totalPages = response.totalPages;
       state.value.hasMore =
         nextPage < response.totalPages && state.value.results.length < MAX_RESULTS_IN_MEMORY;
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error.name !== 'AbortError') {
         state.value.error = error;
       }
@@ -140,10 +140,7 @@ export const useSearchStore = defineStore('search', () => {
     }
   }
 
-  async function fetchProducts(
-    filters: ProductFilterDto,
-    signal?: AbortSignal
-  ): Promise<any | undefined> {
+  async function fetchProducts(filters: ProductFilterDto, signal?: AbortSignal): Promise<unknown> {
     try {
       const params = new URLSearchParams();
 
@@ -157,7 +154,9 @@ export const useSearchStore = defineStore('search', () => {
         }
       });
 
-      const response = await apiService.api.get<any>(`/product?${params.toString()}`, { signal });
+      const response = await apiService.api.get<unknown>(`/product?${params.toString()}`, {
+        signal,
+      });
       const paginatedPayload = response?.data?.data;
       if (!response || !response.data || !Array.isArray(paginatedPayload?.items)) {
         throw new Error('Respuesta inesperada de la API');
@@ -167,7 +166,7 @@ export const useSearchStore = defineStore('search', () => {
         products: paginatedPayload.items,
         totalPages: paginatedPayload.totalPages ?? 1,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error.name !== 'AbortError') {
         state.value.error = error;
       }

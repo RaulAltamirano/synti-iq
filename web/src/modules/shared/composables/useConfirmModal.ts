@@ -1,4 +1,4 @@
-import { ref, reactive } from 'vue';
+import { reactive } from 'vue';
 import type { ConfirmModalVariant } from '../components/ConfirmModal/ConfirmModal.vue';
 
 interface ConfirmModalState {

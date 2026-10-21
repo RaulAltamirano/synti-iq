@@ -115,7 +115,7 @@ export default {
       alert('Inventario actualizado');
     };
 
-    const exportProduct = (id: any) => {
+    const exportProduct = (id: unknown) => {
       alert(`Exportando detalles del producto #${id}`);
     };
 
@@ -135,7 +135,7 @@ export default {
       exportProduct,
       tableMotion,
       topSellingProduct,
-      getCategoryClass(category: any) {
+      getCategoryClass(category: unknown) {
         switch (category) {
           case 'Electrónica':
             return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';

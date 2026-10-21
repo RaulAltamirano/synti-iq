@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/vue3';
+import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import MockAdapter from 'axios-mock-adapter';
 import { ApiService } from '@/modules/services/api-service';
 import ReferralSection from './ReferralSection.vue';

@@ -11,7 +11,7 @@ const props = withDefaults(
   }>(),
   {
     intensity: 'strong',
-  },
+  }
 );
 
 interface Beam {
@@ -56,9 +56,7 @@ const prefersReducedMotion = ref(motionPreferenceQuery?.matches ?? false);
 
 const isMobileViewport = useMediaQuery(MEDIA_BELOW_MD);
 
-const runCanvasBeams = computed(
-  () => !prefersReducedMotion.value && !isMobileViewport.value,
-);
+const runCanvasBeams = computed(() => !prefersReducedMotion.value && !isMobileViewport.value);
 
 function readMotionPreference(): void {
   prefersReducedMotion.value = motionPreferenceQuery?.matches ?? false;
@@ -103,8 +101,7 @@ function drawBeam(context: CanvasRenderingContext2D, beam: Beam, factor: number)
   context.translate(beam.x, beam.y);
   context.rotate((beam.angle * Math.PI) / 180);
 
-  const pulsingOpacity =
-    beam.opacity * (0.8 + Math.sin(beam.pulse) * 0.2) * factor;
+  const pulsingOpacity = beam.opacity * (0.8 + Math.sin(beam.pulse) * 0.2) * factor;
 
   const gradient = context.createLinearGradient(0, 0, 0, beam.length);
   gradient.addColorStop(0, `hsla(${beam.hue}, 85%, 65%, 0)`);
@@ -185,7 +182,7 @@ watch(
       stopCanvasLoop();
     }
   },
-  { flush: 'post', immediate: true },
+  { flush: 'post', immediate: true }
 );
 
 onMounted(() => {
@@ -206,7 +203,6 @@ useResizeObserver(beamsRootRef, () => {
   syncCanvasSize();
   startLoop();
 });
-
 </script>
 
 <template>
@@ -221,13 +217,8 @@ useResizeObserver(beamsRootRef, () => {
       <div
         class="abs-fill"
         style="
-        background: linear-gradient(150deg,
-          #ffffff       0%,
-          #f5f8ff      30%,
-          #eef4ff      60%,
-          #f9fbff     100%
-        );
-      "
+          background: linear-gradient(150deg, #ffffff 0%, #f5f8ff 30%, #eef4ff 60%, #f9fbff 100%);
+        "
       />
 
       <div class="orb orb-light-1 animate-drift-a" />
@@ -243,13 +234,8 @@ useResizeObserver(beamsRootRef, () => {
       <div
         class="abs-fill"
         style="
-        background: linear-gradient(160deg,
-          #08101f       0%,
-          #030712      40%,
-          #060e1c      75%,
-          #030712     100%
-        );
-      "
+          background: linear-gradient(160deg, #08101f 0%, #030712 40%, #060e1c 75%, #030712 100%);
+        "
       />
 
       <div v-if="runCanvasBeams" ref="beamsRootRef" class="abs-fill beams-stack">
@@ -260,12 +246,13 @@ useResizeObserver(beamsRootRef, () => {
       <div
         class="abs-fill"
         style="
-        background: radial-gradient(ellipse 70% 45% at 50% -5%,
-          rgba(29, 78, 216, 0.13)  0%,
-          rgba(30, 58, 138, 0.05) 55%,
-          transparent             100%
-        );
-      "
+          background: radial-gradient(
+            ellipse 70% 45% at 50% -5%,
+            rgba(29, 78, 216, 0.13) 0%,
+            rgba(30, 58, 138, 0.05) 55%,
+            transparent 100%
+          );
+        "
       />
 
       <div class="orb orb-dark-1 animate-drift-a" />
@@ -365,11 +352,7 @@ useResizeObserver(beamsRootRef, () => {
   height: 680px;
   top: -140px;
   right: -80px;
-  background: radial-gradient(
-    circle,
-    var(--color-primary-100) 0%,
-    transparent 70%
-  );
+  background: radial-gradient(circle, var(--color-primary-100) 0%, transparent 70%);
   filter: blur(72px);
   opacity: 0.75;
 }
@@ -379,11 +362,7 @@ useResizeObserver(beamsRootRef, () => {
   height: 500px;
   bottom: -120px;
   left: -60px;
-  background: radial-gradient(
-    circle,
-    var(--color-primary-50) 0%,
-    transparent 70%
-  );
+  background: radial-gradient(circle, var(--color-primary-50) 0%, transparent 70%);
   filter: blur(64px);
   opacity: 0.9;
 }
@@ -393,11 +372,7 @@ useResizeObserver(beamsRootRef, () => {
   height: 300px;
   top: 42%;
   left: 58%;
-  background: radial-gradient(
-    circle,
-    var(--color-info-100) 0%,
-    transparent 70%
-  );
+  background: radial-gradient(circle, var(--color-info-100) 0%, transparent 70%);
   filter: blur(56px);
   opacity: 0.35;
 }
@@ -407,11 +382,7 @@ useResizeObserver(beamsRootRef, () => {
   height: 750px;
   top: -220px;
   left: calc(25% - 120px);
-  background: radial-gradient(
-    circle,
-    var(--color-primary-800) 0%,
-    transparent 65%
-  );
+  background: radial-gradient(circle, var(--color-primary-800) 0%, transparent 65%);
   filter: blur(110px);
   opacity: 0.16;
 }
@@ -421,11 +392,7 @@ useResizeObserver(beamsRootRef, () => {
   height: 540px;
   bottom: -160px;
   right: calc(15% - 80px);
-  background: radial-gradient(
-    circle,
-    var(--color-primary-700) 0%,
-    transparent 65%
-  );
+  background: radial-gradient(circle, var(--color-primary-700) 0%, transparent 65%);
   filter: blur(90px);
   opacity: 0.1;
 }

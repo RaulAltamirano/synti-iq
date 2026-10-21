@@ -151,7 +151,7 @@ export default defineComponent({
       cartStore.toggleDropdown(index);
     };
 
-    const shareCartModal = ref<any | null>(null);
+    const shareCartModal = ref<unknown>(null);
 
     const currentCartItems = ref([
       { id: 1, name: 'Producto 1', price: 25.99, quantity: 2 },

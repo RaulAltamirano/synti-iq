@@ -1,3 +1,53 @@
+<script setup>
+import { ref, computed } from 'vue';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+
+// Mock data for UI demonstration only
+const isOpen = ref(false);
+const selectedPaymentMethod = ref(null);
+const cashAmount = ref(0);
+const showTerminalOptions = ref(false);
+const selectedTerminal = ref(null);
+const customerSearch = ref('');
+const selectedCustomer = ref(null);
+const emailReceipt = ref(false);
+const isProcessing = ref(false);
+const isPaymentValid = computed(() => true); // Simplified for UI
+
+const cartItems = [
+  { name: 'Producto 1', quantity: 2, price: 19.99 },
+  { name: 'Producto 2', quantity: 1, price: 29.99 },
+  { name: 'Producto 3', quantity: 3, price: 9.99 },
+];
+
+const subtotal = computed(() =>
+  cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+);
+const taxRate = 16;
+const taxAmount = computed(() => subtotal.value * (taxRate / 100));
+const totalAmount = computed(() => subtotal.value + taxAmount.value);
+const paymentMethods = [
+  { id: 'cash', name: 'Efectivo', icon: ['fas', 'money-bill-wave'] },
+  { id: 'card', name: 'Tarjeta', icon: ['fas', 'credit-card'] },
+  { id: 'transfer', name: 'Transferencia', icon: ['fas', 'building-columns'] },
+  { id: 'credit', name: 'Crédito', icon: ['fas', 'hand-holding-dollar'] },
+];
+
+const terminals = [
+  { id: 'terminal-1', name: 'Terminal Principal' },
+  { id: 'terminal-2', name: 'Terminal Móvil' },
+  { id: 'terminal-3', name: 'Terminal de Reserva' },
+];
+
+const filteredCustomers = [
+  { id: 'C001', name: 'Cliente Ejemplo 1', creditLimit: 500 },
+  { id: 'C002', name: 'Cliente Ejemplo 2', creditLimit: 1000 },
+  { id: 'C003', name: 'Cliente Ejemplo 3', creditLimit: 200 },
+];
+
+const randomReference = computed(() => Math.floor(100000 + Math.random() * 900000));
+</script>
+
 <template>
   <div>
     <!-- Trigger Button -->
@@ -581,60 +631,3 @@
     </div>
   </div>
 </template>
-
-<script setup>
-import { ref, computed } from 'vue';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-
-// Mock data for UI demonstration only
-const isOpen = ref(false);
-const selectedPaymentMethod = ref(null);
-const cashAmount = ref(0);
-const showTerminalOptions = ref(false);
-const selectedTerminal = ref(null);
-const transferCode = ref('');
-const customerSearch = ref('');
-const selectedCustomer = ref(null);
-const printReceipt = ref(true);
-const emailReceipt = ref(false);
-const emailAddress = ref('');
-const generateInvoice = ref(false);
-const notes = ref('');
-const isProcessing = ref(false);
-const isPaymentValid = computed(() => true); // Simplified for UI
-
-const cartItems = [
-  { name: 'Producto 1', quantity: 2, price: 19.99 },
-  { name: 'Producto 2', quantity: 1, price: 29.99 },
-  { name: 'Producto 3', quantity: 3, price: 9.99 },
-];
-
-const subtotal = computed(() =>
-  cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
-);
-const taxRate = 16;
-const taxAmount = computed(() => subtotal.value * (taxRate / 100));
-const totalAmount = computed(() => subtotal.value + taxAmount.value);
-const cashChange = computed(() => cashAmount.value - totalAmount.value);
-
-const paymentMethods = [
-  { id: 'cash', name: 'Efectivo', icon: ['fas', 'money-bill-wave'] },
-  { id: 'card', name: 'Tarjeta', icon: ['fas', 'credit-card'] },
-  { id: 'transfer', name: 'Transferencia', icon: ['fas', 'building-columns'] },
-  { id: 'credit', name: 'Crédito', icon: ['fas', 'hand-holding-dollar'] },
-];
-
-const terminals = [
-  { id: 'terminal-1', name: 'Terminal Principal' },
-  { id: 'terminal-2', name: 'Terminal Móvil' },
-  { id: 'terminal-3', name: 'Terminal de Reserva' },
-];
-
-const filteredCustomers = [
-  { id: 'C001', name: 'Cliente Ejemplo 1', creditLimit: 500 },
-  { id: 'C002', name: 'Cliente Ejemplo 2', creditLimit: 1000 },
-  { id: 'C003', name: 'Cliente Ejemplo 3', creditLimit: 200 },
-];
-
-const randomReference = computed(() => Math.floor(100000 + Math.random() * 900000));
-</script>

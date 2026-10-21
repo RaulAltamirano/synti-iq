@@ -68,17 +68,14 @@ export function optimizeImageUrl(baseUrl, options = {}) {
 export function verifyImageLoads(imageUrl, timeout = 10000) {
   return new Promise((resolve) => {
     const img = new Image();
-    let timeoutId;
 
-    // Función para limpiar
     const cleanup = () => {
-      if (timeoutId) clearTimeout(timeoutId);
+      clearTimeout(timeoutId);
       img.onload = null;
       img.onerror = null;
     };
 
-    // Configurar timeout
-    timeoutId = setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       cleanup();
       resolve(false);
     }, timeout);

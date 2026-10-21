@@ -7,7 +7,7 @@
   >
     <!-- Back Button -->
     <div v-if="showBackButton">
-      <Button
+      <AppButton
         variant="ghost"
         size="sm"
         :icon="['fas', 'arrow-left']"
@@ -19,10 +19,7 @@
 
     <!-- Title with Icon -->
     <div class="flex items-center gap-3">
-      <FontAwesomeIcon
-        :icon="['fas', icon]"
-        class="text-xl text-blue-600 dark:text-blue-400"
-      />
+      <FontAwesomeIcon :icon="['fas', icon]" class="text-xl text-blue-600 dark:text-blue-400" />
       <h1 class="text-xl font-semibold tracking-wide text-gray-800 dark:text-gray-100">
         {{ title }}
       </h1>
@@ -30,7 +27,7 @@
 
     <!-- Dynamic Actions -->
     <div class="flex gap-2">
-      <Button
+      <AppButton
         v-for="(action, index) in actions"
         :key="index"
         variant="ghost"

@@ -11,5 +11,7 @@ module.exports = {
     'scope-case': [2, 'always', 'kebab-case'],
     'subject-case': [2, 'never', ['upper-case']],
     'subject-empty': [2, 'never'],
+    // Dependabot bodies include compare URLs longer than 100 characters.
+    'body-max-line-length': [0],
   },
 };

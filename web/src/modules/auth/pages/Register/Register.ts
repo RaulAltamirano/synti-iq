@@ -12,7 +12,7 @@ const registerSchema = toTypedSchema(registerCustomerSchema);
 
 export default defineComponent({
   name: 'Register',
-  components: { SocialAuth, PasswordInput, Button, Input, Card, Field },
+  components: { SocialAuth, PasswordInput, AppButton: Button, AppInput: Input, Card, Field },
   setup() {
     const { isDark } = useTheme();
     const { register, isLoading } = useAuth();

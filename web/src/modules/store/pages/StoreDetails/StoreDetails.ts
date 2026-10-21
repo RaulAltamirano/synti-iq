@@ -13,7 +13,7 @@ export default defineComponent({
     TitleCard,
     FontAwesomeIcon,
     Card,
-    Button,
+    AppButton: Button,
     Badge,
     Avatar,
     Skeleton,

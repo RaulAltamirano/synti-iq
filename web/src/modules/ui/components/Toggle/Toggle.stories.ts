@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/vue3';
+import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import Toggle from './Toggle.vue';
 import { ref } from 'vue';
 import { userEvent, within } from 'storybook/test';

@@ -9,8 +9,8 @@ export function useGalleryControls() {
   const debounceDelay = 50;
 
   // Implementación manual de debounce
-  const debounce = (fn: { (): void; apply?: any }, delay: number | undefined) => {
-    return (...args: any) => {
+  const debounce = (fn: { (): void; apply?: unknown }, delay: number | undefined) => {
+    return (...args: unknown) => {
       clearTimeout(debounceTimeout);
       debounceTimeout = setTimeout(() => {
         fn.apply(this, args);
