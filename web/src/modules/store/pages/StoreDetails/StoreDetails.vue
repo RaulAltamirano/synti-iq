@@ -81,22 +81,22 @@
       >
         <template #actions>
           <div class="flex flex-wrap gap-2">
-            <Button
+            <AppButton
               variant="secondary"
               size="sm"
               class="min-h-[44px] sm:min-h-0 touch-manipulation"
               @click="retry"
             >
               Reintentar
-            </Button>
-            <Button
+            </AppButton>
+            <AppButton
               variant="ghost"
               size="sm"
               class="min-h-[44px] sm:min-h-0 touch-manipulation"
               @click="router.back()"
             >
               Volver
-            </Button>
+            </AppButton>
           </div>
         </template>
       </InfoBanner>
@@ -120,7 +120,7 @@
                 <h3 class="text-sm font-medium" :class="isDark ? 'text-gray-300' : 'text-gray-700'">
                   Identidad
                 </h3>
-                <Button
+                <AppButton
                   variant="ghost"
                   size="sm"
                   class="shrink-0 touch-manipulation min-h-[40px] sm:min-h-0"
@@ -175,7 +175,7 @@
                 <h3 class="text-sm font-medium" :class="isDark ? 'text-gray-300' : 'text-gray-700'">
                   Ubicación
                 </h3>
-                <Button
+                <AppButton
                   v-if="hasAddress"
                   variant="ghost"
                   size="sm"
@@ -216,7 +216,7 @@
                 <p class="text-sm mb-3" :class="isDark ? 'text-gray-400' : 'text-gray-600'">
                   No hay dirección registrada
                 </p>
-                <Button
+                <AppButton
                   variant="secondary"
                   size="sm"
                   :icon="['fas', 'plus']"
@@ -224,7 +224,7 @@
                   @click="onSectionAction('address')"
                 >
                   Agregar dirección
-                </Button>
+                </AppButton>
               </div>
             </div>
 
@@ -233,7 +233,7 @@
                 <h3 class="text-sm font-medium" :class="isDark ? 'text-gray-300' : 'text-gray-700'">
                   Metas de ventas
                 </h3>
-                <Button
+                <AppButton
                   v-if="hasSalesTargets"
                   variant="ghost"
                   size="sm"
@@ -275,7 +275,7 @@
                 <p class="text-sm mb-3" :class="isDark ? 'text-gray-400' : 'text-gray-600'">
                   No hay metas de ventas configuradas
                 </p>
-                <Button
+                <AppButton
                   variant="secondary"
                   size="sm"
                   :icon="['fas', 'plus']"
@@ -283,7 +283,7 @@
                   @click="onSectionAction('salesTargets')"
                 >
                   Agregar metas
-                </Button>
+                </AppButton>
               </div>
             </div>
 
@@ -292,7 +292,7 @@
                 <h3 class="text-sm font-medium" :class="isDark ? 'text-gray-300' : 'text-gray-700'">
                   Horarios
                 </h3>
-                <Button
+                <AppButton
                   v-if="hasSchedules"
                   variant="ghost"
                   size="sm"
@@ -329,7 +329,7 @@
                 <p class="text-sm mb-3" :class="isDark ? 'text-gray-400' : 'text-gray-600'">
                   No hay horarios definidos
                 </p>
-                <Button
+                <AppButton
                   variant="secondary"
                   size="sm"
                   :icon="['fas', 'plus']"
@@ -337,7 +337,7 @@
                   @click="onSectionAction('schedule')"
                 >
                   Agregar horarios
-                </Button>
+                </AppButton>
               </div>
             </div>
           </div>

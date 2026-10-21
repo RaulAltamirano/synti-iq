@@ -46,8 +46,7 @@ export function useSessionManager() {
       currentPage.value = paginatedData.page;
       limit.value = paginatedData.limit;
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       error.value = msg || 'Unable to load sessions';
       throw err;
     } finally {
@@ -63,8 +62,7 @@ export function useSessionManager() {
       await apiService.api.delete(`/user-session/${sessionId}`);
       await fetchSessions(currentPage.value, limit.value);
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       error.value = msg || 'Unable to close this session';
       throw err;
     } finally {
@@ -80,8 +78,7 @@ export function useSessionManager() {
       await apiService.api.delete('/user-session/all');
       await fetchSessions(currentPage.value, limit.value);
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       error.value = msg || 'Unable to close all sessions';
       throw err;
     } finally {
@@ -97,8 +94,7 @@ export function useSessionManager() {
       await apiService.api.delete(`/user-session/current/${currentSessionId}/others`);
       await fetchSessions(currentPage.value, limit.value);
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       error.value = msg || 'Unable to close other sessions';
       throw err;
     } finally {

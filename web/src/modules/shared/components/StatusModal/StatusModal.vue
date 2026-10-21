@@ -1,121 +1,3 @@
-<template>
-  <Transition :css="false" @before-enter="onBeforeEnter" @enter="onEnter" @leave="onLeave">
-    <div
-      v-if="isVisible"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm transition-opacity"
-      role="dialog"
-      aria-modal="true"
-      :aria-labelledby="`${id}-title`"
-    >
-      <div
-        ref="modalContent"
-        class="relative overflow-hidden rounded-2xl shadow-2xl max-w-md w-full mx-4"
-        :class="[
-          modalBgClasses,
-          {
-            'success-pulse': type === 'success' && showEffects,
-            'error-shake': type === 'error',
-            'warning-pulse': type === 'warning',
-          },
-        ]"
-      >
-        <!-- Header con efecto de gradiente animado -->
-        <div class="h-16 relative overflow-hidden" :class="headerColorClasses">
-          <div class="absolute inset-0 shimmer-effect"></div>
-        </div>
-
-        <!-- Contenido de la confirmación -->
-        <div class="p-6 pb-8 text-center">
-          <!-- Círculo con ícono animado -->
-          <div
-            class="mx-auto -mt-12 h-24 w-24 rounded-full flex items-center justify-center shadow-lg relative"
-            :class="modalBgClasses"
-          >
-            <div
-              class="h-20 w-20 rounded-full flex items-center justify-center status-circle"
-              :class="circleColorClasses"
-            >
-              <!-- Ícono dinámico basado en el tipo -->
-              <component :is="iconComponent" />
-            </div>
-            <!-- Contenedor para partículas -->
-            <div v-if="showEffects && !prefersReducedMotion" class="particles-container">
-              <div
-                v-for="n in 12"
-                :key="`particle-${n}`"
-                class="particle"
-                :class="`particle-${n}`"
-              ></div>
-            </div>
-          </div>
-
-          <!-- Textos animados -->
-          <h2
-            :id="`${id}-title`"
-            class="text-3xl font-bold mt-6 mb-1 fade-in-up"
-            :class="modalTextClasses"
-            style="--delay: 100ms"
-          >
-            {{ title || defaultTitle }}
-          </h2>
-          <p class="text-lg fade-in-up" :class="modalSubtextClasses" style="--delay: 200ms">
-            {{ message || defaultMessage }}
-          </p>
-
-          <!-- Detalles de la transacción -->
-          <div
-            v-if="details && Object.keys(details).length"
-            class="mt-6 p-4 rounded-lg text-left fade-in-up"
-            :class="detailsBgClasses"
-            style="--delay: 300ms"
-          >
-            <div
-              v-for="(value, key) in details"
-              :key="key"
-              class="flex justify-between text-sm mb-1"
-            >
-              <span :class="detailsLabelClasses">{{ formatLabel(key) }}:</span>
-              <span :class="detailsValueClasses">{{ value }}</span>
-            </div>
-
-            <!-- Información adicional específica del tipo -->
-            <div v-if="additionalInfo" class="mt-2 pt-2" :class="additionalInfoBorderClass">
-              <p :class="additionalInfoTextClass">
-                <span class="font-medium">{{ additionalInfoLabel }}:</span> {{ additionalInfo }}
-              </p>
-            </div>
-          </div>
-
-          <!-- Botón de acción -->
-          <button
-            v-if="actionText"
-            class="mt-6 px-8 py-3 text-white font-semibold rounded-lg hover-scale focus:outline-none focus:ring-4 fade-in-up"
-            style="--delay: 400ms"
-            :class="buttonColorClasses"
-            :aria-label="actionAriaLabel"
-            @click="onAction"
-          >
-            {{ actionText }}
-          </button>
-        </div>
-
-        <!-- Confeti (solo para éxito) -->
-        <div
-          v-if="type === 'success' && showEffects && !prefersReducedMotion"
-          class="confetti-container"
-        >
-          <div
-            v-for="n in 30"
-            :key="`confetti-${n}`"
-            class="confetti"
-            :class="`confetti-${n}`"
-          ></div>
-        </div>
-      </div>
-    </div>
-  </Transition>
-</template>
-
 <script>
 import { shallowRef, computed, onMounted, nextTick } from 'vue';
 import { useTheme } from '@/modules/shared/composables/useTheme';
@@ -123,6 +5,7 @@ import SuccessIcon from '../SuccessIcon/SuccessIcon.vue';
 import ErrorIcon from '../ErrorIcon/ErrorIcon.vue';
 import WarningIcon from '../WarningIcon/WarningIcon.vue';
 import InfoIcon from '../InfoIcon/InfoIcon.vue';
+import { styleConfettiElements } from '@/modules/shared/utils/styleConfetti';
 
 export default {
   name: 'StatusModal',
@@ -359,32 +242,7 @@ export default {
       if (prefersReducedMotion.value) return;
 
       nextTick(() => {
-        const confettiElements = document.querySelectorAll('.confetti');
-        const colors = ['#10B981', '#34D399', '#6EE7B7', '#A7F3D0', '#D1FAE5'];
-
-        confettiElements.forEach((el) => {
-          const left = `${Math.random() * 100}%`;
-          const width = `${Math.random() * 8 + 5}px`;
-          const height = width;
-          const bgColor = colors[Math.floor(Math.random() * colors.length)];
-          const fallDuration = `${Math.random() * 3 + 2}s`;
-          const fallDelay = `${Math.random() * 1.5}s`;
-          const swayAmount = `${Math.random() * 50 - 25}px`;
-          const swayDuration = `${Math.random() * 2 + 2}s`;
-          const swayDelay = `${Math.random() * 1}s`;
-
-          el.style.width = width;
-          el.style.height = height;
-          el.style.left = left;
-          el.style.backgroundColor = bgColor;
-          el.style.opacity = '0';
-          el.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
-          el.style.setProperty('--fall-duration', fallDuration);
-          el.style.setProperty('--fall-delay', fallDelay);
-          el.style.setProperty('--sway-amount', swayAmount);
-          el.style.setProperty('--sway-duration', swayDuration);
-          el.style.setProperty('--sway-delay', swayDelay);
-        });
+        styleConfettiElements();
       });
     };
 
@@ -419,6 +277,124 @@ export default {
   },
 };
 </script>
+
+<template>
+  <Transition :css="false" @before-enter="onBeforeEnter" @enter="onEnter" @leave="onLeave">
+    <div
+      v-if="isVisible"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm transition-opacity"
+      role="dialog"
+      aria-modal="true"
+      :aria-labelledby="`${id}-title`"
+    >
+      <div
+        ref="modalContent"
+        class="relative overflow-hidden rounded-2xl shadow-2xl max-w-md w-full mx-4"
+        :class="[
+          modalBgClasses,
+          {
+            'success-pulse': type === 'success' && showEffects,
+            'error-shake': type === 'error',
+            'warning-pulse': type === 'warning',
+          },
+        ]"
+      >
+        <!-- Header con efecto de gradiente animado -->
+        <div class="h-16 relative overflow-hidden" :class="headerColorClasses">
+          <div class="absolute inset-0 shimmer-effect"></div>
+        </div>
+
+        <!-- Contenido de la confirmación -->
+        <div class="p-6 pb-8 text-center">
+          <!-- Círculo con ícono animado -->
+          <div
+            class="mx-auto -mt-12 h-24 w-24 rounded-full flex items-center justify-center shadow-lg relative"
+            :class="modalBgClasses"
+          >
+            <div
+              class="h-20 w-20 rounded-full flex items-center justify-center status-circle"
+              :class="circleColorClasses"
+            >
+              <!-- Ícono dinámico basado en el tipo -->
+              <component :is="iconComponent" />
+            </div>
+            <!-- Contenedor para partículas -->
+            <div v-if="showEffects && !prefersReducedMotion" class="particles-container">
+              <div
+                v-for="n in 12"
+                :key="`particle-${n}`"
+                class="particle"
+                :class="`particle-${n}`"
+              ></div>
+            </div>
+          </div>
+
+          <!-- Textos animados -->
+          <h2
+            :id="`${id}-title`"
+            class="text-3xl font-bold mt-6 mb-1 fade-in-up"
+            :class="modalTextClasses"
+            style="--delay: 100ms"
+          >
+            {{ title || defaultTitle }}
+          </h2>
+          <p class="text-lg fade-in-up" :class="modalSubtextClasses" style="--delay: 200ms">
+            {{ message || defaultMessage }}
+          </p>
+
+          <!-- Detalles de la transacción -->
+          <div
+            v-if="details && Object.keys(details).length"
+            class="mt-6 p-4 rounded-lg text-left fade-in-up"
+            :class="detailsBgClasses"
+            style="--delay: 300ms"
+          >
+            <div
+              v-for="(value, key) in details"
+              :key="key"
+              class="flex justify-between text-sm mb-1"
+            >
+              <span :class="detailsLabelClasses">{{ formatLabel(key) }}:</span>
+              <span :class="detailsValueClasses">{{ value }}</span>
+            </div>
+
+            <!-- Información adicional específica del tipo -->
+            <div v-if="additionalInfo" class="mt-2 pt-2" :class="additionalInfoBorderClass">
+              <p :class="additionalInfoTextClass">
+                <span class="font-medium">{{ additionalInfoLabel }}:</span> {{ additionalInfo }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Botón de acción -->
+          <button
+            v-if="actionText"
+            class="mt-6 px-8 py-3 text-white font-semibold rounded-lg hover-scale focus:outline-none focus:ring-4 fade-in-up"
+            style="--delay: 400ms"
+            :class="buttonColorClasses"
+            :aria-label="actionAriaLabel"
+            @click="onAction"
+          >
+            {{ actionText }}
+          </button>
+        </div>
+
+        <!-- Confeti (solo para éxito) -->
+        <div
+          v-if="type === 'success' && showEffects && !prefersReducedMotion"
+          class="confetti-container"
+        >
+          <div
+            v-for="n in 30"
+            :key="`confetti-${n}`"
+            class="confetti"
+            :class="`confetti-${n}`"
+          ></div>
+        </div>
+      </div>
+    </div>
+  </Transition>
+</template>
 
 <style scoped>
 :root {

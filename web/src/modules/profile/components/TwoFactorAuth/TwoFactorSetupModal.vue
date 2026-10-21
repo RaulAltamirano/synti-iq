@@ -1,3 +1,117 @@
+<script setup lang="ts">
+import { ref, watch, onUnmounted } from 'vue';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import { Button, Stepper, Spinner, InfoBanner } from '@/modules/ui/components';
+import type { StepperStep } from '@/modules/ui/components';
+import TotpInput from '@/modules/auth/components/TotpInput/TotpInput.vue';
+import { useTheme } from '@/modules/shared/composables/useTheme';
+import type { TwoFactorSetupData } from '../../interfaces/twoFactor.types';
+
+const props = defineProps<Props>();
+
+const emit = defineEmits<{
+  close: [];
+  verify: [code: string];
+  copyBackupCodes: [];
+  dismiss: [];
+  retrySetup: [];
+}>();
+
+const WIZARD_STEPS: StepperStep[] = [
+  { id: 1, title: 'Scan QR code', shortTitle: 'Scan', icon: 'qrcode' },
+  { id: 2, title: 'Verify code', shortTitle: 'Verify', icon: 'key' },
+  { id: 3, title: 'Backup codes', shortTitle: 'Backup', icon: 'copy' },
+];
+
+interface Props {
+  isOpen: boolean;
+  setupData: TwoFactorSetupData | null;
+  isLoading: boolean;
+  isVerifying: boolean;
+  error: string | null;
+  backupCodes: string[];
+}
+
+const { isDark } = useTheme();
+
+const wizardSteps = WIZARD_STEPS;
+const currentStep = ref(1);
+const verificationCode = ref('');
+const showVerifySuccess = ref(false);
+
+watch(
+  () => props.backupCodes,
+  (codes) => {
+    if (codes.length > 0 && currentStep.value === 2) {
+      showVerifySuccess.value = true;
+      setTimeout(() => {
+        showVerifySuccess.value = false;
+        currentStep.value = 3;
+      }, 900);
+    }
+  },
+  { deep: true }
+);
+
+const copySecret = async () => {
+  if (!props.setupData?.secret) return;
+  try {
+    await navigator.clipboard.writeText(props.setupData.secret);
+  } catch {
+    // Fallback silently
+  }
+};
+
+const nextStep = () => {
+  if (currentStep.value < 3) currentStep.value++;
+};
+
+const previousStep = () => {
+  if (currentStep.value > 1) currentStep.value--;
+};
+
+const handleVerify = () => {
+  emit('verify', verificationCode.value);
+};
+
+const handleCopyBackupCodes = () => {
+  emit('copyBackupCodes');
+};
+
+const handleDismiss = () => {
+  emit('dismiss');
+  emit('close');
+};
+
+const handleClose = () => {
+  emit('close');
+};
+
+const handleEscape = (e: KeyboardEvent) => {
+  if (e.key === 'Escape') handleClose();
+};
+
+watch(
+  () => props.isOpen,
+  (open) => {
+    if (!open) {
+      currentStep.value = 1;
+      verificationCode.value = '';
+    }
+    if (open) {
+      globalThis.addEventListener('keydown', handleEscape);
+    } else {
+      globalThis.removeEventListener('keydown', handleEscape);
+    }
+  },
+  { immediate: true }
+);
+
+onUnmounted(() => {
+  globalThis.removeEventListener('keydown', handleEscape);
+});
+</script>
+
 <template>
   <Teleport to="body">
     <div v-if="isOpen" class="fixed inset-0 z-[100] overflow-y-auto">
@@ -54,9 +168,7 @@
               type="button"
               class="p-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500"
               :class="
-                isDark
-                  ? 'text-gray-400 hover:text-gray-200'
-                  : 'text-gray-500 hover:text-gray-700'
+                isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'
               "
               aria-label="Close dialog"
               @click="handleClose"
@@ -70,11 +182,7 @@
             class="px-6 py-4 border-b"
             :class="isDark ? 'border-gray-700 bg-gray-900/30' : 'border-gray-200 bg-gray-50'"
           >
-            <Stepper
-              v-model="currentStep"
-              :steps="wizardSteps"
-              :animated="true"
-            />
+            <Stepper v-model="currentStep" :steps="wizardSteps" :animated="true" />
           </div>
 
           <div class="overflow-y-auto max-h-[calc(100vh-14rem)]">
@@ -167,8 +275,12 @@
                       >
                         Save these backup codes
                       </p>
-                      <p class="text-xs mt-1" :class="isDark ? 'text-yellow-400/80' : 'text-yellow-700'">
-                        Use them if you lose access to your authenticator. Each code works only once.
+                      <p
+                        class="text-xs mt-1"
+                        :class="isDark ? 'text-yellow-400/80' : 'text-yellow-700'"
+                      >
+                        Use them if you lose access to your authenticator. Each code works only
+                        once.
                       </p>
                     </div>
                   </div>
@@ -214,7 +326,8 @@
 
                 <template v-else-if="setupData">
                   <p class="text-sm" :class="isDark ? 'text-gray-300' : 'text-gray-600'">
-                    Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.):
+                    Scan this QR code with your authenticator app (Google Authenticator, Authy,
+                    etc.):
                   </p>
                   <div class="flex justify-center w-full">
                     <div
@@ -268,15 +381,9 @@
             </Button>
             <div v-else />
             <div class="flex gap-3">
-              <Button v-if="currentStep < 3" variant="ghost" @click="handleClose">
-                Cancel
-              </Button>
+              <Button v-if="currentStep < 3" variant="ghost" @click="handleClose"> Cancel </Button>
               <template v-if="currentStep === 1">
-                <Button
-                  variant="primary"
-                  :disabled="!setupData || isLoading"
-                  @click="nextStep"
-                >
+                <Button variant="primary" :disabled="!setupData || isLoading" @click="nextStep">
                   Continue
                 </Button>
               </template>
@@ -294,9 +401,7 @@
                 <Button variant="outline" :icon="['fas', 'copy']" @click="handleCopyBackupCodes">
                   Copy codes
                 </Button>
-                <Button variant="primary" @click="handleDismiss">
-                  Done
-                </Button>
+                <Button variant="primary" @click="handleDismiss"> Done </Button>
               </template>
             </div>
           </div>
@@ -305,117 +410,3 @@
     </div>
   </Teleport>
 </template>
-
-<script setup lang="ts">
-import { ref, watch, onUnmounted } from 'vue';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { Button, Stepper, Spinner, InfoBanner } from '@/modules/ui/components';
-import type { StepperStep } from '@/modules/ui/components';
-import TotpInput from '@/modules/auth/components/TotpInput/TotpInput.vue';
-import { useTheme } from '@/modules/shared/composables/useTheme';
-import type { TwoFactorSetupData } from '../../interfaces/twoFactor.types';
-
-const WIZARD_STEPS: StepperStep[] = [
-  { id: 1, title: 'Scan QR code', shortTitle: 'Scan', icon: 'qrcode' },
-  { id: 2, title: 'Verify code', shortTitle: 'Verify', icon: 'key' },
-  { id: 3, title: 'Backup codes', shortTitle: 'Backup', icon: 'copy' },
-];
-
-interface Props {
-  isOpen: boolean;
-  setupData: TwoFactorSetupData | null;
-  isLoading: boolean;
-  isVerifying: boolean;
-  error: string | null;
-  backupCodes: string[];
-}
-
-const props = defineProps<Props>();
-
-const emit = defineEmits<{
-  close: [];
-  verify: [code: string];
-  copyBackupCodes: [];
-  dismiss: [];
-  retrySetup: [];
-}>();
-
-const { isDark } = useTheme();
-
-const wizardSteps = WIZARD_STEPS;
-const currentStep = ref(1);
-const verificationCode = ref('');
-const showVerifySuccess = ref(false);
-
-watch(
-  () => props.backupCodes,
-  (codes) => {
-    if (codes.length > 0 && currentStep.value === 2) {
-      showVerifySuccess.value = true;
-      setTimeout(() => {
-        showVerifySuccess.value = false;
-        currentStep.value = 3;
-      }, 900);
-    }
-  },
-  { deep: true }
-);
-
-const copySecret = async () => {
-  if (!props.setupData?.secret) return;
-  try {
-    await navigator.clipboard.writeText(props.setupData.secret);
-  } catch {
-    // Fallback silently
-  }
-};
-
-const nextStep = () => {
-  if (currentStep.value < 3) currentStep.value++;
-};
-
-const previousStep = () => {
-  if (currentStep.value > 1) currentStep.value--;
-};
-
-const handleVerify = () => {
-  emit('verify', verificationCode.value);
-};
-
-const handleCopyBackupCodes = () => {
-  emit('copyBackupCodes');
-};
-
-const handleDismiss = () => {
-  emit('dismiss');
-  emit('close');
-};
-
-const handleClose = () => {
-  emit('close');
-};
-
-const handleEscape = (e: KeyboardEvent) => {
-  if (e.key === 'Escape') handleClose();
-};
-
-watch(
-  () => props.isOpen,
-  (open) => {
-    if (!open) {
-      currentStep.value = 1;
-      verificationCode.value = '';
-    }
-    if (open) {
-      globalThis.addEventListener('keydown', handleEscape);
-    } else {
-      globalThis.removeEventListener('keydown', handleEscape);
-    }
-  },
-  { immediate: true }
-);
-
-onUnmounted(() => {
-  globalThis.removeEventListener('keydown', handleEscape);
-});
-</script>

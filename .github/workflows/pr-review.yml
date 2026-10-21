@@ -158,6 +158,8 @@ jobs:
           path: api/coverage
 
       - name: Coverage PR comment
+        # Base checkout runs Jest through Babel, which cannot parse the API specs, then the action throws on empty coverage and skips the scan.
+        continue-on-error: true
         uses: ArtiomTr/jest-coverage-report-action@7f750dd50f5585533321eb7ebc482b936b49a5d4
         with:
           coverage-file: ./api/coverage/coverage-final.json
@@ -170,6 +172,7 @@ jobs:
           projectBaseDir: api
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_SCANNER_SKIP_JRE_PROVISIONING: true
 
       - name: SonarCloud Quality Gate check
         id: sonarqube-quality-gate-check

@@ -15,7 +15,7 @@ export default {
       default: () => [],
     },
   },
-  setup(props, { emit }) {
+  setup(props) {
     const includePrices = ref(true);
     const includeImages = ref(false);
     const customMessage = ref('');

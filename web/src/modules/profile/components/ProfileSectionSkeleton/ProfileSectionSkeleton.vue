@@ -1,24 +1,8 @@
-<template>
-  <SectionSkeleton
-    :variant="variant"
-    :show-stats="showStats"
-    :show-content-blocks="showContentBlocks"
-    :show-input-area="showInputArea"
-    :show-list-rows="showListRows"
-    :list-rows-count="listRowsCount"
-  />
-</template>
-
 <script setup lang="ts">
 import SectionSkeleton from '@/modules/ui/components/SectionSkeleton/SectionSkeleton.vue';
 
 export type ProfileSectionSkeletonVariant =
-  | 'referral'
-  | 'subscription'
-  | 'notifications'
-  | 'security'
-  | 'sessions'
-  | 'default';
+  'referral' | 'subscription' | 'notifications' | 'security' | 'sessions' | 'default';
 
 export interface ProfileSectionSkeletonProps {
   variant?: ProfileSectionSkeletonVariant;
@@ -34,3 +18,14 @@ withDefaults(defineProps<ProfileSectionSkeletonProps>(), {
   listRowsCount: 4,
 });
 </script>
+
+<template>
+  <SectionSkeleton
+    :variant="variant"
+    :show-stats="showStats"
+    :show-content-blocks="showContentBlocks"
+    :show-input-area="showInputArea"
+    :show-list-rows="showListRows"
+    :list-rows-count="listRowsCount"
+  />
+</template>

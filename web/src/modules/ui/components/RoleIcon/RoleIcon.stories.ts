@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/vue3';
+import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import RoleIcon from './RoleIcon.vue';
 import { SYSTEM_ROLES } from '@/modules/shared/constants';
 

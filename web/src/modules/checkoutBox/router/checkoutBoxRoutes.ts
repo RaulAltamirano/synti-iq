@@ -18,7 +18,9 @@ const salesViewRoutes: RouteRecordRaw[] = [
       title: 'CashierDashboard',
     },
     component: () =>
-      import(/* webpackChunkName: "cashier-dashboard" */ '../page/CashierDashboard/CashierDashboard.vue'),
+      import(
+        /* webpackChunkName: "cashier-dashboard" */ '../page/CashierDashboard/CashierDashboard.vue'
+      ),
   },
   {
     path: 'sales',
@@ -105,9 +107,6 @@ export const checkoutBoxRoutes: RouteRecordRaw[] = [
     path: BASE_PATH,
     component: CheckoutBoxLayout,
     meta: { requiresAuth: true },
-    children: [
-      { path: '', redirect: { name: 'cashier-dashboard' } },
-      ...salesViewRoutes,
-    ],
+    children: [{ path: '', redirect: { name: 'cashier-dashboard' } }, ...salesViewRoutes],
   },
 ];

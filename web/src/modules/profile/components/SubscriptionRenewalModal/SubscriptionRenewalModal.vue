@@ -1,3 +1,52 @@
+<script setup lang="ts">
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import {
+  useSubscriptionWizard,
+  type SubscriptionPlan,
+  type AddressData,
+} from '../../composables/useSubscriptionWizard';
+import PlanSelectionStep from './PlanSelectionStep.vue';
+import AddressFormStep from './AddressFormStep.vue';
+import PaymentStep from './PaymentStep.vue';
+
+interface Props {
+  isOpen: boolean;
+}
+
+defineProps<Props>();
+
+const emit = defineEmits<{
+  close: [];
+}>();
+
+const {
+  currentStep,
+  selectedPlan,
+  addressData,
+  canProceedToNextStep,
+  nextStep,
+  previousStep,
+  closeModal,
+} = useSubscriptionWizard();
+
+const updateSelectedPlan = (plan: SubscriptionPlan | null) => {
+  selectedPlan.value = plan;
+};
+
+const updateAddressData = (data: AddressData) => {
+  Object.assign(addressData.value, data);
+};
+
+const handleClose = () => {
+  closeModal();
+  emit('close');
+};
+
+const handlePayment = () => {
+  alert('La integración con Stripe se implementará posteriormente');
+};
+</script>
+
 <template>
   <!-- Modal Overlay -->
   <div v-if="isOpen" class="fixed inset-0 z-50 overflow-y-auto">
@@ -236,53 +285,3 @@
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-import { computed } from 'vue';
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import {
-  useSubscriptionWizard,
-  type SubscriptionPlan,
-  type AddressData,
-} from '../../composables/useSubscriptionWizard';
-import PlanSelectionStep from './PlanSelectionStep.vue';
-import AddressFormStep from './AddressFormStep.vue';
-import PaymentStep from './PaymentStep.vue';
-
-interface Props {
-  isOpen: boolean;
-}
-
-const props = defineProps<Props>();
-
-const emit = defineEmits<{
-  close: [];
-}>();
-
-const {
-  currentStep,
-  selectedPlan,
-  addressData,
-  canProceedToNextStep,
-  nextStep,
-  previousStep,
-  closeModal,
-} = useSubscriptionWizard();
-
-const updateSelectedPlan = (plan: SubscriptionPlan | null) => {
-  selectedPlan.value = plan;
-};
-
-const updateAddressData = (data: AddressData) => {
-  Object.assign(addressData.value, data);
-};
-
-const handleClose = () => {
-  closeModal();
-  emit('close');
-};
-
-const handlePayment = () => {
-  alert('La integración con Stripe se implementará posteriormente');
-};
-</script>

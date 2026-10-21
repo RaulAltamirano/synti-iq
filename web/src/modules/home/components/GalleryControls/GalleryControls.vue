@@ -1,3 +1,28 @@
+<script setup>
+import { defineProps, defineEmits } from 'vue';
+
+defineProps({
+  currentIndex: {
+    type: Number,
+    required: true,
+  },
+  imagesCount: {
+    type: Number,
+    required: true,
+  },
+  autoplay: {
+    type: Boolean,
+    default: true,
+  },
+  intervalTime: {
+    type: Number,
+    default: 5000,
+  },
+});
+
+defineEmits(['prev', 'next', 'select', 'toggle-autoplay', 'update-interval']);
+</script>
+
 <template>
   <div class="hidden sm:flex absolute inset-y-0 left-2 sm:left-4 items-center z-20">
     <button
@@ -90,31 +115,6 @@
     ></button>
   </div>
 </template>
-
-<script setup>
-import { defineProps, defineEmits } from 'vue';
-
-const props = defineProps({
-  currentIndex: {
-    type: Number,
-    required: true,
-  },
-  imagesCount: {
-    type: Number,
-    required: true,
-  },
-  autoplay: {
-    type: Boolean,
-    default: true,
-  },
-  intervalTime: {
-    type: Number,
-    default: 5000,
-  },
-});
-
-defineEmits(['prev', 'next', 'select', 'toggle-autoplay', 'update-interval']);
-</script>
 
 <style scoped>
 /* Controles semi-transparentes */

@@ -1,10 +1,8 @@
-import { ref, computed, defineComponent } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, defineComponent } from 'vue';
 
 export default defineComponent({
   name: 'Cart',
   setup() {
-    const router = useRouter();
     const activeTab = ref('cart');
 
     // Sample data - Replace with your actual data store

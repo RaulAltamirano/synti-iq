@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/vue3';
+import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import MockAdapter from 'axios-mock-adapter';
 import { ApiService } from '@/modules/services/api-service';
 import TwoFactorAuth from './TwoFactorAuth.vue';
@@ -18,7 +18,8 @@ function setupMockStatus(enabled: boolean) {
 function setupMockSetup() {
   mock.onPost(new RegExp(AUTH_2FA_ENDPOINTS.SETUP)).reply(200, {
     secret: 'JBSWY3DPEHPK3PXP',
-    qrCode: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+    qrCode:
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
   });
 }
 

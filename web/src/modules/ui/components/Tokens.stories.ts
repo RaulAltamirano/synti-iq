@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/vue3';
+import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { colors, spacing, typography, shadows } from '../tokens';
 
 const meta: Meta = {

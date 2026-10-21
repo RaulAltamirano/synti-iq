@@ -23,7 +23,6 @@ export interface SpinnerProps {
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { ComponentSize } from '../../types/component.types';
 
 const props = withDefaults(defineProps<SpinnerProps>(), {
   variant: 'spinner',

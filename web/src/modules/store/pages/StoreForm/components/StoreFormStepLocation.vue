@@ -136,9 +136,7 @@ function addressSearchErrorMessage(): string {
       >
         <p
           class="line-clamp-2 text-sm leading-snug"
-          :class="
-            locationNameError ? 'text-error' : isDark ? 'text-gray-300' : 'text-gray-700'
-          "
+          :class="locationNameError ? 'text-error' : isDark ? 'text-gray-300' : 'text-gray-700'"
           aria-label="Selected address"
           :aria-invalid="!!locationNameError"
         >

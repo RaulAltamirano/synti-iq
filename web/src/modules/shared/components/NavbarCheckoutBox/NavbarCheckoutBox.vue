@@ -16,9 +16,7 @@
               height="32"
             />
             <div class="flex min-w-0 flex-col">
-              <h2 class="truncate text-base font-semibold tracking-tight sm:text-lg">
-                Caja
-              </h2>
+              <h2 class="truncate text-base font-semibold tracking-tight sm:text-lg">Caja</h2>
               <span class="truncate text-xs text-(--color-text-secondary)">Punto de venta</span>
             </div>
           </div>
@@ -29,11 +27,7 @@
               aria-label="Cerrar menú"
               @click="requestCloseNav"
             >
-              <font-awesome-icon
-                :icon="['fas', 'xmark']"
-                class="h-5 w-5"
-                aria-hidden="true"
-              />
+              <font-awesome-icon :icon="['fas', 'xmark']" class="h-5 w-5" aria-hidden="true" />
             </button>
             <button
               type="button"
@@ -50,10 +44,7 @@
           </div>
         </div>
       </div>
-      <div
-        class="mx-4 mb-3 h-px shrink-0 bg-(--color-border-default)"
-        role="separator"
-      />
+      <div class="mx-4 mb-3 h-px shrink-0 bg-(--color-border-default)" role="separator" />
       <nav
         class="min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-y-contain px-4 pb-2 [-webkit-overflow-scrolling:touch]"
         aria-label="Navegación de caja"
@@ -105,19 +96,12 @@
       class="shrink-0 border-t border-(--color-border-default) p-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] sm:p-4"
     >
       <div class="mb-3 flex items-center gap-3 rounded-lg bg-(--color-bg-overlay) p-3">
-        <Avatar
-          :name="displayName"
-          :color-seed="avatarSeed"
-          size="md"
-          class="shrink-0"
-        />
+        <Avatar :name="displayName" :color-seed="avatarSeed" size="md" class="shrink-0" />
         <div class="flex min-w-0 flex-1 flex-col">
           <span class="block truncate font-medium text-(--color-text-primary)">{{
             displayName
           }}</span>
-          <span class="block truncate text-xs text-(--color-text-secondary)">{{
-            roleLabel
-          }}</span>
+          <span class="block truncate text-xs text-(--color-text-secondary)">{{ roleLabel }}</span>
         </div>
       </div>
       <button

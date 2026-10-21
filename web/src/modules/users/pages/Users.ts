@@ -83,16 +83,16 @@ export default defineComponent({
       isDark.value = !isDark.value;
     };
 
-    const formatLastSeen = (date) => {
+    const formatLastSeen = (_date: unknown) => {
       // return formatDistance(date, new Date(), { addSuffix: true })
     };
 
-    const formatDate = (date) => {
+    const formatDate = (_date: unknown) => {
       // return format(date, 'MMM d, yyyy')
     };
-    const viewDashboard = (user) => router.push({ name: 'UserDashboard' });
+    const viewDashboard = (_user: unknown) => router.push({ name: 'UserDashboard' });
     const impersonateUser = () => {};
-    const editUser = (user) => router.push({ name: 'EditUser', params: { id: 'dasd' } });
+    const editUser = (_user: unknown) => router.push({ name: 'EditUser', params: { id: 'dasd' } });
     const showUserLogs = () => {};
     const confirmDelete = () => {};
 

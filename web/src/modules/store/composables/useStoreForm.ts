@@ -238,8 +238,7 @@ export function useStoreForm() {
     if (geolocationErrorCode.value === 'PERMISSION_DENIED') {
       return {
         title: 'Location permission denied',
-        description:
-          'Enable location access in your browser settings to use “Use my location”.',
+        description: 'Enable location access in your browser settings to use “Use my location”.',
         icon: ['fas', 'location-crosshairs'],
         showRetry: true,
       };

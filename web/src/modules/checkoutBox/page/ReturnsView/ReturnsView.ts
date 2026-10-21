@@ -1,5 +1,5 @@
 import { useTheme } from '@/modules/shared/composables/useTheme';
-import { ref, onMounted, watch, computed } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 
 export default {
   name: 'ReturnsView',
@@ -13,7 +13,7 @@ export default {
     const isLoading = ref(false);
     const currentPage = ref(1);
     const itemsPerPage = ref(10);
-    const returns = ref<any>([]);
+    const returns = ref<unknown>([]);
 
     const filteredReturns = computed(() => {
       let filtered = returns.value;
@@ -37,7 +37,7 @@ export default {
 
     const totalReturns = computed(() => {
       return filteredReturns.value.reduce(
-        (total: any, returnItem: { total: any }) => total + returnItem.total,
+        (total: unknown, returnItem: { total: unknown }) => total + returnItem.total,
         0
       );
     });
@@ -105,14 +105,14 @@ export default {
       statusFilter.value = 'all';
     };
 
-    const toggleDetails = (id: any) => {
-      const returnItem = returns.value.find((returnItem: { id: any }) => returnItem.id === id);
+    const toggleDetails = (id: unknown) => {
+      const returnItem = returns.value.find((returnItem: { id: unknown }) => returnItem.id === id);
       if (returnItem) {
         returnItem.showDetails = !returnItem.showDetails;
       }
     };
 
-    const getReturnStatusClass = (status: any) => {
+    const getReturnStatusClass = (status: unknown) => {
       switch (status) {
         case 'pending':
           return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
@@ -137,7 +137,7 @@ export default {
       return new Date(date).toLocaleDateString();
     };
 
-    const calculateSubtotal = (items: any[]) => {
+    const calculateSubtotal = (items: unknown[]) => {
       return items.reduce(
         (total: number, item: { quantity: number; price: number }) =>
           total + item.quantity * item.price,
@@ -145,7 +145,7 @@ export default {
       );
     };
 
-    const calculateTaxes = (items: any) => {
+    const calculateTaxes = (items: unknown) => {
       return calculateSubtotal(items) * 0.16;
     };
 
@@ -155,11 +155,11 @@ export default {
 
     const printReturnSlip = () => {};
 
-    const approveReturn = (returnItem: { status: string; id: any }) => {
+    const approveReturn = (returnItem: { status: string; id: unknown }) => {
       returnItem.status = 'approved';
     };
 
-    const rejectReturn = (returnItem: { status: string; id: any }) => {
+    const rejectReturn = (returnItem: { status: string; id: unknown }) => {
       returnItem.status = 'rejected';
     };
 

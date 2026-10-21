@@ -123,7 +123,9 @@ export const useModalStore = defineStore('modal', () => {
       }
 
       addToHistory(name, data);
-    } catch {}
+    } catch {
+      /* modal state update failed */
+    }
   };
 
   /**
@@ -140,7 +142,9 @@ export const useModalStore = defineStore('modal', () => {
       addToHistory(name);
 
       state.value.modalData[name] = null;
-    } catch {}
+    } catch {
+      /* modal state update failed */
+    }
   };
 
   const toggle = (name: ModalNameType, data?: Record<string, unknown>): void => {
@@ -166,7 +170,9 @@ export const useModalStore = defineStore('modal', () => {
       if (modalsClosed.length > 0) {
         addToHistory('closeAll' as ModalNameType, { closed: modalsClosed });
       }
-    } catch {}
+    } catch {
+      /* modal state update failed */
+    }
   };
 
   const reset = (): void => {

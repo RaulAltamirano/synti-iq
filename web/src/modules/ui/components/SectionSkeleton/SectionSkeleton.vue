@@ -1,3 +1,51 @@
+<script setup lang="ts">
+import { computed } from 'vue';
+import Skeleton from '../Skeleton/Skeleton.vue';
+
+const props = withDefaults(defineProps<SectionSkeletonProps>(), {
+  variant: 'default',
+  listRowsCount: 4,
+});
+const borderClasses = 'border-gray-200 dark:border-gray-700';
+const borderBClasses = 'border-gray-200 dark:border-gray-700';
+
+export type SectionSkeletonVariant =
+  'referral' | 'subscription' | 'notifications' | 'security' | 'sessions' | 'default';
+
+export interface SectionSkeletonProps {
+  variant?: SectionSkeletonVariant;
+  showStats?: boolean;
+  showContentBlocks?: boolean;
+  showInputArea?: boolean;
+  showListRows?: boolean;
+  listRowsCount?: number;
+}
+
+const resolvedVariant = computed(() => props.variant ?? 'default');
+
+const showStats = computed(() => {
+  if (props.showStats !== undefined) return props.showStats;
+  return resolvedVariant.value === 'default';
+});
+
+const showContentBlocks = computed(() => {
+  if (props.showContentBlocks !== undefined) return props.showContentBlocks;
+  return resolvedVariant.value === 'default';
+});
+
+const showInputArea = computed(() => {
+  if (props.showInputArea !== undefined) return props.showInputArea;
+  return resolvedVariant.value === 'default';
+});
+
+const showListRows = computed(() => {
+  if (props.showListRows !== undefined) return props.showListRows;
+  return false;
+});
+
+const listRowsCount = computed(() => props.listRowsCount);
+</script>
+
 <template>
   <div class="w-full min-w-0" aria-hidden="true">
     <!-- Subscription: mirrors plan card, date grid, features, actions -->
@@ -83,11 +131,7 @@
           <Skeleton variant="text" :height="14" class="w-32" />
           <Skeleton variant="rectangular" :height="22" class="w-8 rounded-full" />
         </div>
-        <div
-          v-for="i in 3"
-          :key="i"
-          class="flex items-center justify-between gap-3 p-3 rounded-lg"
-        >
+        <div v-for="i in 3" :key="i" class="flex items-center justify-between gap-3 p-3 rounded-lg">
           <div class="flex items-center gap-3 flex-1 min-w-0">
             <Skeleton variant="circular" :width="36" :height="36" />
             <div class="space-y-1.5 flex-1 min-w-0">
@@ -215,57 +259,3 @@
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-import { computed } from 'vue';
-import Skeleton from '../Skeleton/Skeleton.vue';
-
-const borderClasses = 'border-gray-200 dark:border-gray-700';
-const borderBClasses = 'border-gray-200 dark:border-gray-700';
-
-export type SectionSkeletonVariant =
-  | 'referral'
-  | 'subscription'
-  | 'notifications'
-  | 'security'
-  | 'sessions'
-  | 'default';
-
-export interface SectionSkeletonProps {
-  variant?: SectionSkeletonVariant;
-  showStats?: boolean;
-  showContentBlocks?: boolean;
-  showInputArea?: boolean;
-  showListRows?: boolean;
-  listRowsCount?: number;
-}
-
-const props = withDefaults(defineProps<SectionSkeletonProps>(), {
-  variant: 'default',
-  listRowsCount: 4,
-});
-
-const resolvedVariant = computed(() => props.variant ?? 'default');
-
-const showStats = computed(() => {
-  if (props.showStats !== undefined) return props.showStats;
-  return resolvedVariant.value === 'default';
-});
-
-const showContentBlocks = computed(() => {
-  if (props.showContentBlocks !== undefined) return props.showContentBlocks;
-  return resolvedVariant.value === 'default';
-});
-
-const showInputArea = computed(() => {
-  if (props.showInputArea !== undefined) return props.showInputArea;
-  return resolvedVariant.value === 'default';
-});
-
-const showListRows = computed(() => {
-  if (props.showListRows !== undefined) return props.showListRows;
-  return false;
-});
-
-const listRowsCount = computed(() => props.listRowsCount);
-</script>

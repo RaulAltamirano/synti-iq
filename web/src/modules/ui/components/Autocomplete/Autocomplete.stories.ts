@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/vue3';
+import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { ref } from 'vue';
 import Autocomplete from './Autocomplete.vue';
 import type { AutocompleteOption } from './Autocomplete.vue';

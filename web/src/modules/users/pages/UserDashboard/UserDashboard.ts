@@ -56,7 +56,7 @@ export default {
 
     const filteredActivities = computed(() => {
       return activities.value.filter(
-        (activity: { title: string; description: string; type: any }) => {
+        (activity: { title: string; description: string; type: unknown }) => {
           const matchesSearch =
             activity.title.toLowerCase().includes(search.value.toLowerCase()) ||
             activity.description.toLowerCase().includes(search.value.toLowerCase());
@@ -66,11 +66,11 @@ export default {
       );
     });
 
-    const viewDetails = (activity: any) => {
+    const viewDetails = (_activity: unknown) => {
       // Implementar lógica para ver detalles
     };
 
-    const generateInvoice = (activity: any) => {
+    const generateInvoice = (_activity: unknown) => {
       // Implementar lógica para generar factura
     };
     const user = ref({

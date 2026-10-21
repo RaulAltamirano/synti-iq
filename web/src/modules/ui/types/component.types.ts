@@ -17,13 +17,7 @@ export type ComponentVariant =
   | 'danger';
 
 export type ComponentState =
-  | 'default'
-  | 'hover'
-  | 'active'
-  | 'focus'
-  | 'disabled'
-  | 'loading'
-  | 'error';
+  'default' | 'hover' | 'active' | 'focus' | 'disabled' | 'loading' | 'error';
 
 export interface BaseComponentProps {
   size?: ComponentSize;

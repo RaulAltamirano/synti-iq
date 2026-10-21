@@ -1,9 +1,7 @@
 <script lang="ts" src="./DefaultLayout.ts" />
 
 <template>
-  <div
-    class="min-h-screen w-full overflow-x-hidden text-gray-800 dark:text-white"
-  >
+  <div class="min-h-screen w-full overflow-x-hidden text-gray-800 dark:text-white">
     <!-- Navbar con useMotion -->
     <div ref="navbar" class="fixed top-0 w-full z-50">
       <Navbar />
@@ -15,10 +13,7 @@
         <AnimatedBackground />
       </div>
 
-      <div
-        ref="scrollContainer"
-        class="relative z-10 custom-scrollbar min-h-screen"
-      >
+      <div ref="scrollContainer" class="relative z-10 custom-scrollbar min-h-screen">
         <RouterView v-slot="{ Component }">
           <div ref="routerView" class="relative z-10">
             <component :is="Component" />

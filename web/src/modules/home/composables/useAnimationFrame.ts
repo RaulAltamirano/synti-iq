@@ -6,7 +6,7 @@
  * @param {Object} options - Opciones adicionales
  * @returns {Object} - Métodos para controlar la animación
  */
-export function useAnimationFrame(callback: (arg0: any) => void, options = {}) {
+export function useAnimationFrame(callback: (arg0: unknown) => void, options = {}) {
   const {
     autoStart = false,
     fps = null, // Si se especifica, limita los frames por segundo

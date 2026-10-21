@@ -1,7 +1,7 @@
 import { ref } from 'vue';
 
 export function useCartTabs() {
-  const carts = ref<any[]>([]);
+  const carts = ref<unknown[]>([]);
   const currentCartIndex = ref(0);
 
   function addNewCart() {

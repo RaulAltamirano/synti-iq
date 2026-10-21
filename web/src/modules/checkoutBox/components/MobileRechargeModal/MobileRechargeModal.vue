@@ -1,3 +1,236 @@
+<script>
+function rechargePackage(id, amount, bonus, description, validity, type, popular, highlight) {
+  return { id, amount, bonus, description, validity, type, popular, highlight };
+}
+
+export default {
+  data() {
+    return {
+      isOpen: false,
+      isProcessing: false,
+      selectedCompany: null,
+      phoneNumber: '',
+      recentNumbers: ['8095551234', '8295555678', '8495559012'],
+      showAllPackages: false,
+      activePackageType: 'data',
+      selectedPackage: null,
+      customAmount: 0,
+      telecomCompanies: [
+        {
+          id: 'claro',
+          name: 'Claro',
+          logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Claro_logo.svg/1200px-Claro_logo.svg.png',
+          packages: [
+            rechargePackage('claro1', 100, 10, '1GB + 100 Min', '7 días', 'data', true, false),
+            rechargePackage('claro2', 200, 15, '2.5GB + 200 Min', '15 días', 'data', true, true),
+            rechargePackage('claro3', 300, 20, '5GB + 300 Min', '30 días', 'data', false, false),
+            rechargePackage('claro4', 50, 0, '50 Min', '3 días', 'voice', false, false),
+            rechargePackage('claro5', 100, 0, '100 Min', '7 días', 'voice', true, false),
+            rechargePackage('claro6', 150, 0, 'SMS Ilimitado', '7 días', 'sms', false, false),
+          ],
+        },
+        {
+          id: 'altice',
+          name: 'Altice',
+          logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Altice_USA_logo.svg/1200px-Altice_USA_logo.svg.png',
+          packages: [
+            rechargePackage('altice1', 100, 5, '1.5GB + 50 Min', '7 días', 'data', true, false),
+            rechargePackage('altice2', 200, 10, '3GB + 100 Min', '15 días', 'data', true, true),
+            rechargePackage('altice3', 300, 15, '6GB + 200 Min', '30 días', 'data', false, false),
+            rechargePackage('altice4', 50, 0, '30 Min', '3 días', 'voice', false, false),
+            rechargePackage('altice5', 100, 0, '80 Min', '7 días', 'voice', true, false),
+          ],
+        },
+        {
+          id: 'viva',
+          name: 'Viva',
+          logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Viva_logo.svg/1200px-Viva_logo.svg.png',
+          packages: [
+            rechargePackage('viva1', 100, 20, '2GB + 100 Min', '7 días', 'data', true, false),
+            rechargePackage('viva2', 200, 25, '4GB + 200 Min', '15 días', 'data', true, true),
+            rechargePackage('viva3', 300, 30, '8GB + 300 Min', '30 días', 'data', false, false),
+            rechargePackage('viva4', 50, 0, '60 Min', '3 días', 'voice', false, false),
+            rechargePackage('viva5', 100, 0, '120 Min', '7 días', 'voice', true, false),
+          ],
+        },
+        {
+          id: 'orange',
+          name: 'Orange',
+          logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Orange_logo.svg/1200px-Orange_logo.svg.png',
+          packages: [
+            rechargePackage('orange1', 100, 15, '1.2GB + 80 Min', '7 días', 'data', true, false),
+            rechargePackage('orange2', 200, 20, '3GB + 150 Min', '15 días', 'data', true, true),
+            rechargePackage('orange3', 300, 25, '6GB + 250 Min', '30 días', 'data', false, false),
+            rechargePackage('orange4', 50, 0, '40 Min', '3 días', 'voice', false, false),
+            rechargePackage('orange5', 100, 0, '90 Min', '7 días', 'voice', true, false),
+          ],
+        },
+      ],
+      quickActions: [
+        { amount: 100, label: 'Recarga Rápida' },
+        { amount: 200, label: 'Más Popular' },
+        { amount: 300, label: 'Máximo Bono' },
+        { amount: 500, label: 'Recarga Grande' },
+      ],
+    };
+  },
+  computed: {
+    filteredPackages() {
+      if (!this.selectedCompany) return [];
+
+      let packages = this.selectedCompany.packages.filter(
+        (pkg) => pkg.type === this.activePackageType
+      );
+
+      if (!this.showAllPackages) {
+        packages = packages.filter((pkg) => pkg.popular);
+      }
+
+      // Highlight the best value package
+      if (this.activePackageType === 'data') {
+        const bestValue = packages.reduce((best, current) => {
+          const currentValue = (current.amount * (1 + current.bonus / 100)) / current.amount;
+          const bestValue = (best.amount * (1 + best.bonus / 100)) / best.amount;
+          return currentValue > bestValue ? current : best;
+        }, packages[0]);
+
+        packages = packages.map((pkg) => ({
+          ...pkg,
+          highlight: pkg.id === bestValue.id,
+        }));
+      }
+
+      return packages;
+    },
+    rechargeAmount() {
+      if (this.selectedPackage) return this.selectedPackage.amount;
+      if (this.customAmount > 0) return parseFloat(this.customAmount);
+      return 0;
+    },
+    totalAmount() {
+      if (!this.selectedPackage) return this.rechargeAmount;
+      return this.rechargeAmount * (1 + this.selectedPackage.bonus / 100);
+    },
+    canAddToCart() {
+      return this.selectedCompany && this.phoneNumber.length >= 10 && this.rechargeAmount > 0;
+    },
+    packageTypes() {
+      if (!this.selectedCompany) return [];
+
+      const types = new Set(this.selectedCompany.packages.map((pkg) => pkg.type));
+      return Array.from(types).map((type) => ({
+        value: type,
+        label: this.getTypeLabel(type),
+      }));
+    },
+  },
+  methods: {
+    selectCompany(company) {
+      this.selectedCompany = company;
+      this.selectedPackage = null;
+      this.customAmount = 0;
+      this.activePackageType = this.packageTypes[0]?.value || 'data';
+
+      // Auto-select best package for demo purposes
+      setTimeout(() => {
+        const bestPackage = this.filteredPackages.find((pkg) => pkg.highlight);
+        if (bestPackage) {
+          this.selectedPackage = bestPackage;
+        }
+      }, 100);
+    },
+    selectPackage(pkg) {
+      this.selectedPackage = pkg;
+      this.customAmount = 0;
+    },
+    selectCustomAmount() {
+      this.selectedPackage = null;
+    },
+    formatPhoneNumber() {
+      // Simple formatting for demo - would need proper phone number formatting in production
+      this.phoneNumber = this.phoneNumber.replace(/\D/g, '').slice(0, 10);
+    },
+    selectRecentNumber(number) {
+      this.phoneNumber = number;
+    },
+    applyQuickAction(action) {
+      this.customAmount = action.amount;
+      this.selectedPackage = null;
+
+      // Find closest package to suggest
+      if (this.selectedCompany) {
+        const closestPackage = this.selectedCompany.packages.reduce((prev, curr) =>
+          Math.abs(curr.amount - action.amount) < Math.abs(prev.amount - action.amount)
+            ? curr
+            : prev
+        );
+
+        // Only suggest if within 20% of the amount
+        if (Math.abs(closestPackage.amount - action.amount) / action.amount < 0.2) {
+          this.$nextTick(() => {
+            this.selectedPackage = closestPackage;
+            this.customAmount = 0;
+          });
+        }
+      }
+    },
+    getTypeLabel(type) {
+      const labels = {
+        data: 'Datos',
+        voice: 'Minutos',
+        sms: 'Mensajes',
+        combo: 'Combo',
+      };
+      return labels[type] || type;
+    },
+    addToCart() {
+      if (!this.canAddToCart) return;
+
+      this.isProcessing = true;
+
+      // Simulate API call
+      setTimeout(() => {
+        const item = {
+          id: `recharge-${Date.now()}`,
+          name: `Recarga ${this.selectedCompany.name}`,
+          description: this.selectedPackage
+            ? this.selectedPackage.description
+            : `Recarga de $${this.rechargeAmount.toFixed(2)}`,
+          quantity: 1,
+          price: this.rechargeAmount,
+          metadata: {
+            company: this.selectedCompany.id,
+            phoneNumber: this.phoneNumber,
+            package: this.selectedPackage?.id || 'custom',
+            bonus: this.selectedPackage?.bonus || 0,
+            totalAmount: this.totalAmount,
+          },
+        };
+
+        // Emit event or add to cart directly
+        this.$emit('add-to-cart', item);
+
+        // Add to recent numbers if not already there
+        if (!this.recentNumbers.includes(this.phoneNumber)) {
+          this.recentNumbers.unshift(this.phoneNumber);
+          if (this.recentNumbers.length > 5) {
+            this.recentNumbers.pop();
+          }
+        }
+
+        this.isProcessing = false;
+        this.isOpen = false;
+
+        // Reset form (keep company and recent numbers)
+        this.phoneNumber = '';
+        this.selectedPackage = null;
+        this.customAmount = 0;
+      }, 1000);
+    },
+  },
+};
+</script>
+
 <template>
   <div>
     <!-- Trigger Button -->
@@ -425,427 +658,3 @@
     </div>
   </div>
 </template>
-
-<script>
-export default {
-  data() {
-    return {
-      isOpen: false,
-      isProcessing: false,
-      selectedCompany: null,
-      phoneNumber: '',
-      recentNumbers: ['8095551234', '8295555678', '8495559012'],
-      showAllPackages: false,
-      activePackageType: 'data',
-      selectedPackage: null,
-      customAmount: 0,
-      telecomCompanies: [
-        {
-          id: 'claro',
-          name: 'Claro',
-          logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Claro_logo.svg/1200px-Claro_logo.svg.png',
-          packages: [
-            {
-              id: 'claro1',
-              amount: 100,
-              bonus: 10,
-              description: '1GB + 100 Min',
-              validity: '7 días',
-              type: 'data',
-              popular: true,
-              highlight: false,
-            },
-            {
-              id: 'claro2',
-              amount: 200,
-              bonus: 15,
-              description: '2.5GB + 200 Min',
-              validity: '15 días',
-              type: 'data',
-              popular: true,
-              highlight: true,
-            },
-            {
-              id: 'claro3',
-              amount: 300,
-              bonus: 20,
-              description: '5GB + 300 Min',
-              validity: '30 días',
-              type: 'data',
-              popular: false,
-              highlight: false,
-            },
-            {
-              id: 'claro4',
-              amount: 50,
-              bonus: 0,
-              description: '50 Min',
-              validity: '3 días',
-              type: 'voice',
-              popular: false,
-              highlight: false,
-            },
-            {
-              id: 'claro5',
-              amount: 100,
-              bonus: 0,
-              description: '100 Min',
-              validity: '7 días',
-              type: 'voice',
-              popular: true,
-              highlight: false,
-            },
-            {
-              id: 'claro6',
-              amount: 150,
-              bonus: 0,
-              description: 'SMS Ilimitado',
-              validity: '7 días',
-              type: 'sms',
-              popular: false,
-              highlight: false,
-            },
-          ],
-        },
-        {
-          id: 'altice',
-          name: 'Altice',
-          logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Altice_USA_logo.svg/1200px-Altice_USA_logo.svg.png',
-          packages: [
-            {
-              id: 'altice1',
-              amount: 100,
-              bonus: 5,
-              description: '1.5GB + 50 Min',
-              validity: '7 días',
-              type: 'data',
-              popular: true,
-              highlight: false,
-            },
-            {
-              id: 'altice2',
-              amount: 200,
-              bonus: 10,
-              description: '3GB + 100 Min',
-              validity: '15 días',
-              type: 'data',
-              popular: true,
-              highlight: true,
-            },
-            {
-              id: 'altice3',
-              amount: 300,
-              bonus: 15,
-              description: '6GB + 200 Min',
-              validity: '30 días',
-              type: 'data',
-              popular: false,
-              highlight: false,
-            },
-            {
-              id: 'altice4',
-              amount: 50,
-              bonus: 0,
-              description: '30 Min',
-              validity: '3 días',
-              type: 'voice',
-              popular: false,
-              highlight: false,
-            },
-            {
-              id: 'altice5',
-              amount: 100,
-              bonus: 0,
-              description: '80 Min',
-              validity: '7 días',
-              type: 'voice',
-              popular: true,
-              highlight: false,
-            },
-          ],
-        },
-        {
-          id: 'viva',
-          name: 'Viva',
-          logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Viva_logo.svg/1200px-Viva_logo.svg.png',
-          packages: [
-            {
-              id: 'viva1',
-              amount: 100,
-              bonus: 20,
-              description: '2GB + 100 Min',
-              validity: '7 días',
-              type: 'data',
-              popular: true,
-              highlight: false,
-            },
-            {
-              id: 'viva2',
-              amount: 200,
-              bonus: 25,
-              description: '4GB + 200 Min',
-              validity: '15 días',
-              type: 'data',
-              popular: true,
-              highlight: true,
-            },
-            {
-              id: 'viva3',
-              amount: 300,
-              bonus: 30,
-              description: '8GB + 300 Min',
-              validity: '30 días',
-              type: 'data',
-              popular: false,
-              highlight: false,
-            },
-            {
-              id: 'viva4',
-              amount: 50,
-              bonus: 0,
-              description: '60 Min',
-              validity: '3 días',
-              type: 'voice',
-              popular: false,
-              highlight: false,
-            },
-            {
-              id: 'viva5',
-              amount: 100,
-              bonus: 0,
-              description: '120 Min',
-              validity: '7 días',
-              type: 'voice',
-              popular: true,
-              highlight: false,
-            },
-          ],
-        },
-        {
-          id: 'orange',
-          name: 'Orange',
-          logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Orange_logo.svg/1200px-Orange_logo.svg.png',
-          packages: [
-            {
-              id: 'orange1',
-              amount: 100,
-              bonus: 15,
-              description: '1.2GB + 80 Min',
-              validity: '7 días',
-              type: 'data',
-              popular: true,
-              highlight: false,
-            },
-            {
-              id: 'orange2',
-              amount: 200,
-              bonus: 20,
-              description: '3GB + 150 Min',
-              validity: '15 días',
-              type: 'data',
-              popular: true,
-              highlight: true,
-            },
-            {
-              id: 'orange3',
-              amount: 300,
-              bonus: 25,
-              description: '6GB + 250 Min',
-              validity: '30 días',
-              type: 'data',
-              popular: false,
-              highlight: false,
-            },
-            {
-              id: 'orange4',
-              amount: 50,
-              bonus: 0,
-              description: '40 Min',
-              validity: '3 días',
-              type: 'voice',
-              popular: false,
-              highlight: false,
-            },
-            {
-              id: 'orange5',
-              amount: 100,
-              bonus: 0,
-              description: '90 Min',
-              validity: '7 días',
-              type: 'voice',
-              popular: true,
-              highlight: false,
-            },
-          ],
-        },
-      ],
-      packageTypes: [
-        { value: 'data', label: 'Datos' },
-        { value: 'voice', label: 'Minutos' },
-        { value: 'sms', label: 'Mensajes' },
-        { value: 'combo', label: 'Combo' },
-      ],
-      quickActions: [
-        { amount: 100, label: 'Recarga Rápida' },
-        { amount: 200, label: 'Más Popular' },
-        { amount: 300, label: 'Máximo Bono' },
-        { amount: 500, label: 'Recarga Grande' },
-      ],
-    };
-  },
-  computed: {
-    filteredPackages() {
-      if (!this.selectedCompany) return [];
-
-      let packages = this.selectedCompany.packages.filter(
-        (pkg) => pkg.type === this.activePackageType
-      );
-
-      if (!this.showAllPackages) {
-        packages = packages.filter((pkg) => pkg.popular);
-      }
-
-      // Highlight the best value package
-      if (this.activePackageType === 'data') {
-        const bestValue = packages.reduce((best, current) => {
-          const currentValue = (current.amount * (1 + current.bonus / 100)) / current.amount;
-          const bestValue = (best.amount * (1 + best.bonus / 100)) / best.amount;
-          return currentValue > bestValue ? current : best;
-        }, packages[0]);
-
-        packages = packages.map((pkg) => ({
-          ...pkg,
-          highlight: pkg.id === bestValue.id,
-        }));
-      }
-
-      return packages;
-    },
-    rechargeAmount() {
-      if (this.selectedPackage) return this.selectedPackage.amount;
-      if (this.customAmount > 0) return parseFloat(this.customAmount);
-      return 0;
-    },
-    totalAmount() {
-      if (!this.selectedPackage) return this.rechargeAmount;
-      return this.rechargeAmount * (1 + this.selectedPackage.bonus / 100);
-    },
-    canAddToCart() {
-      return this.selectedCompany && this.phoneNumber.length >= 10 && this.rechargeAmount > 0;
-    },
-    packageTypes() {
-      if (!this.selectedCompany) return [];
-
-      const types = new Set(this.selectedCompany.packages.map((pkg) => pkg.type));
-      return Array.from(types).map((type) => ({
-        value: type,
-        label: this.getTypeLabel(type),
-      }));
-    },
-  },
-  methods: {
-    selectCompany(company) {
-      this.selectedCompany = company;
-      this.selectedPackage = null;
-      this.customAmount = 0;
-      this.activePackageType = this.packageTypes[0]?.value || 'data';
-
-      // Auto-select best package for demo purposes
-      setTimeout(() => {
-        const bestPackage = this.filteredPackages.find((pkg) => pkg.highlight);
-        if (bestPackage) {
-          this.selectedPackage = bestPackage;
-        }
-      }, 100);
-    },
-    selectPackage(pkg) {
-      this.selectedPackage = pkg;
-      this.customAmount = 0;
-    },
-    selectCustomAmount() {
-      this.selectedPackage = null;
-    },
-    formatPhoneNumber() {
-      // Simple formatting for demo - would need proper phone number formatting in production
-      this.phoneNumber = this.phoneNumber.replace(/\D/g, '').slice(0, 10);
-    },
-    selectRecentNumber(number) {
-      this.phoneNumber = number;
-    },
-    applyQuickAction(action) {
-      this.customAmount = action.amount;
-      this.selectedPackage = null;
-
-      // Find closest package to suggest
-      if (this.selectedCompany) {
-        const closestPackage = this.selectedCompany.packages.reduce((prev, curr) =>
-          Math.abs(curr.amount - action.amount) < Math.abs(prev.amount - action.amount)
-            ? curr
-            : prev
-        );
-
-        // Only suggest if within 20% of the amount
-        if (Math.abs(closestPackage.amount - action.amount) / action.amount < 0.2) {
-          this.$nextTick(() => {
-            this.selectedPackage = closestPackage;
-            this.customAmount = 0;
-          });
-        }
-      }
-    },
-    getTypeLabel(type) {
-      const labels = {
-        data: 'Datos',
-        voice: 'Minutos',
-        sms: 'Mensajes',
-        combo: 'Combo',
-      };
-      return labels[type] || type;
-    },
-    addToCart() {
-      if (!this.canAddToCart) return;
-
-      this.isProcessing = true;
-
-      // Simulate API call
-      setTimeout(() => {
-        const item = {
-          id: `recharge-${Date.now()}`,
-          name: `Recarga ${this.selectedCompany.name}`,
-          description: this.selectedPackage
-            ? this.selectedPackage.description
-            : `Recarga de $${this.rechargeAmount.toFixed(2)}`,
-          quantity: 1,
-          price: this.rechargeAmount,
-          metadata: {
-            company: this.selectedCompany.id,
-            phoneNumber: this.phoneNumber,
-            package: this.selectedPackage?.id || 'custom',
-            bonus: this.selectedPackage?.bonus || 0,
-            totalAmount: this.totalAmount,
-          },
-        };
-
-        // Emit event or add to cart directly
-        this.$emit('add-to-cart', item);
-
-        // Add to recent numbers if not already there
-        if (!this.recentNumbers.includes(this.phoneNumber)) {
-          this.recentNumbers.unshift(this.phoneNumber);
-          if (this.recentNumbers.length > 5) {
-            this.recentNumbers.pop();
-          }
-        }
-
-        this.isProcessing = false;
-        this.isOpen = false;
-
-        // Reset form (keep company and recent numbers)
-        this.phoneNumber = '';
-        this.selectedPackage = null;
-        this.customAmount = 0;
-      }, 1000);
-    },
-  },
-};
-</script>

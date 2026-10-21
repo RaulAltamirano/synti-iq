@@ -58,12 +58,8 @@
 
       <!-- Form -->
       <form class="space-y-4" @submit.prevent="submitForm">
-        <Field
-          v-slot="{ componentField, errorMessage }"
-          name="firstName"
-          :validate-on-blur="true"
-        >
-          <Input
+        <Field v-slot="{ componentField, errorMessage }" name="firstName" :validate-on-blur="true">
+          <AppInput
             v-bind="componentField"
             type="text"
             name="firstName"
@@ -76,12 +72,8 @@
           />
         </Field>
 
-        <Field
-          v-slot="{ componentField, errorMessage }"
-          name="lastName"
-          :validate-on-blur="true"
-        >
-          <Input
+        <Field v-slot="{ componentField, errorMessage }" name="lastName" :validate-on-blur="true">
+          <AppInput
             v-bind="componentField"
             type="text"
             name="lastName"
@@ -99,7 +91,7 @@
           name="businessName"
           :validate-on-blur="true"
         >
-          <Input
+          <AppInput
             v-bind="componentField"
             type="text"
             name="businessName"
@@ -112,7 +104,7 @@
         </Field>
 
         <Field v-slot="{ componentField, errorMessage }" name="email" :validate-on-blur="true">
-          <Input
+          <AppInput
             v-bind="componentField"
             type="email"
             name="email"
@@ -163,7 +155,7 @@
           <!-- Referral code input field -->
           <div v-if="showReferralField && !hasValidReferral" class="space-y-3">
             <div class="flex gap-2">
-              <Input
+              <AppInput
                 v-model="localReferralCode"
                 type="text"
                 name="referralCode"
@@ -174,7 +166,7 @@
                 full-width
                 @keyup.enter="handleValidateCode"
               />
-              <Button
+              <AppButton
                 type="button"
                 variant="secondary"
                 size="md"
@@ -183,7 +175,7 @@
                 @click="handleValidateCode"
               >
                 Validate
-              </Button>
+              </AppButton>
             </div>
 
             <!-- Cancel button -->
@@ -201,7 +193,7 @@
         </div>
 
         <!-- Submit Button -->
-        <Button
+        <AppButton
           type="submit"
           variant="primary"
           size="md"
@@ -210,7 +202,7 @@
           full-width
         >
           Create business account
-        </Button>
+        </AppButton>
       </form>
 
       <!-- Footer Links -->

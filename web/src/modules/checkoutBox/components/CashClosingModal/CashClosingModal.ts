@@ -21,7 +21,7 @@ export default {
       required: true,
     },
   },
-  setup(props: { shiftData: any; userData: any }, { emit }: any) {
+  setup(props: { shiftData: unknown; userData: unknown }, { emit }: unknown) {
     const isProcessing = ref(false);
     const closingNotes = ref('');
     const showExpenseForm = ref(false);
@@ -96,14 +96,14 @@ export default {
     // Totales calculados
     const totalExpenses = computed(() => {
       return currentShift.value.expenses.reduce(
-        (sum: any, expense: { amount: any }) => sum + expense.amount,
+        (sum: unknown, expense: { amount: unknown }) => sum + expense.amount,
         0
       );
     });
 
     const totalWithdrawals = computed(() => {
       return currentShift.value.withdrawals.reduce(
-        (sum: any, withdrawal: { amount: any }) => sum + withdrawal.amount,
+        (sum: unknown, withdrawal: { amount: unknown }) => sum + withdrawal.amount,
         0
       );
     });
@@ -117,14 +117,6 @@ export default {
         totalCountedCash.value - (currentShift.value.initialCash + currentShift.value.cashAmount)
       );
     });
-
-    const initializeCashCount = () => {
-      // Esto es un ejemplo - en una aplicación real, podrías tener valores iniciales sugeridos
-      // basados en el efectivo esperado o en conteos previos
-      cashDenominations.value.forEach((denom) => {
-        denom.count = 0;
-      });
-    };
 
     const incrementDenomination = (value: number) => {
       const denom = cashDenominations.value.find((d) => d.value === value);
@@ -149,7 +141,7 @@ export default {
       }
     };
 
-    const removeExpense = (index: any) => {
+    const removeExpense = (index: unknown) => {
       currentShift.value.expenses.splice(index, 1);
     };
 
@@ -166,7 +158,7 @@ export default {
       }
     };
 
-    const removeWithdrawal = (index: any) => {
+    const removeWithdrawal = (index: unknown) => {
       currentShift.value.withdrawals.splice(index, 1);
     };
 
@@ -209,7 +201,7 @@ export default {
     };
 
     // Funciones de formato
-    const formatCurrency = (value: any) => {
+    const formatCurrency = (value: unknown) => {
       return parseFloat(value || 0).toFixed(2);
     };
 
