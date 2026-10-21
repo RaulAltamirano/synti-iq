@@ -1,3 +1,7 @@
+jest.mock('src/shared/redis/redis.service', () => ({
+  RedisService: class RedisService {},
+}));
+
 import { UnauthorizedException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { TokenFactory } from './token-factory';
@@ -46,7 +50,11 @@ describe('TokenFactory', () => {
   });
 
   it('verifyRefreshToken invalidates session when refresh token matches a used token hash', async () => {
-    jwtService.verifyRefreshToken.mockResolvedValue({ sub: 'u1', sid: 's1' });
+    jwtService.verifyRefreshToken.mockResolvedValue({
+      sub: 'u1',
+      sid: 's1',
+      tokenUse: 'refresh',
+    });
     redisService.get.mockResolvedValue({
       refreshTokenHash: 'current-hash',
       isValid: true,
@@ -58,6 +66,17 @@ describe('TokenFactory', () => {
       UnauthorizedException,
     );
     expect(userSessionService.invalidateSession).toHaveBeenCalledWith('u1', 's1');
+  });
+
+  it('verifyRefreshToken rejects an access token', async () => {
+    jwtService.verifyRefreshToken.mockResolvedValue({
+      sub: 'u1',
+      sid: 's1',
+      tokenUse: 'access',
+    });
+
+    await expect(factory.verifyRefreshToken('access-token')).rejects.toThrow(UnauthorizedException);
+    expect(userSessionService.invalidateSession).not.toHaveBeenCalled();
   });
 
   it('validateStoredRefreshToken returns false when token matches a used token hash', async () => {

@@ -19,16 +19,18 @@ describe('AuthMetadataService', () => {
     expect(meta.deviceInfo).toBeUndefined();
   });
 
-  it('extracts ip from x-forwarded-for and user-agent', () => {
+  it('uses the socket peer and ignores x-forwarded-for', () => {
     const req = {
       headers: {
         'user-agent': 'Mozilla/5.0 (Test)',
         'x-forwarded-for': '203.0.113.5, 10.0.0.1',
       },
+      ip: '192.0.2.10',
+      socket: { remoteAddress: '192.0.2.10' },
     } as unknown as Request;
 
     const meta = service.extractSessionMetadata(req);
-    expect(meta.deviceInfo?.ipAddress).toBe('203.0.113.5');
+    expect(meta.deviceInfo?.ipAddress).toBe('192.0.2.10');
     expect(meta.deviceInfo?.userAgent).toBe('Mozilla/5.0 (Test)');
     expect(meta.deviceInfo?.deviceType).toBe('desktop');
   });

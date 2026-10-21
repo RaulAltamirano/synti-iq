@@ -162,12 +162,8 @@ export class StoreCashierService {
       throw new NotFoundException('Cashier not found');
     }
 
-    const cashierBusinessProfileId = cashier.store?.businessProfileId;
-    if (
-      cashierBusinessProfileId !== undefined &&
-      cashierBusinessProfileId !== null &&
-      cashierBusinessProfileId !== store.businessProfileId
-    ) {
+    const cashierBusinessProfileId = cashier.store?.businessProfileId ?? cashier.businessProfileId;
+    if (!cashierBusinessProfileId || cashierBusinessProfileId !== store.businessProfileId) {
       throw new ForbiddenException('Cashier does not belong to this business');
     }
 

@@ -6,7 +6,7 @@ import { Product } from './entities/product.entity';
 import { ProductFilterDto } from './dto/product-filter-dto';
 import { PaginatedResponse } from 'src/pagination/interfaces/PaginatedResponse';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBody } from '@nestjs/swagger';
-import { Auth } from 'src/auth/decorator';
+import { Auth, GetUser } from 'src/auth/decorator';
 import { Permission } from 'src/shared/enums/permissions.enum';
 import { ApiDoc } from 'src/shared/decorators';
 import { productEndpoints } from 'src/docs/product.endpoints';
@@ -25,8 +25,11 @@ export class ProductController {
     description: 'Returns a paginated list of products',
     type: [Product],
   })
-  async findAll(@Query() filters: ProductFilterDto): Promise<PaginatedResponse<Product>> {
-    return this.productService.findAll(filters);
+  async findAll(
+    @Query() filters: ProductFilterDto,
+    @GetUser('sub') userId: string,
+  ): Promise<PaginatedResponse<Product>> {
+    return this.productService.findAll(filters, userId);
   }
 
   @Get(':id')
@@ -43,8 +46,8 @@ export class ProductController {
     status: 404,
     description: 'Product not found',
   })
-  async findById(@Param('id') id: string): Promise<Product> {
-    return this.productService.findById(id);
+  async findById(@Param('id') id: string, @GetUser('sub') userId: string): Promise<Product> {
+    return this.productService.findById(id, userId);
   }
 
   @Post()
@@ -65,8 +68,11 @@ export class ProductController {
     status: 409,
     description: 'Conflict - Product with same SKU or barcode already exists',
   })
-  async create(@Body() createProductDto: CreateProductDto): Promise<Product> {
-    return this.productService.create(createProductDto);
+  async create(
+    @Body() createProductDto: CreateProductDto,
+    @GetUser('sub') userId: string,
+  ): Promise<Product> {
+    return this.productService.create(createProductDto, userId);
   }
 
   @Patch(':id')
@@ -95,8 +101,9 @@ export class ProductController {
   async update(
     @Param('id') id: string,
     @Body() updateProductDto: UpdateProductDto,
+    @GetUser('sub') userId: string,
   ): Promise<Product> {
-    return this.productService.update(id, updateProductDto);
+    return this.productService.update(id, updateProductDto, userId);
   }
 
   @Delete(':id')
@@ -130,8 +137,8 @@ export class ProductController {
     status: 404,
     description: 'Product not found',
   })
-  async softRemove(@Param('id') id: string): Promise<Product> {
-    return this.productService.softRemove(id);
+  async softRemove(@Param('id') id: string, @GetUser('sub') userId: string): Promise<Product> {
+    return this.productService.softRemove(id, userId);
   }
 
   @Get('search/sku-barcode')

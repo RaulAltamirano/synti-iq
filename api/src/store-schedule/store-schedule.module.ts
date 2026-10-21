@@ -6,11 +6,13 @@ import { StoreSchedule } from './entities/store-schedule.entity';
 import { Store } from 'src/store/entities/store.entity';
 import { StoreScheduleRepository } from './repositories/store-schedule.repository';
 import { CacheModule } from '@nestjs/cache-manager';
+import { StoreModule } from 'src/store/store.module';
 
 @Module({
   controllers: [StoreScheduleController],
   providers: [StoreScheduleService, StoreScheduleRepository],
   imports: [
+    StoreModule,
     TypeOrmModule.forFeature([StoreSchedule, Store]),
     CacheModule.register({
       ttl: 3600, // 1 hour in seconds

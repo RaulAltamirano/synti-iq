@@ -9,6 +9,7 @@ import { CashierProfile } from 'src/cashier-profile/entities/cashier_profile.ent
 import * as cookieParser from 'cookie-parser';
 import { Logger, LoggerErrorInterceptor } from 'nestjs-pino';
 import { RequestIdMiddleware } from './shared/interceptors/request-id.middleware';
+import { resolveAllowedOrigins, trustProxyHops } from './shared/config/allowed-origins';
 
 const SWAGGER_PATH = 'api/docs';
 const SWAGGER_TITLE = 'SyntiIQ API';
@@ -100,18 +101,11 @@ function setupSwagger(app: INestApplication): void {
   });
 }
 
-function getCorsOrigins(): string[] {
-  const raw = process.env.CORS_ORIGINS?.trim();
-  if (raw) {
-    return raw
-      .split(',')
-      .map(s => s.trim())
-      .filter(Boolean);
-  }
-  return [process.env.FRONTEND_URL];
-}
-
 function applyGlobalConfig(app: INestApplication): void {
+  const hops = trustProxyHops(process.env.TRUST_PROXY);
+  if (hops !== undefined) {
+    app.getHttpAdapter().getInstance().set('trust proxy', hops);
+  }
   app.setGlobalPrefix('api');
   app.useGlobalPipes(
     new ValidationPipe({
@@ -121,7 +115,7 @@ function applyGlobalConfig(app: INestApplication): void {
       transformOptions: { enableImplicitConversion: true },
     }),
   );
-  const corsOrigins = getCorsOrigins();
+  const corsOrigins = resolveAllowedOrigins();
   app.enableCors({
     origin: corsOrigins,
     credentials: true,

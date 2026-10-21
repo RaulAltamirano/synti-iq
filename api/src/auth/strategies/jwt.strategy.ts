@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
@@ -61,6 +61,10 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       if (!payload.sid) {
         this.logger.error('Token missing session ID (sid)');
         throw new Error('Invalid token: missing session ID');
+      }
+
+      if (payload.tokenUse !== 'access') {
+        throw new UnauthorizedException('Invalid access token');
       }
 
       await this.tokenValidator.validate(payload);

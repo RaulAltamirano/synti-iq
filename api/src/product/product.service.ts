@@ -9,12 +9,13 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { Product } from './entities/product.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, SelectQueryBuilder } from 'typeorm';
+import { In, Repository, SelectQueryBuilder } from 'typeorm';
 import { PaginationCacheUtil } from 'src/pagination/utils/PaginationCacheUtil';
 import { PaginatedResponse } from 'src/pagination/interfaces/PaginatedResponse';
 import { ProductFilterDto } from './dto/product-filter-dto';
 import { Inventory } from 'src/inventory/entities/inventory.entity';
 import { CacheService } from 'src/cache/cache.service';
+import { StoreQueryService } from 'src/store/services/store-query.service';
 
 @Injectable()
 export class ProductService {
@@ -25,18 +26,29 @@ export class ProductService {
     @InjectRepository(Inventory)
     private inventoryRepository: Repository<Inventory>,
     private readonly cacheService: CacheService,
+    private readonly storeQueryService: StoreQueryService,
   ) {}
 
-  async findAll(filters: ProductFilterDto): Promise<PaginatedResponse<Product>> {
+  async findAll(filters: ProductFilterDto, userId: string): Promise<PaginatedResponse<Product>> {
     try {
-      const cacheKey = PaginationCacheUtil.buildCacheKey(this.CACHE_PREFIX, filters);
+      const storeIds = await this.storeQueryService.listInventoryStoreIds(userId);
+      const cacheKey = PaginationCacheUtil.buildCacheKey(this.CACHE_PREFIX, {
+        ...filters,
+        storeIds: [...storeIds].sort(),
+      });
 
       return await this.cacheService.get<PaginatedResponse<Product>>(
         cacheKey,
         async () => {
-          const queryBuilder = this.productRepository
-            .createQueryBuilder('product')
-            .leftJoinAndSelect('product.inventoryItems', 'inventoryItems');
+          const queryBuilder = this.productRepository.createQueryBuilder('product');
+          if (storeIds.length > 0) {
+            queryBuilder.leftJoinAndSelect(
+              'product.inventoryItems',
+              'inventoryItems',
+              'inventoryItems.storeId IN (:...storeIds)',
+              { storeIds },
+            );
+          }
 
           this.applyFilters(queryBuilder, filters);
 
@@ -132,7 +144,8 @@ export class ProductService {
     }
   }
 
-  async create(createProductDto: CreateProductDto): Promise<Product> {
+  async create(createProductDto: CreateProductDto, userId: string): Promise<Product> {
+    await this.storeQueryService.findOne(createProductDto.storeId, userId);
     const existingProducts = await this.findBySkuOrBarcode(
       createProductDto.sku,
       createProductDto.barcode,
@@ -177,21 +190,22 @@ export class ProductService {
     }
   }
 
-  async findById(id: string): Promise<Product> {
-    const product = await this.productRepository.findOne({
-      where: { id },
-      relations: ['inventoryItems'],
-    });
+  async findById(id: string, userId: string): Promise<Product> {
+    const product = await this.productRepository.findOne({ where: { id } });
 
     if (!product) {
       throw new NotFoundException(`Product with ID ${id} not found`);
     }
 
+    product.inventoryItems = await this.inventoryForStores(
+      id,
+      await this.storeQueryService.listInventoryStoreIds(userId),
+    );
     return product;
   }
 
-  async update(id: string, updateProductDto: UpdateProductDto): Promise<Product> {
-    const existingProduct = await this.findById(id);
+  async update(id: string, updateProductDto: UpdateProductDto, userId: string): Promise<Product> {
+    const existingProduct = await this.findById(id, userId);
 
     if (updateProductDto.sku || updateProductDto.barcode) {
       const sku = updateProductDto.sku || existingProduct.sku;
@@ -236,20 +250,19 @@ export class ProductService {
     try {
       const { storeId: _storeId, ...updatePayload } = updateProductDto;
       await this.productRepository.update(id, updatePayload as Partial<Product>);
-      return this.findById(id);
+      return this.findById(id, userId);
     } catch (error) {
       throw new BadRequestException(`Error updating product: ${error.message}`);
     }
   }
 
   async remove(id: string): Promise<void> {
-    await this.findById(id);
-
+    await this.requireProduct(id);
     await this.productRepository.delete(id);
   }
 
-  async softRemove(id: string): Promise<Product> {
-    const product = await this.findById(id);
+  async softRemove(id: string, userId: string): Promise<Product> {
+    const product = await this.requireProduct(id);
 
     product.isActive = false;
     const deactivatedProduct = await this.productRepository.save(product);
@@ -258,8 +271,24 @@ export class ProductService {
       throw new BadRequestException(`Error deactivating product with ID ${id}`);
     }
 
-    return deactivatedProduct;
+    return this.findById(deactivatedProduct.id, userId);
   }
+
+  private async requireProduct(id: string): Promise<Product> {
+    const product = await this.productRepository.findOne({ where: { id } });
+    if (!product) {
+      throw new NotFoundException(`Product with ID ${id} not found`);
+    }
+    return product;
+  }
+
+  private async inventoryForStores(productId: string, storeIds: string[]): Promise<Inventory[]> {
+    if (storeIds.length === 0) return [];
+    return this.inventoryRepository.find({
+      where: { productId, storeId: In(storeIds) },
+    });
+  }
+
   async findBySkuOrBarcode(sku: string, barcode?: string): Promise<Product[]> {
     try {
       if (!sku && !barcode) {

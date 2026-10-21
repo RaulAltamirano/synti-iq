@@ -41,6 +41,9 @@ export class TokenFactory {
   async verifyRefreshToken(token: string): Promise<{ userId: string; sessionId: string }> {
     try {
       const payload = await this.jwtService.verifyRefreshToken(token);
+      if (payload.tokenUse !== 'refresh' || !payload.sid) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
       const isValid = await this.validateStoredRefreshToken(payload.sub, payload.sid, token);
 
       if (!isValid) {
@@ -72,6 +75,7 @@ export class TokenFactory {
       sub: userId,
       sid: sessionId,
       jti: uuidv4(),
+      tokenUse: 'access' as const,
     };
 
     return await this.jwtService.generateAccessToken(payload);
@@ -82,6 +86,7 @@ export class TokenFactory {
       sub: userId,
       sid: sessionId,
       jti: uuidv4(),
+      tokenUse: 'refresh' as const,
     };
 
     return await this.jwtService.generateRefreshToken(payload);

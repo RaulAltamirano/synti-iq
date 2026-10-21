@@ -1,3 +1,7 @@
+jest.mock('src/shared/redis/redis.service', () => ({
+  RedisService: class RedisService {},
+}));
+
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -113,6 +117,31 @@ describe('StoreCashierService', () => {
 
       await expect(service.assignCashierToStore('s-1', 'c-1')).rejects.toBeInstanceOf(
         ForbiddenException,
+      );
+    });
+
+    it('rejects a cashier with no business when the store link is missing', async () => {
+      storeQueryService.findOne.mockResolvedValue({ id: 's-1', businessProfileId: 'bp-1' });
+      cashierRepo.findOne.mockResolvedValue({ id: 'c-1', store: null, businessProfileId: null });
+
+      await expect(service.assignCashierToStore('s-1', 'c-1')).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+    });
+
+    it('assigns an unassigned cashier that belongs to the destination business', async () => {
+      const store = { id: 's-1', businessProfileId: 'bp-1' };
+      storeQueryService.findOne.mockResolvedValue(store);
+      cashierRepo.findOne.mockResolvedValue({
+        id: 'c-1',
+        store: null,
+        businessProfileId: 'bp-1',
+      });
+
+      await service.assignCashierToStore('s-1', 'c-1');
+
+      expect(cashierRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ store, storeId: 's-1' }),
       );
     });
 

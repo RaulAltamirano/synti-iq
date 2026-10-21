@@ -1,12 +1,16 @@
+jest.mock('src/shared/redis/redis.service', () => ({
+  RedisService: class RedisService {},
+}));
+
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { DataSource } from 'typeorm';
+import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
 import { InventoryService } from './inventory.service';
 import { Product } from 'src/product/entities/product.entity';
 import { InventoryMovement } from 'src/inventory-movement/entities/inventory-movement.entity';
 import { Inventory } from './entities/inventory.entity';
 import { CacheService } from 'src/cache/cache.service';
+import { StoreQueryService } from 'src/store/services/store-query.service';
 
 describe('InventoryService', () => {
   let service: InventoryService;
@@ -19,7 +23,7 @@ describe('InventoryService', () => {
         { provide: getRepositoryToken(InventoryMovement), useValue: {} },
         { provide: getRepositoryToken(Inventory), useValue: {} },
         {
-          provide: DataSource,
+          provide: getDataSourceToken(),
           useValue: {
             createQueryRunner: jest.fn(() => ({
               connect: jest.fn(),
@@ -32,6 +36,10 @@ describe('InventoryService', () => {
           },
         },
         { provide: CacheService, useValue: { get: jest.fn(), set: jest.fn(), del: jest.fn() } },
+        {
+          provide: StoreQueryService,
+          useValue: { findOne: jest.fn(), listAccessibleStoreIds: jest.fn() },
+        },
       ],
     }).compile();
 

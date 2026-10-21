@@ -50,17 +50,21 @@ export async function fetchStatus(): Promise<TwoFactorStatus> {
   };
 }
 
-export async function startSetup(): Promise<TwoFactorSetupData> {
+export async function startSetup(password: string): Promise<TwoFactorSetupData> {
   const response = await api.post<ApiResponse<TwoFactorSetupData> | TwoFactorSetupData>(
-    AUTH_2FA_ENDPOINTS.SETUP
+    AUTH_2FA_ENDPOINTS.SETUP,
+    { password }
   );
   return extractPayload<TwoFactorSetupData>(response);
 }
 
-export async function verifyAndEnable(code: string): Promise<TwoFactorVerifyResponse> {
+export async function verifyAndEnable(
+  code: string,
+  password: string
+): Promise<TwoFactorVerifyResponse> {
   const response = await api.post<ApiResponse<TwoFactorVerifyResponse> | TwoFactorVerifyResponse>(
     AUTH_2FA_ENDPOINTS.VERIFY,
-    { code }
+    { code, password }
   );
   return extractPayload<TwoFactorVerifyResponse>(response);
 }
@@ -73,10 +77,10 @@ export async function disable(code: string): Promise<TwoFactorDisableResponse> {
   return extractPayload<TwoFactorDisableResponse>(response);
 }
 
-export async function regenerateBackupCodes(): Promise<string[]> {
+export async function regenerateBackupCodes(password: string): Promise<string[]> {
   const response = await api.post<
     ApiResponse<{ backupCodes: string[] }> | { backupCodes: string[] }
-  >(AUTH_2FA_ENDPOINTS.REGENERATE_BACKUP_CODES);
+  >(AUTH_2FA_ENDPOINTS.REGENERATE_BACKUP_CODES, { password });
   const payload = extractPayload<{ backupCodes: string[] }>(response);
   return payload.backupCodes ?? [];
 }

@@ -114,11 +114,11 @@ describe('useTwoFactorAuth', () => {
       await flushPromises();
 
       const { startSetup, setupData } = wrapper.composable;
-      const result = await startSetup();
+      const result = await startSetup('current-password');
 
       expect(result).toEqual(mockSetupData);
       expect(setupData.value).toEqual(mockSetupData);
-      expect(twoFactorApi.startSetup).toHaveBeenCalled();
+      expect(twoFactorApi.startSetup).toHaveBeenCalledWith('current-password');
       wrapper.unmount();
     });
 
@@ -129,7 +129,7 @@ describe('useTwoFactorAuth', () => {
       await flushPromises();
 
       const { startSetup, error, setupData } = wrapper.composable;
-      const result = await startSetup();
+      const result = await startSetup('current-password');
 
       expect(result).toBeNull();
       expect(error.value).toBeTruthy();
@@ -148,13 +148,13 @@ describe('useTwoFactorAuth', () => {
       await flushPromises();
 
       const { verifyAndEnable, status, backupCodes, showBackupCodes } = wrapper.composable;
-      const success = await verifyAndEnable('123456');
+      const success = await verifyAndEnable('123456', 'current-password');
 
       expect(success).toBe(true);
       expect(status.value).toMatchObject({ enabled: true, method: 'authenticator' });
       expect(backupCodes.value).toEqual(mockBackupCodes);
       expect(showBackupCodes.value).toBe(true);
-      expect(twoFactorApi.verifyAndEnable).toHaveBeenCalledWith('123456');
+      expect(twoFactorApi.verifyAndEnable).toHaveBeenCalledWith('123456', 'current-password');
       wrapper.unmount();
     });
 
@@ -163,7 +163,7 @@ describe('useTwoFactorAuth', () => {
       await flushPromises();
 
       const { verifyAndEnable, error } = wrapper.composable;
-      const success = await verifyAndEnable('12');
+      const success = await verifyAndEnable('12', 'current-password');
 
       expect(success).toBe(false);
       expect(error.value).toContain('6-digit');
@@ -180,7 +180,7 @@ describe('useTwoFactorAuth', () => {
       await flushPromises();
 
       const { verifyAndEnable, error } = wrapper.composable;
-      const success = await verifyAndEnable('123456');
+      const success = await verifyAndEnable('123456', 'current-password');
 
       expect(success).toBe(false);
       expect(error.value).toBeTruthy();
@@ -280,7 +280,7 @@ describe('useTwoFactorAuth', () => {
         backupCodesRemaining: 1,
       };
 
-      const result = await regenerateBackupCodes();
+      const result = await regenerateBackupCodes('current-password');
 
       expect(result).toEqual(mockBackupCodes);
       expect(backupCodes.value).toEqual(mockBackupCodes);
@@ -288,7 +288,7 @@ describe('useTwoFactorAuth', () => {
       expect((status as { value: object }).value).toMatchObject({
         backupCodesRemaining: mockBackupCodes.length,
       });
-      expect(twoFactorApi.regenerateBackupCodes).toHaveBeenCalled();
+      expect(twoFactorApi.regenerateBackupCodes).toHaveBeenCalledWith('current-password');
       wrapper.unmount();
     });
 
@@ -301,7 +301,7 @@ describe('useTwoFactorAuth', () => {
       await flushPromises();
 
       const { regenerateBackupCodes, error } = wrapper.composable;
-      const result = await regenerateBackupCodes();
+      const result = await regenerateBackupCodes('current-password');
 
       expect(result).toEqual([]);
       expect(error.value).toBeTruthy();

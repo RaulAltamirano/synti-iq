@@ -314,28 +314,14 @@ ${diff}
     process.exit(1);
   }
 
-  // 6. Submit review: APPROVE or REQUEST_CHANGES. Always submit so previous approval is reset when new commit changes verdict.
-  const isApproved = /✅\s*Approved|Approved\s*[.—]|^Approved\b/i.test(parsed.verdict);
   try {
-    if (isApproved) {
-      await createReview(octokit, {
-        owner,
-        repo: repoName,
-        pullNumber: prNumber,
-        event: 'APPROVE',
-        body: '🤖 AI Technical Assistant — Review passed. See comment above for details.',
-      });
-      console.log('PR approved by bot');
-    } else {
-      await createReview(octokit, {
-        owner,
-        repo: repoName,
-        pullNumber: prNumber,
-        event: 'REQUEST_CHANGES',
-        body: '🤖 AI Technical Assistant — Changes requested. See comment above for findings and action items.',
-      });
-      console.log('PR changes requested by bot');
-    }
+    await createReview(octokit, {
+      owner,
+      repo: repoName,
+      pullNumber: prNumber,
+      event: 'COMMENT',
+      body: '🤖 AI Technical Assistant — Review posted as a comment. A person still has to approve.',
+    });
   } catch (err) {
     console.warn(
       'Could not submit review (check token permissions: pull_requests write):',

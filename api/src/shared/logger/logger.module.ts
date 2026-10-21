@@ -38,6 +38,7 @@ import { createFilterStream } from './logger-filter.stream';
               paths: [
                 'req.headers.cookie',
                 'req.headers.authorization',
+                'req.headers["x-metrics-key"]',
                 'res.headers["set-cookie"]',
               ],
               censor: '[REDACTED]',

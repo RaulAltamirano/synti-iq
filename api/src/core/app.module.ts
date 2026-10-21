@@ -40,7 +40,7 @@ import { Resend } from 'resend';
     }),
     ThrottlerModule.forRoot([
       {
-        ttl: 60,
+        ttl: 60000,
         limit: 10,
       },
     ]),

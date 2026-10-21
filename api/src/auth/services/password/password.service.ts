@@ -2,6 +2,7 @@ import {
   Injectable,
   Logger,
   BadRequestException,
+  HttpException,
   InternalServerErrorException,
 } from '@nestjs/common';
 import { HashingStrategy } from './strategies/hashing.strategy.ts';
@@ -68,6 +69,9 @@ export class PasswordService {
       await this.lockoutStrategy.recordFailedAttempt(identifier);
       return false;
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       this.logger.error(`Verification failed for ${identifier}: ${error.message}`, error.stack);
       throw new InternalServerErrorException('Password verification failed');
     }

@@ -1,3 +1,7 @@
+jest.mock('src/shared/redis/redis.service', () => ({
+  RedisService: class RedisService {},
+}));
+
 import type { TestingModule } from '@nestjs/testing';
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -6,6 +10,7 @@ import { ProductService } from './product.service';
 import { Product } from './entities/product.entity';
 import { Inventory } from 'src/inventory/entities/inventory.entity';
 import { CacheService } from 'src/cache/cache.service';
+import { StoreQueryService } from 'src/store/services/store-query.service';
 
 const createProductFixture = (overrides: Partial<Product> = {}): Product =>
   ({
@@ -50,7 +55,7 @@ describe('ProductService', () => {
     delete: jest.Mock;
   };
   let cacheService: { get: jest.Mock };
-  let inventoryRepository: { create: jest.Mock; save: jest.Mock };
+  let inventoryRepository: { create: jest.Mock; save: jest.Mock; find: jest.Mock };
 
   beforeEach(async () => {
     jest.spyOn(Logger.prototype, 'error').mockImplementation();
@@ -71,6 +76,7 @@ describe('ProductService', () => {
     inventoryRepository = {
       create: jest.fn(),
       save: jest.fn(),
+      find: jest.fn().mockResolvedValue([]),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -79,6 +85,10 @@ describe('ProductService', () => {
         { provide: getRepositoryToken(Product), useValue: productRepository },
         { provide: getRepositoryToken(Inventory), useValue: inventoryRepository },
         { provide: CacheService, useValue: cacheService },
+        {
+          provide: StoreQueryService,
+          useValue: { listInventoryStoreIds: jest.fn().mockResolvedValue(['store-1']) },
+        },
       ],
     }).compile();
 
@@ -106,12 +116,15 @@ describe('ProductService', () => {
       });
       productRepository.createQueryBuilder.mockReturnValue(mockQb);
 
-      const result = await service.findAll({
-        page: 1,
-        limit: 10,
-        sortBy: 'createdAt',
-        sortOrder: 'DESC',
-      });
+      const result = await service.findAll(
+        {
+          page: 1,
+          limit: 10,
+          sortBy: 'createdAt',
+          sortOrder: 'DESC',
+        },
+        'user-1',
+      );
 
       expect(result.items).toHaveLength(2);
       expect(result.total).toBe(2);
@@ -126,8 +139,10 @@ describe('ProductService', () => {
     it('throws NotFoundException when product not found', async () => {
       productRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.findById('non-existent-id')).rejects.toThrow(NotFoundException);
-      await expect(service.findById('non-existent-id')).rejects.toThrow(
+      await expect(service.findById('non-existent-id', 'user-1')).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(service.findById('non-existent-id', 'user-1')).rejects.toThrow(
         'Product with ID non-existent-id not found',
       );
     });
@@ -136,11 +151,11 @@ describe('ProductService', () => {
       const product = createProductFixture({ id: 'found-id', name: 'Found Product' });
       productRepository.findOne.mockResolvedValue(product);
 
-      const result = await service.findById('found-id');
+      const result = await service.findById('found-id', 'user-1');
 
-      expect(result).toEqual(product);
       expect(result.id).toBe('found-id');
       expect(result.name).toBe('Found Product');
+      expect(result.inventoryItems).toEqual([]);
     });
   });
 
@@ -148,7 +163,7 @@ describe('ProductService', () => {
     it('throws NotFoundException when product not found', async () => {
       productRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.update('non-existent', { name: 'Updated' })).rejects.toThrow(
+      await expect(service.update('non-existent', { name: 'Updated' }, 'user-1')).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -163,8 +178,10 @@ describe('ProductService', () => {
       });
       productRepository.createQueryBuilder.mockReturnValue(mockQb);
 
-      await expect(service.update('my-id', { sku: 'DUPE-SKU' })).rejects.toThrow(ConflictException);
-      await expect(service.update('my-id', { sku: 'DUPE-SKU' })).rejects.toThrow(
+      await expect(service.update('my-id', { sku: 'DUPE-SKU' }, 'user-1')).rejects.toThrow(
+        ConflictException,
+      );
+      await expect(service.update('my-id', { sku: 'DUPE-SKU' }, 'user-1')).rejects.toThrow(
         /A product with SKU DUPE-SKU already exists/,
       );
     });
@@ -178,7 +195,7 @@ describe('ProductService', () => {
       productRepository.createQueryBuilder.mockReturnValue(mockQb);
       productRepository.update.mockResolvedValue({ affected: 1 });
 
-      const result = await service.update('my-id', { name: 'New Name' });
+      const result = await service.update('my-id', { name: 'New Name' }, 'user-1');
 
       expect(result.name).toBe('New Name');
       expect(productRepository.update).toHaveBeenCalledWith(

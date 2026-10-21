@@ -46,13 +46,13 @@ export function useTwoFactorAuth() {
     }
   };
 
-  const startSetup = async (): Promise<TwoFactorSetupData | null> => {
+  const startSetup = async (password: string): Promise<TwoFactorSetupData | null> => {
     isLoading.value = true;
     error.value = null;
     setupData.value = null;
 
     try {
-      const data = await twoFactorApi.startSetup();
+      const data = await twoFactorApi.startSetup(password);
       setupData.value = data;
       return data;
     } catch (err) {
@@ -63,7 +63,7 @@ export function useTwoFactorAuth() {
     }
   };
 
-  const verifyAndEnable = async (code: string): Promise<boolean> => {
+  const verifyAndEnable = async (code: string, password: string): Promise<boolean> => {
     if (!TOTP_REGEX.test(code)) {
       error.value = 'Enter a 6-digit verification code';
       return false;
@@ -73,7 +73,7 @@ export function useTwoFactorAuth() {
     error.value = null;
 
     try {
-      const result = await twoFactorApi.verifyAndEnable(code);
+      const result = await twoFactorApi.verifyAndEnable(code, password);
       backupCodes.value = result.backupCodes ?? [];
       showBackupCodes.value = true;
       status.value = {
@@ -119,12 +119,12 @@ export function useTwoFactorAuth() {
     }
   };
 
-  const regenerateBackupCodes = async (): Promise<string[]> => {
+  const regenerateBackupCodes = async (password: string): Promise<string[]> => {
     isLoading.value = true;
     error.value = null;
 
     try {
-      const codes = await twoFactorApi.regenerateBackupCodes();
+      const codes = await twoFactorApi.regenerateBackupCodes(password);
       backupCodes.value = codes;
       showBackupCodes.value = true;
       status.value = {

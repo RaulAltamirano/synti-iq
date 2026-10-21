@@ -10,7 +10,6 @@ import { DatabaseModule } from 'src/database/database.module';
 import { PasswordModule } from 'src/auth/services/password/password.module';
 import { PassportModule } from '@nestjs/passport';
 import { RedisModule } from 'src/shared/redis/redis.module';
-import { CacheModule } from '@nestjs/cache-manager';
 import { UserProfileModule } from 'src/user-profile/user_profile.module';
 import { RoleModule } from 'src/role/role.module';
 import { Location } from 'src/location/entities/location.entity';
@@ -29,7 +28,6 @@ import { PermissionModule } from 'src/permission/permission.module';
     PermissionModule,
     UserProfileModule,
     RoleModule,
-    CacheModule.register(),
     RedisModule,
     PasswordModule,
     DatabaseModule,

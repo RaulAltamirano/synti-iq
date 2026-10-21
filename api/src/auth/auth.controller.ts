@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Auth, GetUser } from './decorator';
+import { assertTrustedOrigin } from 'src/shared/config/allowed-origins';
 import { LoginUserDto, TokensUserDto } from 'src/auth/dto';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
@@ -19,6 +20,7 @@ import { TokenResponseHelper } from './helpers/token-response.helper';
 import { ApiDoc } from 'src/shared/decorators';
 import { authEndpoints } from 'src/docs/auth.endpoints';
 import { VerifyTotpDto } from './dto/verify-totp.dto';
+import { ConfirmPasswordDto, VerifyTotpWithPasswordDto } from './dto/confirm-password.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -41,6 +43,7 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
+    assertTrustedOrigin(req.headers.origin);
     const result = await this.authService.signUp(dto, req);
     this.setAuthCookies(res, result.tokens);
     res.setHeader('Location', `/api/user/me`);
@@ -59,6 +62,7 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
+    assertTrustedOrigin(req.headers.origin);
     const result = await this.authService.registerBusiness(dto, req);
     this.setAuthCookies(res, result.tokens);
     res.setHeader('Location', `/api/user/me`);
@@ -77,6 +81,7 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
+    assertTrustedOrigin(req.headers.origin);
     const result = await this.authService.login(dto, req);
     this.setAuthCookies(res, result.tokens);
     return {
@@ -105,16 +110,16 @@ export class AuthController {
   @Auth('', [])
   @Post('2fa/setup')
   @HttpCode(200)
-  async setup2fa(@GetUser('sub') userId: string) {
-    return this.authService.setup2fa(userId);
+  async setup2fa(@GetUser('sub') userId: string, @Body() dto: ConfirmPasswordDto) {
+    return this.authService.setup2fa(userId, dto.password);
   }
 
   @ApiDoc(authEndpoints, 'auth2faVerify')
   @Auth('', [])
   @Post('2fa/verify')
   @HttpCode(200)
-  async verify2fa(@GetUser('sub') userId: string, @Body() dto: VerifyTotpDto) {
-    const result = await this.authService.verify2fa(userId, dto.code);
+  async verify2fa(@GetUser('sub') userId: string, @Body() dto: VerifyTotpWithPasswordDto) {
+    const result = await this.authService.verify2fa(userId, dto.code, dto.password);
     return { backupCodes: result.backupCodes };
   }
 
@@ -138,8 +143,8 @@ export class AuthController {
   @Auth('', [])
   @Post('2fa/regenerate-backup-codes')
   @HttpCode(200)
-  async regenerateBackupCodes(@GetUser('sub') userId: string) {
-    const backupCodes = await this.authService.regenerateBackupCodes(userId);
+  async regenerateBackupCodes(@GetUser('sub') userId: string, @Body() dto: ConfirmPasswordDto) {
+    const backupCodes = await this.authService.regenerateBackupCodes(userId, dto.password);
     return { backupCodes };
   }
 
@@ -147,6 +152,7 @@ export class AuthController {
   @Post('refresh')
   @HttpCode(200)
   async refreshTokens(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    assertTrustedOrigin(req.headers.origin);
     const refreshToken = req.cookies?.refresh_token;
 
     if (!refreshToken) {

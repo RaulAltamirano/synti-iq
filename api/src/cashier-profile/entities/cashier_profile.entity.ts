@@ -29,6 +29,9 @@ export class CashierProfile extends ProfileApprovalLifecycleColumns {
   @Column({ name: 'store_id', nullable: true })
   storeId: string | null;
 
+  @Column({ name: 'business_profile_id', type: 'uuid', nullable: true })
+  businessProfileId: string | null;
+
   @Column('text', { name: 'branch_office' })
   branchOffice: string;
 
